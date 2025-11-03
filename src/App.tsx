@@ -33,6 +33,32 @@ function App() {
   const [sf2Sampler, setSf2Sampler] = useState<Soundfont2Sampler | undefined>();
   const [babyDanceFrame, setBabyDanceFrame] = useState(0);
   const [composition, setComposition] = useState<Composition>({});
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const handlePlayComposition = useCallback(() => {
+    if (!sf2Sampler) return;
+    const beatLengthInSeconds = 0.25;
+    const now = context.currentTime;
+    Object.entries(composition).forEach(([beatStr, beatNotes]) => {
+      const beat = parseFloat(beatStr) - 1;
+      Object.values(beatNotes).forEach((sampler) => {
+        if (!sampler) return;
+        sf2Sampler.start({
+          note: sampler.note,
+          time: now + beat*beatLengthInSeconds,
+          duration: sampler.duration,
+          onStart: () => {
+            setBabyDanceFrame((prev) => prev < 3 ? prev+1 : 0);
+          }
+        });
+      });
+    });
+    setIsPlaying(true);
+  }, [sf2Sampler, composition]);
+  const handleStopComposition = useCallback(() => {
+    sf2Sampler?.stop();
+    setIsPlaying(false);
+  }, [sf2Sampler]);
+
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.repeat) { return; }
 
@@ -49,6 +75,7 @@ function App() {
     }
   }, [handleKeyDown]);
   const onUploadSf2 = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // TODO(jaketrower): need to stop the composition play at this point? maybe not.
     const file = e.target?.files?.[0]; 
     if (!file) {
       console.log("Failed to load file.");
@@ -115,7 +142,8 @@ function App() {
           </>)}
         </div>
       </div>
-      <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <div></div>
         <div style={{ display: 'flex', }}>
           <div key="empty" style={{ width: beatWidth}}>&nbsp;</div>
           {pianoRollBeats.map((beat) => (<div key={beat} style={{ width: beatWidth}}>{beat}</div>))}
@@ -151,6 +179,10 @@ function App() {
           </div>
         ))}
       </div>
+      {isPlaying
+        ? <div style={{ fontSize: 32, cursor: 'pointer', }} onClick={handleStopComposition}>⏹️</div>
+        : <div style={{ fontSize: 32, cursor: 'pointer', }} onClick={handlePlayComposition}>▶️</div>
+      }
     </div>
   );
 }
