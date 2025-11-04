@@ -59,6 +59,7 @@ const BabyPlayheadImg = styled.img<{ $frame: number }>`
   background-image: url('baby_dance_sheet.png');
   position: relative;
   left: -10px;
+  top: -6px;
   background-position: ${({ $frame }) => `${$frame*-20}px 0px`};
 `;
 
@@ -83,14 +84,21 @@ const sf2DefaultColours = [
 
 const keyboardPianoKeys = new Map(Object.entries({
   'a': 'C4',
+  'w': 'Db4',
   's': 'D4',
+  'e': 'Eb4',
   'd': 'E4',
   'f': 'F4',
+  't': 'Gb4',
   'g': 'G4',
+  'y': 'Ab4',
   'h': 'A4',
+  'u': 'Bb4',
   'j': 'B4',
   'k': 'C5',
+  'o': 'Db5',
   'l': 'D5',
+  'p': 'Eb5',
   ';': 'E5',
   "'": 'F5',
 }));
@@ -128,11 +136,15 @@ export function Maestro() {
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.repeat) { return; }
+    if (e.code === 'Space') {
+      isPlaying ? handleStopComposition() : handlePlayComposition();
+      return;
+    }
     const playedNote = keyboardPianoKeys.has(e.key) ? keyboardPianoKeys.get(e.key) : undefined;
     if (!currUserInstrument?.sf2Sampler || !playedNote) { return; }
     currUserInstrument.sf2Sampler.start({ note: playedNote, time: context.currentTime, duration: 0.25 });
     incrementBabyDanceFrame();
-  }, [currUserInstrument]);
+  }, [currUserInstrument, isPlaying]);
 
   useEffect(() => {
     document.addEventListener('keydown', handleKeyDown);
@@ -235,6 +247,7 @@ export function Maestro() {
       <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
+        <li>[ ] Update the sf2-instrument selection on user-instrument change</li>
         <li>[ ] C1 - C7 (?) Piano range</li>
         <li>[ ] Longer tracks</li>
         <li>[ ] Tempo change,</li>

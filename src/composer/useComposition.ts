@@ -8,6 +8,7 @@ export type UserInstrument = {
   sf2Sampler: Soundfont2Sampler | undefined;
 }
 export type MidiNote = string;
+export type OctavelessMidiNote = string;
 type MidiBeat = number;
 type InstrumentInstruction = {
   userInstrumentIndex: number;

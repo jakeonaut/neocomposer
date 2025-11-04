@@ -1,8 +1,18 @@
 import React, { ReactElement, useCallback } from 'react';
-import { Composition, MidiNote, UserInstrument } from './useComposition';
+import { Composition, MidiNote, OctavelessMidiNote, UserInstrument } from './useComposition';
 
-const pianoRollKeys: MidiNote[] = ['C4', 'D4', 'E4', 'F4', 'G4', 'A4', 'B4', 'C5'].reverse();
-const pianoRollBeats = [1, 2, 3, 4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
+const fullOctave: OctavelessMidiNote[] = [
+  'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'
+];
+const pianoRollKeys: MidiNote[] = [];
+[3,4].forEach(
+  (octave) => fullOctave.forEach(
+    (note: OctavelessMidiNote) => pianoRollKeys.push(`${note}${octave}`)
+  )
+);
+pianoRollKeys.push('C5');
+pianoRollKeys.reverse();
+const pianoRollBeats = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20];
 
 export function CompositionAndPlayhead({ composition, userInstruments, handleUpdateCompositionAtBeatAndNote, playheadNode, playheadPosX } : {
   composition: Composition,
@@ -17,11 +27,11 @@ export function CompositionAndPlayhead({ composition, userInstruments, handleUpd
     handleUpdateCompositionAtBeatAndNote(midiBeat, midiNote);
   }, [handleUpdateCompositionAtBeatAndNote]);
 
-  const beatWidth = 32;
+  const beatWidth = 16;
   return (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
-      <div style={{ display: 'flex' }}>
-        <div key="empty" style={{ width: beatWidth}}>&nbsp;</div>
+      <div style={{ display: 'flex', height: beatWidth }}>
+        <div key="empty" style={{ width: beatWidth*2}}>&nbsp;</div>
         {pianoRollBeats.map((beat) => (
           <div key={beat} style={{ width: beatWidth, textAlign: 'left', }}>
             {playheadPosX === beat ? playheadNode : ' '}
@@ -29,12 +39,12 @@ export function CompositionAndPlayhead({ composition, userInstruments, handleUpd
         ))}
       </div>
       {pianoRollKeys.map((midiNote) => (
-        <div style={{ display: 'flex' }}>
-          <div key={midiNote} style={{ width: beatWidth}}>{midiNote}</div>
+        <div style={{ display: 'flex', height: beatWidth }}>
+          <div key={midiNote} style={{ width: beatWidth*2, textAlign: 'left'}}>{midiNote}</div>
           {pianoRollBeats.map((midiBeat) => (
             <div key={midiBeat} className='hoverable'
               style={{
-                outline: '1px solid lightgray',
+                outline: '1px dashed lightgray',
                 width: beatWidth,
                 cursor: 'pointer',
                 ...(composition[midiBeat]?.[midiNote] !== undefined ? {
