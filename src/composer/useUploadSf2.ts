@@ -7,7 +7,7 @@ export function useUploadSf2({
   onLoadSuccess,
 } : {
   context: AudioContext,
-  onLoadSuccess: (sampler: Soundfont2Sampler) => void,
+  onLoadSuccess: (sampler: Soundfont2Sampler, instrumentName: string) => void,
 }) {
   const handleUploadSf2 = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     // TODO(jaketrower): need to stop/affect the composition play at this point? maybe that should be dynamic anyway
@@ -38,7 +38,7 @@ export function useUploadSf2({
       // This could be not async since I'm passing the Uint8Array directly into the options
       soundfont2Sampler.load.then((sampler) => {
         sampler.loadInstrument(sampler.instrumentNames[0]);
-        onLoadSuccess(sampler);
+        onLoadSuccess(sampler, sampler.instrumentNames[0]);
       });
     }
   }, [context, onLoadSuccess]);

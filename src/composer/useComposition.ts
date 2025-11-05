@@ -1,32 +1,13 @@
 import React, { useCallback, useState } from 'react';
-import { SampleStart } from '../smplr/player/types';
-import { Soundfont2Sampler } from '../smplr';
+import { Composition, UserInstrument } from './consts';
 
-export type UserInstrument = {
-  name: string;
-  color: string;
-  sf2Sampler: Soundfont2Sampler | undefined;
-}
-export type MidiNote = string;
-export type OctavelessMidiNote = string;
-type MidiBeat = number;
-type InstrumentInstruction = {
-  userInstrumentIndex: number;
-  sampleStart: SampleStart;
-}
-export type Composition = {
-  [id: MidiBeat]: {
-    [id: MidiNote]: InstrumentInstruction | undefined
-  }
-}
-
-export function useComposition({ context, userInstruments, userInstrumentIndex, setPlayheadPosX } : {
+export function useComposition({ context, tempo, userInstruments, userInstrumentIndex, setPlayheadPosX } : {
   context: AudioContext,
+  tempo: number,
   userInstruments: Array<UserInstrument | undefined>,
   userInstrumentIndex: number,
   setPlayheadPosX: (posX: number) => void,
 }) {
-  console.log("recompose");
   const [composition, setComposition] = useState<Composition>({});
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
@@ -40,18 +21,24 @@ export function useComposition({ context, userInstruments, userInstrumentIndex, 
     } else {
       newComposition[midiBeat][midiNote] = {
         userInstrumentIndex,
-        sampleStart: { note: midiNote, duration: 0.25 }
+        sampleStart: { note: midiNote, duration: 0.25 } // TODO(jaketrower): Why is duration in seconds? probably just set to a variation of 1.0 and allow the tempo to change things on play dynamically
       };
     }
     setComposition(newComposition);
   }, [composition, userInstrumentIndex]);
 
   const handlePlayComposition = useCallback(() => {
-    const beatLengthInSeconds = 0.25;
+    const bpm = tempo;
+    const bps = bpm / 60.0;
+    const nthNoteDivision = 4.0;
+    const nthNotesPerSec = bps * nthNoteDivision;
+    const beatLengthInSeconds = 1 / nthNotesPerSec; 
+    // TODO(jaketrower): totally based on bpm... 120 beats per minute = 2 beats per second, 32 noteBlocks per second = duration of 0.03125
+    // so beatLengthInSeconds = tempo / 2
     const now = context.currentTime;
     setPlayheadPosX(1);
     Object.entries(composition).forEach(([beatStr, beatNotes]) => {
-      const beat = parseFloat(beatStr) - 1;
+      const beat = parseFloat(beatStr) - 1; // TODO(jaketrower): I think beat should represent... 16th notes?
       Object.values(beatNotes).forEach((instrumentInstruction) => {
         // TODO(jaketrower): This doesn't currently allow for at-time-of-note-play-swapping of the instrument/sf2
         if (!instrumentInstruction) return;
@@ -63,13 +50,13 @@ export function useComposition({ context, userInstruments, userInstrumentIndex, 
         userInstrumentToPlay.sf2Sampler.start({
             note: sampleStart.note,
             time: now + beat*beatLengthInSeconds,
-            duration: sampleStart.duration,
+            duration: sampleStart.duration, // TODO(jaketrower): need to calculate duration from bpm + sampleStart.duration
             onStart: () => { setPlayheadPosX(beat + 1); }
         });
       });
     });
     setIsPlaying(true);
-  }, [userInstruments, composition]);
+  }, [userInstruments, composition, tempo]);
 
   const handleStopComposition = useCallback(() => {
     setPlayheadPosX(1);
