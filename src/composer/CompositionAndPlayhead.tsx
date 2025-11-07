@@ -1,4 +1,4 @@
-import React, { ReactElement, useCallback, useState } from 'react';
+import React, { ReactElement, useCallback, useMemo, useState } from 'react';
 import { Composition, MidiBeat, MidiNote, OctavelessMidiNote, UserInstrument } from './consts';
 
 type CursorPosition = { midiNote: MidiNote, midiBeat: MidiBeat };
@@ -14,10 +14,11 @@ const pianoRollKeys: MidiNote[] = [];
 pianoRollKeys.push('C5');
 pianoRollKeys.reverse();
 const beatWidth = 16;
-const pianoRollBeats = new Array(40);
+const pianoRollBeats = new Array(70);
 pianoRollBeats.fill(0);
 
 export function CompositionAndPlayhead({
+  context,
   composition,
   userInstruments,
   userInstrumentIndex,
@@ -25,6 +26,7 @@ export function CompositionAndPlayhead({
   playheadNode,
   playheadPosX
 } : {
+  context: AudioContext
   composition: Composition,
   userInstruments: Array<UserInstrument>,
   userInstrumentIndex: number,
@@ -32,6 +34,7 @@ export function CompositionAndPlayhead({
   playheadNode: ReactElement,
   playheadPosX: number,
 }) {
+  const currUserInstrument = useMemo(() => userInstruments[userInstrumentIndex], [userInstruments, userInstrumentIndex]);
   const [isMouseDown, setIsMouseDown] = useState(false);
   const [cursorPosition, setCursorPosition] = useState<CursorPosition | undefined>();
   const [startingCursorPos, setStartingCursorPos] = useState<CursorPosition | undefined>();
@@ -39,7 +42,9 @@ export function CompositionAndPlayhead({
     setIsMouseDown(true);
     setCursorPosition({ midiNote, midiBeat });
     setStartingCursorPos({ midiNote, midiBeat });
-  }, []);
+    if (context.state === "suspended") { context.resume(); }
+    currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 });
+  }, [currUserInstrument, context]);
   const handleMouseUp = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: number, midiNote: string) => {
     setIsMouseDown(false);
     setCursorPosition(undefined);
@@ -49,8 +54,11 @@ export function CompositionAndPlayhead({
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: number, midiNote: string) => {
     if (isMouseDown && cursorPosition && (cursorPosition.midiBeat !== midiBeat || cursorPosition.midiNote !== midiNote)) {
       setCursorPosition({ midiNote, midiBeat });
+      if (midiNote !== cursorPosition.midiNote) {
+        currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 });
+      }
     }
-  }, [isMouseDown, cursorPosition]);
+  }, [isMouseDown, cursorPosition, currUserInstrument]);
 
   const handleNoteClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: number, midiNote: string) => {
     e.preventDefault();
@@ -71,33 +79,54 @@ export function CompositionAndPlayhead({
           );
         })}
       </div>
+      <div onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }}>
       {pianoRollKeys.map((midiNote, y) => (
         <div style={{ display: 'flex', height: beatWidth-1 }}>
-          <div key={midiNote} style={{ width: beatWidth*2, textAlign: 'left'}}>{midiNote}</div>
+          <div key={midiNote} style={{ width: beatWidth*2, textAlign: 'left', userSelect: 'none' }}>{midiNote}</div>
           {pianoRollBeats.map((_, idx) => {
             const index = idx + 1;
             return (
               <div key={index} className='hoverable'
                 style={{
-                  borderLeft: `2px ${idx % 4 === 0 ? 'solid' : 'dotted'} ${idx % 16 === 0 ? 'gray' : 'lightgray'}`,
-                  borderTop: '2px dotted lightgray',
+                  position: 'relative',
+                  borderLeft: `1px ${idx % 4 === 0 ? 'solid' : 'dashed'} ${idx % 16 === 0 ? 'black' : 'lightgray'}`,
+                  borderTop: '1px dotted #b2bcc2',
                   borderBottom: midiNote[0] === 'C'
-                    ? '2px solid lightgray'
+                    ? '1px solid #b2bcc2'
                     : y === pianoRollKeys.length - 1
-                      ? '2px dotted lightgray'
+                      ? '1px dashed #b2bcc2'
                       : 'unset',
-                  borderRight: idx === pianoRollBeats.length - 1 ? '2px dotted lightgray' : 'unset',
+                  borderRight: idx === pianoRollBeats.length - 1 ? '1px dashed #b2bcc2' : 'unset',
                   width: beatWidth-1,
                   cursor: 'pointer',
-                  ...(composition[index]?.[midiNote] !== undefined ? {
-                    backgroundColor: userInstruments[composition[index][midiNote]!.userInstrumentIndex]?.color ?? 'gray',
-                  }  : {}),
                 }}
-                onClick={(e) => handleNoteClick(e, index, midiNote) }/>
+                onClick={(e) => handleNoteClick(e, index, midiNote) }
+                onMouseDown={(e) => handleMouseDown(e, index, midiNote) }
+                onMouseMove={(e) => handleMouseMove(e, index, midiNote) }
+                onMouseUp={(e) => handleMouseUp(e, index, midiNote) }
+              >
+                {composition[index]?.[midiNote] !== undefined && (<div style={{
+                  width: 15,
+                  height: 14,
+                  content: ' ',
+                  backgroundColor: userInstruments[composition[index][midiNote]!.userInstrumentIndex]?.color ?? 'gray',
+                  position: 'absolute',
+                  left: 0,
+                  zIndex: 1,
+                  top: 0,
+                  // border: '1px solid black',
+                  borderRadius: 0,
+                }} />)}
+              </div>
             );
           })}
         </div>
       ))}
+      </div>
     </div>
   );
 }

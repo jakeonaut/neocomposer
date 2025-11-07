@@ -84,10 +84,10 @@ export function UserInstrumentsHeader({
     userInstruments[userInstrumentIndex]!.sf2InstrumentName = sf2InstrumentName;
     setUserInstruments([...userInstruments]);
     const now = context.currentTime;
-    ["C4", "E4", "G4", "C5"].forEach((note, i) => {
+    ["C4", "G4"].forEach((note, i) => {
       sampler.start({
         note,
-        time: now + i * 0.25,
+        time: now + i * 0.2,
         duration: 0.25,
         onStart: () => incrementBabyDanceFrame(),
       });
@@ -102,12 +102,14 @@ export function UserInstrumentsHeader({
     const instrumentName = e.target.value;
     const userInstrument = userInstruments[userInstrumentIndex];
     if (userInstrument.sf2Sampler) {
+      if (context.state === "suspended") { context.resume(); }
       userInstrument.sf2Sampler.loadInstrument(instrumentName);
+      userInstrument.sf2Sampler.start({ note: 'C4', duration: 0.25 });
     }
     userInstrument.sf2InstrumentName = instrumentName;
     userInstruments[userInstrumentIndex] = { ...userInstrument };
     setUserInstruments([...userInstruments]);
-  }, [userInstruments, userInstrumentIndex]);
+  }, [userInstruments, userInstrumentIndex, context]);
 
   const onUserInstrumentVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const userInstrument = userInstruments[userInstrumentIndex];

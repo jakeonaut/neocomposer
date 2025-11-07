@@ -17,9 +17,7 @@ export function useUploadSf2({
       return;
     }
 
-    if (context.state === "suspended") {
-      context.resume();
-    }
+    if (context.state === "suspended") { context.resume(); }
 
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);

@@ -131,6 +131,7 @@ export function Maestro() {
         incrementBabyDanceFrame={incrementBabyDanceFrame}
       />
       <CompositionAndPlayhead
+        context={context}
         composition={composition}
         userInstruments={userInstruments}
         userInstrumentIndex={userInstrumentIndex}
