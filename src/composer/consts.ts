@@ -15,21 +15,22 @@ export type UserInstrument = {
   sf2Sampler: Soundfont2Sampler | undefined;
   sf2InstrumentName: string | undefined;
   volume: number;
-}
+};
 export type MidiNote = string;
 export type OctavelessMidiNote = string;
 export type MidiBeat = number;
 export type InstrumentInstruction = {
   userInstrumentIndex: number;
+  noteWidth: number;
   sampleStart: SampleStart;
-}
+};
 export type Composition = {
   [id: MidiBeat]: {
-    [id: MidiNote]: InstrumentInstruction | undefined
-  }
-}
+    [id: MidiNote]: InstrumentInstruction | undefined;
+  };
+};
 export type Song = {
   composition: Composition;
   volume: number; // 0 - 127
   tempo: number; // 20 - 200
-}
+};
