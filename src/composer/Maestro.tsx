@@ -133,6 +133,7 @@ export function Maestro() {
       <CompositionAndPlayhead
         composition={composition}
         userInstruments={userInstruments}
+        userInstrumentIndex={userInstrumentIndex}
         handleUpdateCompositionAtBeatAndNote={handleUpdateCompositionAtBeatAndNote}
         playheadNode={<BabyPlayheadImg src="trans.png" $frame={babyDanceFrame} />}
         playheadPosX={babyPlayheadPosX}

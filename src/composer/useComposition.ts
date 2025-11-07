@@ -72,6 +72,7 @@ export function useComposition({ context, tempo, userInstruments, userInstrument
     userInstruments.forEach((userInstrument) => {
       userInstrument?.sf2Sampler?.stop();
     })
+    setPlayheadPosX(1);
     setComposition({});
     setIsPlaying(false);
   }, [userInstruments])
