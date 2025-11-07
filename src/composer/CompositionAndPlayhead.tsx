@@ -17,6 +17,28 @@ const beatWidth = 16;
 const pianoRollBeats = new Array(70);
 pianoRollBeats.fill(0);
 
+function PlacedNote({
+  bgColor,
+}: {
+  bgColor: string
+}) {
+  return (<div style={{
+    width: 15,
+    height: 14,
+    content: ' ',
+    backgroundColor: bgColor,
+    position: 'absolute',
+    left: 0,
+    zIndex: 1,
+    top: 0,
+    // border: '1px solid black',
+    borderRadius: 0,
+    // boxShadow: '0px 0px 0px 1px white',
+  }}>
+    {/* 🎸 */}
+  </div>);
+}
+
 export function CompositionAndPlayhead({
   context,
   composition,
@@ -89,6 +111,9 @@ export function CompositionAndPlayhead({
           <div key={midiNote} style={{ width: beatWidth*2, textAlign: 'left', userSelect: 'none' }}>{midiNote}</div>
           {pianoRollBeats.map((_, idx) => {
             const index = idx + 1;
+            const currBgColor = currUserInstrument.color ?? 'gray';
+            const bgColor = composition[index]?.[midiNote] !== undefined
+              ? userInstruments[composition[index][midiNote]!.userInstrumentIndex]!.color ?? 'gray' : 'gray';
             return (
               <div key={index} className='hoverable'
                 style={{
@@ -109,18 +134,10 @@ export function CompositionAndPlayhead({
                 onMouseMove={(e) => handleMouseMove(e, index, midiNote) }
                 onMouseUp={(e) => handleMouseUp(e, index, midiNote) }
               >
-                {composition[index]?.[midiNote] !== undefined && (<div style={{
-                  width: 15,
-                  height: 14,
-                  content: ' ',
-                  backgroundColor: userInstruments[composition[index][midiNote]!.userInstrumentIndex]?.color ?? 'gray',
-                  position: 'absolute',
-                  left: 0,
-                  zIndex: 1,
-                  top: 0,
-                  // border: '1px solid black',
-                  borderRadius: 0,
-                }} />)}
+                {composition[index]?.[midiNote] !== undefined && (
+                  <PlacedNote bgColor={bgColor} />)}
+                {cursorPosition && cursorPosition.midiNote === midiNote && cursorPosition.midiBeat === index && (
+                  <PlacedNote bgColor={currBgColor} />)}
               </div>
             );
           })}

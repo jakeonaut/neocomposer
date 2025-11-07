@@ -121,6 +121,23 @@ export function Maestro() {
 
   return (
     <MaestroContainer>
+      {/* <div style={{ display: 'flex', alignItems: 'center', }}>
+        <label htmlFor="master-instrument-volume">
+          &nbsp;
+          {masterVolume == 0
+            ? '🔇'
+            : masterVolume < 10
+              ? '🔈' 
+              : masterVolume < 67
+                ? '🔉'
+                : masterVolume < 120 ? '🔊' : '💯'}
+          &nbsp;<b>Master Volume:</b></label>
+        <input style={{ width: 100 }} type="range" min="0" max="127"
+          id="master-instrument-volume"
+          value={masterVolume}
+          onChange={onMasterVolumeChange}
+        />
+      </div> */}
       <UserInstrumentsHeader
         context={context}
         userInstruments={userInstruments}
@@ -145,14 +162,8 @@ export function Maestro() {
           : <ActionButton onClick={handlePlayComposition}>▶️</ActionButton>
         }
         <ActionButton onClick={handleClearComposition}>💣</ActionButton>
-        <label htmlFor="master-instrument-volume"><b>Master Volume:</b></label>
-        <input style={{ width: 100 }} type="range" min="0" max="127"
-          id="master-instrument-volume"
-          value={masterVolume}
-          onChange={onMasterVolumeChange}
-        />
         <label htmlFor="tempo"><b>Tempo:</b></label>
-        <input id="tempo" type="number" min="20" max="200" value={tempo} onChange={onTempoChange} />
+        <input id="tempo" type="range" min="20" max="200" value={tempo} onChange={onTempoChange} />
       </ActionButtonsContainer>
       <br/>
       <TodoList />

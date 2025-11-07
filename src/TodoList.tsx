@@ -5,11 +5,14 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>[ ] placing notes should create new absolutely positioned divs that span their note length and z-index: 1</li>
-        <li>- [ ] right clickign should delete them, left click and move them</li>
-        <li>[ ] default sound font?</li>
+        <li>[ ] right clickign notesshould delete them, left click and move them</li>
+        <li> - [ ] click and dragging when creating notes should move and stretch them</li>
+        <li>[ ] holding shift or ctrl and click dragging should SELECT, and then can move or delete all notes</li>
+        <li>[ ] copy and paste (or cut and paste) notes as well with ctrl+x / ctrl+c / ctrl+v</li>
         <li>[ ] save/export/load/import: composition is easy to export as json, but will also have to include the soundfonts and selected instruments?</li>
         <li>[ ] undo/redo. each action (placing a note), should have an opposite action (deleting a note).
+        <br/>
+        <li>[ ] default sound font?</li>
           <ul><li>this seems preferable than caching the entire state of the application multiple times into memory. will have to have a max undo history though probably..</li></ul></li>
         <li>[ ] C1 - C7 (?) Piano range</li>
         <li>[ ] Longer tracks</li>

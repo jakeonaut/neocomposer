@@ -167,7 +167,7 @@ export function UserInstrumentsHeader({
             <FileInputLabel htmlFor="sf-uploader">Upload .sf2</FileInputLabel>
             <input id="sf-uploader" type="file" accept=".sf2" onChange={onUploadSf2} style={{ display: 'none' }} />
             &nbsp;&nbsp;
-            <label htmlFor="user-instrument-volume">Volume:</label>
+            <label htmlFor="user-instrument-volume">volume:</label>
             <input type="range" min="0" max="127"
               style={{ width: 100 }}
               id="user-instrument-volume"
