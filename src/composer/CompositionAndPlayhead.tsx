@@ -6,6 +6,7 @@ import {
   OctavelessMidiNote,
   UserInstrument,
 } from "./consts";
+import styled from "styled-components";
 
 type CursorPosition = { midiNote: MidiNote; midiBeat: MidiBeat };
 const fullOctave: OctavelessMidiNote[] = [
@@ -34,6 +35,21 @@ const beatWidth = 16;
 const pianoRollBeats = new Array(70);
 pianoRollBeats.fill(0);
 
+const StyledNote = styled.div<{ $width: number, $bgColor: string, $shouldMouseIgnoreMe?: boolean }>`
+  width: ${({ $width }) => `${$width}px`};
+  height: 14px;
+  content: " ";
+  background-color: ${({ $bgColor }) => $bgColor};
+  position: absolute;
+  left: 0px;
+  z-index: 1;
+  top: 0;
+  // border: 1px solid black;
+  border-radius: 0;
+  box-shadow: 0px 0px 0px 1px white;
+  pointer-events: ${({ $shouldMouseIgnoreMe }) => $shouldMouseIgnoreMe ? 'none' : 'unset' };
+`;
+
 function PlacedNote({
   bgColor,
   noteWidth,
@@ -44,24 +60,9 @@ function PlacedNote({
   shouldMouseIgnoreMe?: boolean;
 }) {
   return (
-    <div
-      style={{
-        width: noteWidth * 16 - 1,
-        height: 14,
-        content: " ",
-        backgroundColor: bgColor,
-        position: "absolute",
-        left: 0,
-        zIndex: 1,
-        top: 0,
-        // border: '1px solid black',
-        borderRadius: 0,
-        // boxShadow: '0px 0px 0px 1px white',
-        ...(shouldMouseIgnoreMe ? { pointerEvents: "none" } : {}),
-      }}
-    >
+    <StyledNote $bgColor={bgColor} $width={noteWidth * 16 - 1} $shouldMouseIgnoreMe={shouldMouseIgnoreMe}>
       {/* 🎸 */}
-    </div>
+    </StyledNote>
   );
 }
 

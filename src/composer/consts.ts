@@ -2,8 +2,8 @@ import { SampleStart } from "../smplr/player/types";
 import { Soundfont2Sampler } from "../smplr/soundfont2";
 
 export const sf2DefaultColours = [
-  "#8cb4b0",
   "#f1ad85ff",
+  "#87b8a4ff",
   "#85c9f1ff",
   "#eae4a1ff",
   "#cdb3d7ff",

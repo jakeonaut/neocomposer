@@ -23,7 +23,7 @@ export function useComposition({
       if (!newComposition[midiBeat]) {
         newComposition[midiBeat] = {};
       }
-      if (newComposition[midiBeat][midiNote] && noteWidth <= 0) {
+      if (newComposition[midiBeat][midiNote]) {
         delete newComposition[midiBeat][midiNote];
       } else {
         newComposition[midiBeat][midiNote] = {
