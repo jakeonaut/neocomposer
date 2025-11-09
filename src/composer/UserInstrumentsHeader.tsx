@@ -5,7 +5,7 @@ import { Soundfont2Sampler } from '../smplr/soundfont2';
 import { sf2DefaultColours, UserInstrument } from './consts';
 
 const SoundfontHeader = styled.div<{ $color: string }>`
-  height: 48px;
+  height: 28px;
   display: flex;
   gap: 4px;
   outline: 1px solid black;
@@ -13,14 +13,11 @@ const SoundfontHeader = styled.div<{ $color: string }>`
   margin: 2px;
   align-items: center;
 `;
-const DancingBabyImg = styled.img<{ $frame: number }>`
-  margin: 6px 16px 10px 10px;
-  width: 20px;
-  height: 20px;
-  image-rendering: pixelated;
-  transform: scale(2.0);
-  background-image: url('baby_dance_sheet.png');
-  background-position: ${({ $frame }) => `${$frame*-20}px 0px`};
+const ColorPicker = styled.div`
+  border: 1px solid black;
+  width: 16px; 
+  height: 16px;
+  margin-left: 4px;
   cursor: pointer;
 `;
 const FileInputLabel = styled.label`
@@ -34,7 +31,8 @@ const UserInstrumentSelector = styled.div`
   margin: 0px 0px 16px 28px;
 `;
 const UserInstrumentTab = styled.div`
-  width: 32px;
+  min-width: 18px;
+  padding: 0 6px;
   height: 28px;
   line-height: 28px;
   border: 1px solid black;
@@ -53,7 +51,6 @@ export function UserInstrumentsHeader({
   setUserInstruments,
   userInstrumentIndex,
   setUserInstrumentIndex,
-  babyDanceFrame,
   incrementBabyDanceFrame,
 }: {
   context: AudioContext,
@@ -61,11 +58,9 @@ export function UserInstrumentsHeader({
   setUserInstruments: (userInstruments: UserInstrument[]) => void,
   userInstrumentIndex: number,
   setUserInstrumentIndex: (userInstrumentIndex: number) => void,
-  babyDanceFrame: number,
   incrementBabyDanceFrame: () => void
 }) {
   const currUserInstrument = useMemo(() => userInstruments[userInstrumentIndex], [userInstruments, userInstrumentIndex]);
-  const currUserInstrumentName = useMemo(() => currUserInstrument.name, [currUserInstrument.name]);
   const selectedSf2InstOption = useMemo(() => currUserInstrument.sf2InstrumentName, [currUserInstrument.sf2InstrumentName]);
 
   const onAddNewUserInstrument = useCallback(() => {
@@ -141,15 +136,14 @@ export function UserInstrumentsHeader({
   return (
     <>
       <SoundfontHeader $color={currUserInstrument.color ?? 'white'}>
-        <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={() => {
-          incrementBabyDanceFrame();
-        }}/></div>
-        <div style={{ display: 'flex', flexDirection: 'column', }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8}}>
+          <ColorPicker>&nbsp;</ColorPicker>
           <div style={{ textAlign: 'left', }}>
             <b>Name:</b>
-            <input type="text" value={currUserInstrumentName} onChange={(e) => {
+            <input type="text" value={currUserInstrument.name} onChange={(e) => {
               if (currUserInstrument) {
-                currUserInstrument.name = e.target.value;
+                userInstruments[userInstrumentIndex].name = e.target.value;
+                setUserInstruments([...userInstruments]);
               }
             }} />
             {currUserInstrument.sf2Sampler && (<>
@@ -160,7 +154,6 @@ export function UserInstrumentsHeader({
                 onChange={onSf2InstrumentSelect}>
                 {sf2InstOptions}
               </select>
-              <span> * Practice with: asdfjkl;wetyuop</span>
             </>)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', }}>

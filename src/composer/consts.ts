@@ -19,14 +19,18 @@ export type UserInstrument = {
 export type MidiNote = string;
 export type OctavelessMidiNote = string;
 export type MidiBeat = number;
+export type NoteId = number;
 export type InstrumentInstruction = {
+  noteId: number;
   userInstrumentIndex: number;
   noteWidth: number;
   sampleStart: SampleStart;
 };
 export type Composition = {
   [id: MidiBeat]: {
-    [id: MidiNote]: InstrumentInstruction | undefined;
+    [id: MidiNote]: {
+      [id: NoteId]: InstrumentInstruction;
+    }
   };
 };
 export type Song = {

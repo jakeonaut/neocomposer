@@ -5,7 +5,10 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>[ ] left click existing notes to move them</li>
+        <li>[ ] delete on mouseUp should do a lookup on that placedNote</li>
+        <li>[ ] left click existing notes to drag them (without changing noteWidth)</li>
+        <li> - [ ] this is gonna require: A. changing mouseMove when hasClickedNote=true, B. </li>
+        <br/>
         <li>[ ] holding shift or ctrl and click dragging should SELECT, and then can move or delete all notes</li>
         <li>[ ] copy and paste (or cut and paste) notes as well with ctrl+x / ctrl+c / ctrl+v</li>
         <li>[ ] save/export/load/import: composition is easy to export as json, but will also have to include the soundfonts and selected instruments?</li>

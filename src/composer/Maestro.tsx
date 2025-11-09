@@ -5,6 +5,8 @@ import { CompositionAndPlayhead } from "./CompositionAndPlayhead";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
 import { sf2DefaultColours, UserInstrument } from "./consts";
 import { useComposition } from "./useComposition";
+import { SongOptionsHeader } from "./SongOptionsHeader";
+import { ActionButton, ActionButtonsContainer } from "./styled";
 
 const MaestroContainer = styled.div`
   display: flex;
@@ -21,19 +23,6 @@ const BabyPlayheadImg = styled.img<{ $frame: number }>`
   left: -10px;
   top: -6px;
   background-position: ${({ $frame }) => `${$frame * -20}px 0px`};
-`;
-
-const ActionButtonsContainer = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 8px;
-`;
-
-const ActionButton = styled.div`
-  font-size: 24px;
-  cursor: pointer;
 `;
 
 const keyboardPianoKeys = new Map(
@@ -61,6 +50,7 @@ const keyboardPianoKeys = new Map(
 
 export function Maestro() {
   const [context] = useState(new AudioContext());
+  const [songName, setSongName] = useState('new_song');
   const [userInstruments, setUserInstruments] = useState<Array<UserInstrument>>(
     [
       {
@@ -88,8 +78,14 @@ export function Maestro() {
     handlePlayComposition,
     handleStopComposition,
     handleClearComposition,
+    handleExportComposition,
+    handleImportComposition,
     isPlaying,
+    handleStartLoop,
+    handleStopLoop,
+    isLooping,
   } = useComposition({
+    songName,
     context,
     tempo,
     userInstruments,
@@ -106,8 +102,9 @@ export function Maestro() {
         return;
       }
       if (e.code === "Space") {
-        isPlaying ? handleStopComposition() : handlePlayComposition();
-        return;
+        isPlaying ? handleStopComposition() : handlePlayComposition({});
+        e.preventDefault();
+        return false;
       }
       const playedNote = keyboardPianoKeys.has(e.key)
         ? keyboardPianoKeys.get(e.key)
@@ -174,13 +171,21 @@ export function Maestro() {
           onChange={onMasterVolumeChange}
         />
       </div> */}
+      <SongOptionsHeader
+        songName={songName}
+        setSongName={setSongName}
+        handleClearComposition={handleClearComposition}
+        handleExportComposition={handleExportComposition}
+        handleImportComposition={handleImportComposition}
+        babyDanceFrame={babyDanceFrame}
+        incrementBabyDanceFrame={incrementBabyDanceFrame}
+      />
       <UserInstrumentsHeader
         context={context}
         userInstruments={userInstruments}
         setUserInstruments={setUserInstruments}
         userInstrumentIndex={userInstrumentIndex}
         setUserInstrumentIndex={setUserInstrumentIndex}
-        babyDanceFrame={babyDanceFrame}
         incrementBabyDanceFrame={incrementBabyDanceFrame}
       />
       <CompositionAndPlayhead
@@ -196,13 +201,13 @@ export function Maestro() {
         }
         playheadPosX={babyPlayheadPosX}
       />
-      <ActionButtonsContainer>
-        {isPlaying ? (
-          <ActionButton onClick={handleStopComposition}>⏹️</ActionButton>
-        ) : (
-          <ActionButton onClick={handlePlayComposition}>▶️</ActionButton>
-        )}
-        <ActionButton onClick={handleClearComposition}>💣</ActionButton>
+      <ActionButtonsContainer style={{ marginTop: 8, justifyContent: 'center' }}>
+        <ActionButton onClick={isPlaying ? handleStopComposition : () => handlePlayComposition({})}>
+          {isPlaying ? '⏹️' : '▶️'}
+        </ActionButton>
+        <ActionButton onClick={isLooping ? handleStopLoop : handleStartLoop}>
+          {isLooping ? '📴' : '🔁'}
+        </ActionButton>
         <label htmlFor="tempo">
           <b>Tempo:</b>
         </label>
