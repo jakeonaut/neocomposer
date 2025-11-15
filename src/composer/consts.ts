@@ -1,6 +1,9 @@
 import { SampleStart } from "../smplr/player/types";
 import { Soundfont2Sampler } from "../smplr/soundfont2";
 
+export const zIndex_placedNote = 1;
+export const zIndex_rectSelect = 2;
+
 export const sf2DefaultColours = [
   "#f1ad85ff",
   "#87b8a4ff",
@@ -38,3 +41,7 @@ export type Song = {
   volume: number; // 0 - 127
   tempo: number; // 20 - 200
 };
+export enum InputMode {
+  DEFAULT = "default",
+  SELECT = "select"
+}

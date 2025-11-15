@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { TodoList } from "../TodoList";
 import { CompositionAndPlayhead } from "./CompositionAndPlayhead";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
-import { sf2DefaultColours, UserInstrument } from "./consts";
+import { InputMode, sf2DefaultColours, UserInstrument } from "./consts";
 import { useComposition } from "./useComposition";
 import { SongOptionsHeader } from "./SongOptionsHeader";
 import { ActionButton, ActionButtonsContainer } from "./styled";
@@ -64,6 +64,8 @@ export function Maestro() {
   );
   const [userInstrumentIndex, setUserInstrumentIndex] = useState(0);
   const [masterVolume, setMasterVolume] = useState(100);
+  const [isCompositionMouseDown, setIsCompositionMouseDown] = useState(false);
+  const [inputMode, setInputMode] = useState(InputMode.DEFAULT);
   const [tempo, setTempo] = useState(68);
   const [babyDanceFrame, setBabyDanceFrame] = useState(0);
   const incrementBabyDanceFrame = useCallback(
@@ -94,12 +96,25 @@ export function Maestro() {
       setBabyPlayheadPosX(posX);
       incrementBabyDanceFrame();
     },
+    inputMode,
   });
 
+  const [onCompositionMouseUp, setOnCompositionMouseUp] = useState<(() => void) | undefined>();
+  const trySetInputMode = useCallback((newInputMode: InputMode) => {
+    if (isCompositionMouseDown) return;
+    setInputMode(newInputMode);
+  }, [isCompositionMouseDown]);
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.repeat) {
         return;
+      }
+      if (e.key === "Shift") {
+        trySetInputMode(InputMode.SELECT);
+        if (isCompositionMouseDown) {
+          setOnCompositionMouseUp(() => (() => setInputMode(InputMode.SELECT)));
+        }
+        return false;
       }
       if (e.code === "Space") {
         isPlaying ? handleStopComposition() : handlePlayComposition({});
@@ -128,8 +143,20 @@ export function Maestro() {
       isPlaying,
       handleStopComposition,
       handlePlayComposition,
+      trySetInputMode,
+      isCompositionMouseDown,
     ]
   );
+
+  const handleKeyUp = useCallback((e: KeyboardEvent) => {
+    if (e.key === "Shift") {
+      trySetInputMode(InputMode.DEFAULT);
+      if (isCompositionMouseDown) {
+        setOnCompositionMouseUp(() => (() => setInputMode(InputMode.DEFAULT)));
+      }
+      return false;
+    }
+  }, [trySetInputMode, isCompositionMouseDown]);
 
   const onMasterVolumeChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,10 +174,12 @@ export function Maestro() {
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keyup", handleKeyUp);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keyup", handleKeyUp)
     };
-  }, [handleKeyDown]);
+  }, [handleKeyDown, handleKeyUp]);
 
   return (
     <MaestroContainer>
@@ -193,6 +222,11 @@ export function Maestro() {
         composition={composition}
         userInstruments={userInstruments}
         userInstrumentIndex={userInstrumentIndex}
+        inputMode={inputMode}
+        isCompositionMouseDown={isCompositionMouseDown}
+        setIsCompositionMouseDown={setIsCompositionMouseDown}
+        onCompositionMouseUp={onCompositionMouseUp}
+        setOnCompositionMouseUp={setOnCompositionMouseUp}
         handleUpdateCompositionAtBeatAndNote={
           handleUpdateCompositionAtBeatAndNote
         }
@@ -219,6 +253,47 @@ export function Maestro() {
           value={tempo}
           onChange={onTempoChange}
         />
+        <ActionButton
+          onClick={() => trySetInputMode(InputMode.DEFAULT)}
+          style={{
+            border: '1px solid black',
+            paddingBottom: 4,
+            paddingTop: 1,
+            paddingRight: 1,
+            ...(
+              inputMode === InputMode.DEFAULT ? {
+                background: 'black',
+                opacity: 0.5,
+              } : {}
+            ),
+          }}>
+          <div style={{
+            background: `url('./toolicons1x.png') repeat scroll ${inputMode === InputMode.DEFAULT ? '-25px' : '0'} -126px transparent`,
+            width: 25,
+            height: 21,
+          }} />
+        </ActionButton>
+        <ActionButton
+          onClick={() => trySetInputMode(InputMode.SELECT)}
+          style={{
+            border: '1px solid black',
+            paddingBottom: 3,
+            paddingTop: 2,
+            paddingRight: 1,
+            marginLeft: -6,
+            ...(
+              inputMode === InputMode.SELECT ? {
+                background: 'black',
+                opacity: 0.5,
+              } : {}
+            ),
+          }}>
+          <div style={{
+            background: `url('./toolicons1x.png') repeat scroll  ${inputMode === InputMode.SELECT ? '-25px' : '0'}  -21px transparent`,
+            width: 25,
+            height: 21,
+          }} />
+        </ActionButton>
       </ActionButtonsContainer>
       <br />
       <TodoList />

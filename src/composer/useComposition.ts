@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Composition, UserInstrument } from "./consts";
+import { Composition, InputMode, UserInstrument } from "./consts";
 
 let globalNoteId = 0;
 let globalIsPlaying = false;
@@ -14,6 +14,7 @@ export function useComposition({
   userInstruments,
   userInstrumentIndex,
   setPlayheadPosX,
+  inputMode,
 }: {
   songName: string;
   context: AudioContext;
@@ -21,6 +22,7 @@ export function useComposition({
   userInstruments: Array<UserInstrument | undefined>;
   userInstrumentIndex: number;
   setPlayheadPosX: (posX: number) => void;
+  inputMode: InputMode
 }) {
   const [composition, setComposition] = useState<Composition>({});
   const [isPlaying, setIsPlaying] = useState<boolean>(false);

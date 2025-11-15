@@ -1,15 +1,18 @@
 import React, { ReactElement, ReactEventHandler, useCallback, useMemo, useState } from "react";
 import {
   Composition,
+  InputMode,
   InstrumentInstruction,
   MidiBeat,
   MidiNote,
   OctavelessMidiNote,
   UserInstrument,
+  zIndex_placedNote,
+  zIndex_rectSelect,
 } from "./consts";
 import styled from "styled-components";
 
-type CursorPosition = { midiNote: MidiNote; midiBeat: MidiBeat };
+type CursorPosition = { midiNote: MidiNote; midiBeat: MidiBeat; y: number; };
 const fullOctave: OctavelessMidiNote[] = [
   "C",
   "Db",
@@ -35,35 +38,54 @@ pianoRollKeys.reverse();
 const beatWidth = 16;
 const pianoRollBeats = new Array(70);
 pianoRollBeats.fill(0);
+let globalCursorXOffset = 0;
+let globalHasMouseMoved = false;
 
-const StyledNote = styled.div<{ $width: number, $bgColor: string, $shouldMouseIgnoreMe?: boolean }>`
+const StyledNote = styled.div<{ $width: number, $bgColor: string, $shouldMouseIgnoreMe?: boolean, $isClickedNote?: boolean }>`
   width: ${({ $width }) => `${$width}px`};
   height: 14px;
   content: " ";
   background-color: ${({ $bgColor }) => $bgColor};
   position: absolute;
-  left: 0px;
-  z-index: 1;
-  top: 0;
+  left: ${({ $isClickedNote }) => $isClickedNote ? '-1px' : '0' };
+  top: ${({ $isClickedNote }) => $isClickedNote ? '-1px' : '0' };
+  z-index: ${({ $isClickedNote }) => $isClickedNote ? zIndex_placedNote + 1 : zIndex_placedNote };
   // border: 1px solid black;
   border-radius: 0;
-  box-shadow: 0px 0px 0px 1px black;
-  pointer-events: ${({ $shouldMouseIgnoreMe }) => $shouldMouseIgnoreMe ? 'none' : 'unset' };
+  box-shadow: ${({ $isClickedNote }) => `0px 0px 0px 1px black${$isClickedNote ? ', 2px 2px 0px 0px black' : ''}` };
+  pointer-events: ${({ $shouldMouseIgnoreMe, $isClickedNote }) => $shouldMouseIgnoreMe || $isClickedNote ? 'none' : 'unset' };
 `;
+
+const RectSelector = styled.div<{ $width: number, $height: number }>`
+  background: #76feff54;
+  outline: 1px dashed blue;
+  position: absolute;
+  width: ${({ $width }) => `${$width}px`};
+  height: ${({ $height }) => `${$height}px`};
+  z-index: ${zIndex_rectSelect};
+  pointer-events: none;
+`
 
 function PlacedNote({
   bgColor,
   noteWidth,
   shouldMouseIgnoreMe,
   onMouseDown,
+  isClickedNote,
 }: {
   bgColor: string;
   noteWidth: number;
   shouldMouseIgnoreMe?: boolean;
   onMouseDown?: ReactEventHandler
+  isClickedNote?: boolean;
 }) {
   return (
-    <StyledNote $bgColor={bgColor} $width={noteWidth * 16 - 1} $shouldMouseIgnoreMe={shouldMouseIgnoreMe} onMouseDown={onMouseDown}>
+    <StyledNote
+      $bgColor={bgColor}
+      $width={noteWidth * 16 - 1}
+      $shouldMouseIgnoreMe={shouldMouseIgnoreMe}
+      $isClickedNote={isClickedNote}
+      onMouseDown={onMouseDown}>
       {/* 🎸 */}
     </StyledNote>
   );
@@ -74,14 +96,23 @@ export function CompositionAndPlayhead({
   composition,
   userInstruments,
   userInstrumentIndex,
+  isCompositionMouseDown: isMouseDown,
+  setIsCompositionMouseDown: setIsMouseDown,
+  onCompositionMouseUp,
+  setOnCompositionMouseUp,
   handleUpdateCompositionAtBeatAndNote,
   playheadNode,
   playheadPosX,
+  inputMode,
 }: {
   context: AudioContext;
   composition: Composition;
   userInstruments: Array<UserInstrument>;
   userInstrumentIndex: number;
+  isCompositionMouseDown: boolean;
+  setIsCompositionMouseDown: (newValue: boolean) => void;
+  onCompositionMouseUp: (() => void) | undefined
+  setOnCompositionMouseUp: (callback: (() => void) | undefined) => void;
   handleUpdateCompositionAtBeatAndNote: (props: {
     midiBeat: number,
     midiNote: string,
@@ -90,13 +121,14 @@ export function CompositionAndPlayhead({
   }) => void;
   playheadNode: ReactElement;
   playheadPosX: number;
+  inputMode: InputMode;
 }) {
   const currUserInstrument = useMemo(
     () => userInstruments[userInstrumentIndex],
     [userInstruments, userInstrumentIndex]
   );
-  const [isMouseDown, setIsMouseDown] = useState(false);
-  const [hasClickedNote, setHasClickedNote] = useState<number | undefined>(undefined);
+  
+  const [hasClickedNote, setHasClickedNote] = useState<InstrumentInstruction | undefined>(undefined);
   const [cursorPosition, setCursorPosition] = useState<
     CursorPosition | undefined
   >();
@@ -107,18 +139,21 @@ export function CompositionAndPlayhead({
     (
       e: React.MouseEvent<HTMLDivElement, MouseEvent>,
       midiBeat: number,
-      midiNote: string
+      midiNote: string,
+      y: number,
     ) => {
-      // if (composition[midiBeat][midiNote])
       setIsMouseDown(true);
-      setCursorPosition({ midiNote, midiBeat });
-      setStartingCursorPos({ midiNote, midiBeat });
+      setOnCompositionMouseUp(undefined);
+      console.log("y:",y);
+      setCursorPosition({ midiNote, midiBeat: midiBeat - globalCursorXOffset, y });
+      setStartingCursorPos({ midiNote, midiBeat, y });
+      globalHasMouseMoved = false;
       if (context.state === "suspended") {
         context.resume();
       }
       currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 });
     },
-    [currUserInstrument, context, composition]
+    [currUserInstrument, context, composition, hasClickedNote]
   );
   const handleMouseUp = useCallback(
     (
@@ -126,24 +161,30 @@ export function CompositionAndPlayhead({
       midiBeat: number,
       midiNote: string
     ) => {
-      debugger;
-      const mouseHasMoved = cursorPosition && startingCursorPos && (
-        cursorPosition.midiBeat !== startingCursorPos.midiBeat || cursorPosition.midiNote !== startingCursorPos.midiNote
-      );
-      if (isMouseDown && cursorPosition && startingCursorPos && (hasClickedNote === undefined || mouseHasMoved)) {
-        const noteWidth =
-          Math.abs(cursorPosition.midiBeat - startingCursorPos.midiBeat) + 1;
-        handleUpdateCompositionAtBeatAndNote({
-          midiBeat: Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat),
-          midiNote,
-          noteWidth,
-          noteId: hasClickedNote,
-        });
+      if (isMouseDown && cursorPosition && startingCursorPos && (hasClickedNote === undefined || globalHasMouseMoved)) {
+        if (inputMode === InputMode.DEFAULT) {
+          const noteWidth =
+            hasClickedNote?.noteWidth ?? Math.abs(cursorPosition.midiBeat - startingCursorPos.midiBeat) + 1;
+          handleUpdateCompositionAtBeatAndNote({
+            midiBeat: hasClickedNote
+              ? (cursorPosition.midiBeat + globalCursorXOffset)
+              : Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat),
+            midiNote,
+            noteWidth,
+            noteId: hasClickedNote?.noteId,
+          });
+        }
       }
       setHasClickedNote(undefined);
       setIsMouseDown(false);
       setCursorPosition(undefined);
       setStartingCursorPos(undefined);
+      if (onCompositionMouseUp) {
+        onCompositionMouseUp();
+      }
+      setOnCompositionMouseUp(undefined);
+      globalCursorXOffset = 0;
+      globalHasMouseMoved = false;
       // TODO(jaketrower): do this with the window documnet too like handleKeyDown
     },
     [
@@ -152,13 +193,15 @@ export function CompositionAndPlayhead({
       hasClickedNote,
       isMouseDown,
       startingCursorPos,
+      onCompositionMouseUp,
     ]
   );
   const handleMouseMove = useCallback(
     (
       e: React.MouseEvent<HTMLDivElement, MouseEvent>,
       midiBeat: number,
-      midiNote: string
+      midiNote: string,
+      y: number
     ) => {
       if (
         isMouseDown &&
@@ -166,7 +209,10 @@ export function CompositionAndPlayhead({
         (cursorPosition.midiBeat !== midiBeat ||
           cursorPosition.midiNote !== midiNote)
       ) {
-        setCursorPosition({ midiNote, midiBeat });
+        globalHasMouseMoved = true;
+        console.log("y:",y);
+        setCursorPosition({ midiNote, midiBeat, y });
+        if (inputMode !== InputMode.DEFAULT) return;
         if (midiNote !== cursorPosition.midiNote) {
           currUserInstrument.sf2Sampler?.start({
             note: midiNote,
@@ -186,15 +232,18 @@ export function CompositionAndPlayhead({
       instrumentInstruction: InstrumentInstruction
     ) => {
       e.preventDefault();
-      setHasClickedNote(instrumentInstruction.noteId);
+      if (inputMode !== InputMode.DEFAULT) return;
+      const clientRect = (e.target as Element).getBoundingClientRect();
+      globalCursorXOffset = -Math.floor((e.pageX - clientRect.left) / beatWidth);
+      setHasClickedNote(instrumentInstruction);
       handleUpdateCompositionAtBeatAndNote({
         midiBeat,
         midiNote,
-        noteWidth: instrumentInstruction.noteWidth,
+        noteWidth: 0,
         noteId: instrumentInstruction.noteId,
       });
     },
-    [handleUpdateCompositionAtBeatAndNote]
+    [handleUpdateCompositionAtBeatAndNote, inputMode]
   );
 
   return (
@@ -269,8 +318,8 @@ export function CompositionAndPlayhead({
                     minWidth: beatWidth - 1,
                     cursor: "pointer",
                   }}
-                  onMouseDown={(e) => handleMouseDown(e, index, midiNote)}
-                  onMouseMove={(e) => handleMouseMove(e, index, midiNote)}
+                  onMouseDown={(e) => handleMouseDown(e, index, midiNote, y)}
+                  onMouseMove={(e) => handleMouseMove(e, index, midiNote, y)}
                   onMouseUp={(e) => handleMouseUp(e, index, midiNote)}
                 >
                   {composition[index]?.[midiNote] !== undefined && (
@@ -285,21 +334,36 @@ export function CompositionAndPlayhead({
                         shouldMouseIgnoreMe={isMouseDown}
                       />)
                   }))}
-                  {startingCursorPos &&
+                  {inputMode === InputMode.DEFAULT &&
+                    startingCursorPos &&
                     cursorPosition &&
                     cursorPosition.midiNote === midiNote &&
-                    Math.min(
+                    (hasClickedNote ? cursorPosition.midiBeat + globalCursorXOffset : Math.min(
                       cursorPosition.midiBeat,
                       startingCursorPos.midiBeat
-                    ) === index && (
+                    )) === index && (
                       <PlacedNote
                         bgColor={currBgColor}
                         noteWidth={
-                          Math.abs(
+                          hasClickedNote?.noteWidth ?? Math.abs(
                             startingCursorPos.midiBeat - cursorPosition.midiBeat
                           ) + 1
                         }
-                        shouldMouseIgnoreMe
+                        isClickedNote
+                      />
+                    )}
+                  {inputMode === InputMode.SELECT &&
+                    startingCursorPos &&
+                    cursorPosition &&
+                    Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat) === index &&
+                    Math.min(cursorPosition.y, startingCursorPos.y) === y && (
+                      <RectSelector
+                        $width={
+                          (Math.abs(startingCursorPos.midiBeat - cursorPosition.midiBeat) + 1) * beatWidth
+                        }
+                        $height={
+                          (Math.abs(startingCursorPos.y - cursorPosition.y) + 1) * (beatWidth - 1)
+                        }
                       />
                     )}
                 </div>
