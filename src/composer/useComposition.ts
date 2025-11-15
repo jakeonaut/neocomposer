@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Composition, InputMode, MidiBeat, MidiNoteNum, UserInstrument } from "./consts";
+import { Composition, InputMode, InstrumentInstruction, MidiBeat, MidiNoteNum, UserInstrument } from "./consts";
 import { toMidi } from "../smplr/player/midi";
 
 let globalNoteId = 0;
@@ -7,64 +7,63 @@ let globalIsPlaying = false;
 let globalIsLooping = false;
 let globalLoopTimeoutId: number | undefined = undefined;
 let globalStopHelperTimeoutId: number | undefined = undefined;
+let globalCompositionByNoteId: Record<string, InstrumentInstruction> = {};
+function deleteNoteFromComposition(composition: Composition, midiBeat: MidiBeat, midiNote: MidiNoteNum, noteId: number) {
+  delete composition[midiBeat][midiNote][noteId];
+  if (Object.keys(composition[midiBeat][midiNote]).length === 0) {
+    delete composition[midiBeat][midiNote];
+  }
+  if (Object.keys(composition[midiBeat]).length === 0) {
+    delete composition[midiBeat];
+  }
+  delete globalCompositionByNoteId[noteId];
+}
 
 export function useComposition({
   songName,
   context,
   tempo,
   userInstruments,
-  userInstrumentIndex,
   setPlayheadPosX,
-  inputMode,
 }: {
   songName: string;
   context: AudioContext;
   tempo: number;
   userInstruments: Array<UserInstrument | undefined>;
-  userInstrumentIndex: number;
   setPlayheadPosX: (posX: number) => void;
-  inputMode: InputMode
 }) {
   const [composition, setComposition] = useState<Composition>({});
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLooping, setIsLooping] = useState<boolean>(false);
 
-  const handleUpdateCompositionAtBeatAndNote = useCallback(
-    ({
-      midiBeat, midiNote, noteWidth, noteId,
-    }: {
-      midiBeat: MidiBeat, 
-      midiNote: MidiNoteNum, 
-      noteWidth: number, 
-      noteId: number | undefined
-    }) => {
+  const removeCompositionNotes = useCallback((noteIdsToRemove: string[]) => {
+    const newComposition = { ...composition };
+    noteIdsToRemove.forEach((noteId) => {
+      const instrumentInstruction = globalCompositionByNoteId[noteId];
+      if (!instrumentInstruction) return;
+      deleteNoteFromComposition(newComposition, instrumentInstruction.midiBeat, instrumentInstruction.midiNote, instrumentInstruction.noteId);
+    })
+    setComposition(newComposition);
+  }, [composition]);
+  const addCompositionNotes = useCallback(
+    (notesToAdd: (Omit<InstrumentInstruction, 'noteId' | 'sampleStart'> & { noteId?: number })[]) => {
       const newComposition = { ...composition };
-      if (!newComposition[midiBeat]) {
-        newComposition[midiBeat] = {};
-      }
-      if (!newComposition[midiBeat][midiNote]) {
-        newComposition[midiBeat][midiNote] = {};
-      }
-      if (noteId !== undefined && newComposition[midiBeat][midiNote][noteId] && noteWidth <= 0) {
-        delete newComposition[midiBeat][midiNote][noteId];
-        if (Object.keys(newComposition[midiBeat][midiNote]).length === 0) {
-          delete newComposition[midiBeat][midiNote];
-        }
-        if (Object.keys(newComposition[midiBeat]).length === 0) {
-          delete newComposition[midiBeat];
-        }
-      } else {
-        const newNoteId = ++globalNoteId;
-        newComposition[midiBeat][midiNote][newNoteId] = {
-          noteId: newNoteId,
-          userInstrumentIndex,
-          noteWidth,
+      notesToAdd.forEach((noteToAdd) => {
+        const { midiBeat, midiNote, noteWidth } = noteToAdd;
+        if (!newComposition[midiBeat]) newComposition[midiBeat] = {};
+        if (!newComposition[midiBeat][midiNote]) newComposition[midiBeat][midiNote] = {};
+        const noteId = noteToAdd.noteId || ++globalNoteId;
+        const newInstrumentInstruction = {
+          ...noteToAdd,
+          noteId,
           sampleStart: { note: midiNote, duration: 0.25 }, // TODO(jaketrower): Why is duration in seconds? probably just set to a variation of 1.0 and allow the tempo to change things on play dynamically
         };
-      }
+        newComposition[midiBeat][midiNote][noteId] = newInstrumentInstruction;
+        globalCompositionByNoteId[noteId] = newInstrumentInstruction;
+      });
       setComposition(newComposition);
     },
-    [composition, userInstrumentIndex]
+    [composition]
   );
 
   const stopResetHelper = () => {
@@ -91,7 +90,6 @@ export function useComposition({
       const beat = parseFloat(beatStr) - 1;
       if (beat > lastBeat) lastBeat = beat;
     });
-    console.log("last beat:", lastBeat, composition);
     Object.entries(composition).forEach(([beatStr, perNoteInstrumentInstructions]) => {
       const beat = parseFloat(beatStr) - 1; // TODO(jaketrower): I think beat should represent... 16th notes?
       Object.values(perNoteInstrumentInstructions).forEach((instrumentInstructions) => {
@@ -166,6 +164,7 @@ export function useComposition({
     });
     setPlayheadPosX(1);
     setComposition({});
+    globalCompositionByNoteId = {};
     setIsPlaying(false);
   }, [userInstruments]);
 
@@ -185,7 +184,8 @@ export function useComposition({
   return {
     composition,
     setComposition,
-    handleUpdateCompositionAtBeatAndNote,
+    addCompositionNotes,
+    removeCompositionNotes,
     handlePlayComposition,
     handleStopComposition,
     handleClearComposition,

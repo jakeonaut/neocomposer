@@ -9,11 +9,11 @@ import {
   MidiNoteNum,
   OctavelessMidiNote,
   UserInstrument,
-  zIndex_placedNote,
   zIndex_rectSelect,
 } from "./consts";
 import styled from "styled-components";
 import { toMidi } from "../smplr/player/midi";
+import { PlacedNote } from "./PlacedNote";
 
 type CursorPosition = { midiNote: MidiNote; midiBeat: MidiBeat; };
 const fullOctave: OctavelessMidiNote[] = [
@@ -43,8 +43,13 @@ const pianoRollBeats: number[] = new Array(70);
 pianoRollBeats.fill(0);
 let globalCursorXOffset = 0;
 let globalHasMouseMoved = false;
-let globalClickedNotes: InstrumentInstruction[] = [];
-let globalSelectedNotes: InstrumentInstruction[] = [];
+let globalClickedNote: InstrumentInstruction | undefined;
+type Offset = { x: number, y: number };
+type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
+let globalSelectedNotes: Record<string, InstrumentInstructionWithOffset> = {};
+function globalIsNoteSelected(instrumentInstruction: InstrumentInstruction) {
+  return !!Object.keys(globalSelectedNotes).find((noteId) => parseInt(noteId) === instrumentInstruction.noteId);
+}
 
 const GridCell = styled.div<{
   $idx: number,
@@ -73,21 +78,6 @@ const GridCell = styled.div<{
   };
 `;
 
-const StyledNote = styled.div<{ $width: number, $bgColor: string, $shouldMouseIgnoreMe?: boolean, $isClickedNote?: boolean }>`
-  width: ${({ $width }) => `${$width}px`};
-  height: 14px;
-  content: " ";
-  background-color: ${({ $bgColor }) => $bgColor};
-  position: absolute;
-  left: ${({ $isClickedNote }) => $isClickedNote ? '-1px' : '0' };
-  top: ${({ $isClickedNote }) => $isClickedNote ? '-1px' : '0' };
-  z-index: ${({ $isClickedNote }) => $isClickedNote ? zIndex_placedNote + 1 : zIndex_placedNote };
-  // border: 1px solid black;
-  border-radius: 0;
-  box-shadow: ${({ $isClickedNote }) => `0px 0px 0px 1px black${$isClickedNote ? ', 2px 2px 0px 0px black' : ''}` };
-  pointer-events: ${({ $shouldMouseIgnoreMe, $isClickedNote }) => $shouldMouseIgnoreMe || $isClickedNote ? 'none' : 'unset' };
-`;
-
 const RectSelector = styled.div<{ $width: number, $height: number }>`
   background: #76feff54;
   outline: 1px dashed #004cff54;
@@ -96,32 +86,9 @@ const RectSelector = styled.div<{ $width: number, $height: number }>`
   height: ${({ $height }) => `${$height}px`};
   z-index: ${zIndex_rectSelect};
   pointer-events: none;
-`
+`;
 
-function PlacedNote({
-  bgColor,
-  noteWidth,
-  shouldMouseIgnoreMe,
-  onMouseDown,
-  isClickedNote,
-}: {
-  bgColor: string;
-  noteWidth: number;
-  shouldMouseIgnoreMe?: boolean;
-  onMouseDown?: ReactEventHandler
-  isClickedNote?: boolean;
-}) {
-  return (
-    <StyledNote
-      $bgColor={bgColor}
-      $width={noteWidth * 16 - 1}
-      $shouldMouseIgnoreMe={shouldMouseIgnoreMe}
-      $isClickedNote={isClickedNote}
-      onMouseDown={onMouseDown}>
-      {/* 🎸 */}
-    </StyledNote>
-  );
-}
+
 
 export function CompositionAndPlayhead({
   context,
@@ -132,7 +99,8 @@ export function CompositionAndPlayhead({
   setIsCompositionMouseDown: setIsMouseDown,
   onCompositionMouseUp,
   setOnCompositionMouseUp,
-  handleUpdateCompositionAtBeatAndNote,
+  addCompositionNotes,
+  removeCompositionNotes,
   playheadNode,
   playheadPosX,
   inputMode,
@@ -141,16 +109,14 @@ export function CompositionAndPlayhead({
   composition: Composition;
   userInstruments: Array<UserInstrument>;
   userInstrumentIndex: number;
+  // TODO(jaketrower): there are so many composition related vars here, should probably just
+  // use a ContextProvider instead of passing them all down...
   isCompositionMouseDown: boolean;
   setIsCompositionMouseDown: (newValue: boolean) => void;
   onCompositionMouseUp: (() => void) | undefined
   setOnCompositionMouseUp: (callback: (() => void) | undefined) => void;
-  handleUpdateCompositionAtBeatAndNote: (props: {
-    midiBeat: MidiBeat,
-    midiNote: MidiNoteNum,
-    noteWidth: number,
-    noteId: number | undefined,
-  }) => void;
+  addCompositionNotes: (notesToAdd: (Omit<InstrumentInstruction, 'noteId' | 'sampleStart'> & { noteId?: number })[]) => void;
+  removeCompositionNotes: (noteIdsToRemove: string[]) => void;
   playheadNode: ReactElement;
   playheadPosX: number;
   inputMode: InputMode;
@@ -160,8 +126,8 @@ export function CompositionAndPlayhead({
     [userInstruments, userInstrumentIndex]
   );
   
-  const [clickedNotes, setClickedNotes] = useState<InstrumentInstruction[]>([]);
-  const [selectedNotes, setSelectedNotes] = useState<InstrumentInstruction[]>([]);
+  const [clickedNote, setClickedNote] = useState<InstrumentInstruction | undefined>(undefined);
+  const [selectedNotes, setSelectedNotes] = useState<Record<string, InstrumentInstructionWithOffset>>({});
   const [cursorPosition, setCursorPosition] = useState<
     CursorPosition | undefined
   >();
@@ -174,8 +140,10 @@ export function CompositionAndPlayhead({
       midiBeat: number,
       midiNote: string,
     ) => {
+      e.preventDefault();
+      e.stopPropagation();
       setOnCompositionMouseUp(undefined);
-      if (globalClickedNotes.length === 0 && globalSelectedNotes.length > 0) {
+      if (!globalClickedNote && Object.entries(globalSelectedNotes).length > 0 && inputMode !== InputMode.SELECT) {
         setIsMouseDown(false);
         setCursorPosition(undefined);
         setStartingCursorPos(undefined);
@@ -189,12 +157,13 @@ export function CompositionAndPlayhead({
         context.resume();
       }
       currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 });
-      if (globalClickedNotes.length === 0 || globalSelectedNotes.some((sn) => !globalClickedNotes.find((cn) => cn.noteId === sn.noteId))) {
-        setSelectedNotes([]);
-        globalSelectedNotes = [];
+      if (!globalClickedNote || !globalIsNoteSelected(globalClickedNote)) {
+        setSelectedNotes({});
+        globalSelectedNotes = {};
       }
+      return false;
     },
-    [currUserInstrument, context, composition]
+    [currUserInstrument, context, composition, inputMode]
   );
   const handleMouseUp = useCallback(
     (
@@ -202,26 +171,51 @@ export function CompositionAndPlayhead({
       midiBeat: number,
       midiNote: string
     ) => {
-      if (isMouseDown && cursorPosition && startingCursorPos && (clickedNotes.length === 0 || globalHasMouseMoved)) {
+      if (isMouseDown && cursorPosition && startingCursorPos && (!clickedNote || globalHasMouseMoved)) {
         if (inputMode === InputMode.DEFAULT) {
-          if (clickedNotes.length === 0) {
+          if (!clickedNote) {
             const noteWidth = Math.abs(cursorPosition.midiBeat - startingCursorPos.midiBeat) + 1;
-            handleUpdateCompositionAtBeatAndNote({
+            addCompositionNotes([{
               midiBeat: Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat),
               midiNote: toMidi(midiNote)!,
               noteWidth,
-              noteId: undefined,
-            });
+              userInstrumentIndex,
+            }]);
           } else {
-            clickedNotes.forEach((clickedNote) => {
-              const noteWidth = clickedNote.noteWidth;
-              handleUpdateCompositionAtBeatAndNote({
+            addCompositionNotes([
+              // Place the note that you were clicking and dragging
+              {
+                noteId: clickedNote.noteId,
                 midiBeat: cursorPosition.midiBeat + globalCursorXOffset,
                 midiNote: toMidi(midiNote)!,
-                noteWidth,
-                noteId: clickedNote.noteId,
-              });
-            });
+                noteWidth: clickedNote.noteWidth,
+                userInstrumentIndex: clickedNote.userInstrumentIndex,
+              },
+              // Place all other notes that were currently selected
+              ...(Object.entries(selectedNotes).filter(
+                ([noteId, _]) => noteId !== clickedNote.noteId.toString()
+              ).map(
+                ([noteId, noteWithOffset]) => {
+                  const offset = noteWithOffset.offset;
+                  return {
+                    noteId: parseInt(noteId),
+                    midiBeat: cursorPosition.midiBeat + globalCursorXOffset + offset.x,
+                    midiNote: toMidi(midiNote)! + offset.y,
+                    noteWidth: noteWithOffset.instrumentInstruction.noteWidth,
+                    userInstrumentIndex: noteWithOffset.instrumentInstruction.userInstrumentIndex,
+                  };
+                }))
+            ]);
+            // TODO(jaketrower): Place all the selected notes ? ??
+            // clickedNotes.forEach((clickedNote) => {
+            //   const noteWidth = clickedNote.noteWidth;
+            //   handleUpdateCompositionAtBeatAndNote({
+            //     midiBeat: cursorPosition.midiBeat + globalCursorXOffset,
+            //     midiNote: toMidi(midiNote)!,
+            //     noteWidth,
+            //     noteId: clickedNote.noteId,
+            //   });
+            // });
           }
         } else if (inputMode === InputMode.SELECT) {
           const bounds = {
@@ -231,12 +225,15 @@ export function CompositionAndPlayhead({
             bottom: Math.max(toMidi(cursorPosition.midiNote)!, toMidi(startingCursorPos.midiNote)!),
           }
           const notes = getPlacedNotesFromComposition(composition, bounds);
-          setSelectedNotes(notes)
-          globalSelectedNotes = notes;
+          globalSelectedNotes = notes.reduce((acc, note) => ({ ...acc, [note.noteId]: {
+            instrumentInstruction: note,
+            offset: { x: 0, y: 0 },
+          } as InstrumentInstructionWithOffset}), {});
+          setSelectedNotes(globalSelectedNotes);
         }
       }
-      setClickedNotes([]);
-      globalClickedNotes = [];
+      setClickedNote(undefined);
+      globalClickedNote = undefined;
       setIsMouseDown(false);
       setCursorPosition(undefined);
       setStartingCursorPos(undefined);
@@ -250,8 +247,9 @@ export function CompositionAndPlayhead({
     },
     [
       cursorPosition,
-      handleUpdateCompositionAtBeatAndNote,
-      clickedNotes,
+      addCompositionNotes,
+      userInstrumentIndex,
+      clickedNote,
       isMouseDown,
       startingCursorPos,
       onCompositionMouseUp,
@@ -289,29 +287,33 @@ export function CompositionAndPlayhead({
       e: React.MouseEvent<HTMLDivElement, MouseEvent>,
       midiBeat: number,
       midiNote: string,
-      instrumentInstruction: InstrumentInstruction
+      noteJustClicked: InstrumentInstruction
     ) => {
       e.preventDefault();
       if (inputMode !== InputMode.DEFAULT) return;
       const clientRect = (e.target as Element).getBoundingClientRect();
       globalCursorXOffset = -Math.floor((e.pageX - clientRect.left) / beatWidth);
-      if (selectedNotes.find((n) => n.noteId === instrumentInstruction.noteId)) {
-        setClickedNotes([...selectedNotes]);
-        globalClickedNotes = [...selectedNotes];
+      if (globalIsNoteSelected(noteJustClicked)) {
+        setClickedNote(noteJustClicked);
+        globalClickedNote = noteJustClicked;
+        removeCompositionNotes(Object.keys(globalSelectedNotes));
+        Object.entries(globalSelectedNotes).forEach(([noteId, noteWithOffset]) => {
+          if (noteId === noteJustClicked.noteId.toString()) return;
+          noteWithOffset.offset = {
+            x: noteWithOffset.instrumentInstruction.midiBeat - noteJustClicked.midiBeat,
+            y: noteJustClicked.midiNote - noteWithOffset.instrumentInstruction.midiNote,
+          }
+        });
+        setSelectedNotes({...globalSelectedNotes});
       } else {
-        setClickedNotes([instrumentInstruction]);
-        globalClickedNotes = [instrumentInstruction];
-        setSelectedNotes([]);
-        globalSelectedNotes = [];
+        setClickedNote(noteJustClicked);
+        globalClickedNote = noteJustClicked;
+        removeCompositionNotes([noteJustClicked.noteId.toString()]);
+        setSelectedNotes({});
+        globalSelectedNotes = {};
       }
-      handleUpdateCompositionAtBeatAndNote({
-        midiBeat,
-        midiNote: toMidi(midiNote)!,
-        noteWidth: 0,
-        noteId: instrumentInstruction.noteId,
-      });
     },
-    [handleUpdateCompositionAtBeatAndNote, inputMode, selectedNotes]
+    [removeCompositionNotes, inputMode, selectedNotes]
   );
 
   return (
@@ -349,7 +351,7 @@ export function CompositionAndPlayhead({
         {pianoRollKeys.map((midiNote, _) => (
           <div style={{ display: "flex", height: beatWidth - 1 }}>
             <div
-              key={midiNote}
+              key={`row-${midiNote}`}
               style={{
                 width: beatWidth * 2,
                 minWidth: beatWidth * 2,
@@ -364,7 +366,7 @@ export function CompositionAndPlayhead({
               const currBgColor = currUserInstrument.color ?? "gray";
               return (
                 <GridCell
-                  key={index}
+                  key={`cell-${midiNote}-${index}`}
                   className="hoverable"
                   onMouseDown={(e) => handleMouseDown(e, index, midiNote)}
                   onMouseMove={(e) => handleMouseMove(e, index, midiNote)}
@@ -374,11 +376,10 @@ export function CompositionAndPlayhead({
                   $midiNote={midiNote}
                   $pianoRollKeys={pianoRollKeys}
                 >
+                  {/* STATIC(ISH) PLACED NOTES */}
                   {composition[index]?.[toMidi(midiNote)!] !== undefined && (
                     Object.values(composition[index]?.[toMidi(midiNote)!]).map((instrumentInstruction) => {
-                      const bgColor = selectedNotes.find((n) => n.noteId === instrumentInstruction.noteId)
-                        ? 'gray'
-                        : userInstruments[instrumentInstruction.userInstrumentIndex].color ?? 'gray';
+                      const bgColor = userInstruments[instrumentInstruction.userInstrumentIndex].color ?? 'gray';
                       return (<PlacedNote
                         bgColor={bgColor}
                         noteWidth={instrumentInstruction.noteWidth}
@@ -386,34 +387,64 @@ export function CompositionAndPlayhead({
                           e, index, midiNote, instrumentInstruction
                         )}
                         shouldMouseIgnoreMe={isMouseDown}
+                        isNoteSelected={globalIsNoteSelected(instrumentInstruction)}
                       />)
                   }))}
-                  {inputMode === InputMode.DEFAULT &&
-                    startingCursorPos &&
-                    cursorPosition &&
-                    cursorPosition.midiNote === midiNote &&
-                    // TODO(jaketrower): with the globalCursorXOffset... we might have to have that on a per clickedNote basis???
-                    // also that would go for the matching midiNote(s) too
-                    (clickedNotes.length !== 0 ? cursorPosition.midiBeat + globalCursorXOffset : Math.min(
-                      cursorPosition.midiBeat,
-                      startingCursorPos.midiBeat
-                    )) === index && (
+                  {/* DRAGGING TO CREATE A NEW NOTE */}
+                  {inputMode === InputMode.DEFAULT
+                    && isMouseDown
+                    && startingCursorPos
+                    && cursorPosition
+                    && cursorPosition.midiNote === midiNote
+                    && !clickedNote
+                    && Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat) === index
+                    && (
                       <PlacedNote
                         bgColor={currBgColor}
-                        noteWidth={
-                          // TODO(TODO(TODO(TODO)))
-                          clickedNotes[0]?.noteWidth ?? Math.abs(
-                            startingCursorPos.midiBeat - cursorPosition.midiBeat
-                          ) + 1
-                        }
+                        noteWidth={Math.abs(startingCursorPos.midiBeat - cursorPosition.midiBeat) + 1}
                         isClickedNote
                       />
                     )}
-                  {inputMode === InputMode.SELECT &&
-                    startingCursorPos &&
-                    cursorPosition &&
-                    Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat) === index &&
-                    Math.max(toMidi(cursorPosition.midiNote)!, toMidi(startingCursorPos.midiNote)!) === toMidi(midiNote) && (
+                  {/* DRAGGING EXISTING NOTE */}
+                  {inputMode === InputMode.DEFAULT
+                    && isMouseDown
+                    && startingCursorPos
+                    && cursorPosition
+                    && cursorPosition.midiNote === midiNote
+                    && clickedNote
+                    && cursorPosition.midiBeat + globalCursorXOffset === index
+                    && (
+                      <>
+                        <PlacedNote
+                          bgColor={userInstruments[clickedNote.userInstrumentIndex].color}
+                          noteWidth={clickedNote.noteWidth}
+                          isNoteSelected={globalIsNoteSelected(clickedNote)}
+                          isClickedNote
+                        />
+                        {Object.entries(selectedNotes).map(([noteId, noteWithOffset]) =>
+                          noteId !== clickedNote.noteId.toString()
+                          && (<PlacedNote
+                            bgColor={userInstruments[noteWithOffset.instrumentInstruction.userInstrumentIndex].color}
+                            noteWidth={noteWithOffset.instrumentInstruction.noteWidth}
+                            isNoteSelected
+                            isClickedNote
+                            style={{
+                              left: (noteWithOffset.offset.x) * beatWidth,
+                              top: (noteWithOffset.offset.y) * (beatWidth - 1),
+                            }}
+                          />
+                        ))}
+                      </>
+                    )}
+
+                  {/* DRAGGING THE RECT SELECTOR TO SELECT PLACED NOTES */}
+                  {inputMode === InputMode.SELECT
+                    && isMouseDown
+                    && startingCursorPos
+                    && cursorPosition
+                    && Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat) === index
+                    && Math.max(toMidi(cursorPosition.midiNote)!, toMidi(startingCursorPos.midiNote)!) === toMidi(midiNote)
+                    && (
                       <RectSelector
                         $width={(Math.abs(startingCursorPos.midiBeat - cursorPosition.midiBeat) + 1) * beatWidth}
                         $height={(Math.abs(toMidi(startingCursorPos.midiNote)! - toMidi(cursorPosition.midiNote)!) + 1) * (beatWidth - 1)}

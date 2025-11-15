@@ -75,8 +75,8 @@ export function Maestro() {
   const [babyPlayheadPosX, setBabyPlayheadPosX] = useState(1);
   const {
     composition,
-    handleUpdateCompositionAtBeatAndNote,
-    setComposition,
+    addCompositionNotes,
+    removeCompositionNotes,
     handlePlayComposition,
     handleStopComposition,
     handleClearComposition,
@@ -91,12 +91,10 @@ export function Maestro() {
     context,
     tempo,
     userInstruments,
-    userInstrumentIndex,
     setPlayheadPosX: (posX: number) => {
       setBabyPlayheadPosX(posX);
       incrementBabyDanceFrame();
     },
-    inputMode,
   });
 
   const [onCompositionMouseUp, setOnCompositionMouseUp] = useState<(() => void) | undefined>();
@@ -227,12 +225,9 @@ export function Maestro() {
         setIsCompositionMouseDown={setIsCompositionMouseDown}
         onCompositionMouseUp={onCompositionMouseUp}
         setOnCompositionMouseUp={setOnCompositionMouseUp}
-        handleUpdateCompositionAtBeatAndNote={
-          handleUpdateCompositionAtBeatAndNote
-        }
-        playheadNode={
-          <BabyPlayheadImg src="trans.png" $frame={babyDanceFrame} />
-        }
+        addCompositionNotes={addCompositionNotes}
+        removeCompositionNotes={removeCompositionNotes}
+        playheadNode={<BabyPlayheadImg src="trans.png" $frame={babyDanceFrame} />}
         playheadPosX={babyPlayheadPosX}
       />
       <ActionButtonsContainer style={{ marginTop: 8, justifyContent: 'center' }}>
@@ -268,7 +263,7 @@ export function Maestro() {
             ),
           }}>
           <div style={{
-            background: `url('./toolicons1x.png') repeat scroll ${inputMode === InputMode.DEFAULT ? '-25px' : '0'} -126px transparent`,
+            background: `url('./toolicons1x.png') repeat scroll ${inputMode === InputMode.DEFAULT ? '-25px' : '0'} -147px transparent`,
             width: 25,
             height: 21,
           }} />
@@ -292,6 +287,7 @@ export function Maestro() {
             background: `url('./toolicons1x.png') repeat scroll  ${inputMode === InputMode.SELECT ? '-25px' : '0'}  -21px transparent`,
             width: 25,
             height: 21,
+            imageRendering: 'pixelated',
           }} />
         </ActionButton>
       </ActionButtonsContainer>

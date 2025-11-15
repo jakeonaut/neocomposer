@@ -9,4 +9,5 @@ export const ActionButtonsContainer = styled.div`
 export const ActionButton = styled.div`
   font-size: 24px;
   cursor: pointer;
+  image-rendering: pixelated;
 `;

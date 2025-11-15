@@ -3,14 +3,16 @@ import { SampleStart } from "../smplr/player/types";
 import { Soundfont2Sampler } from "../smplr/soundfont2";
 
 export const zIndex_placedNote = 1;
+export const zIndex_selectedNote = 2;
 export const zIndex_rectSelect = 2;
+export const zIndex_clickedNote = 3;
 
 export const sf2DefaultColours = [
-  "#f1ad85ff",
-  "#87b8a4ff",
-  "#85c9f1ff",
-  "#eae4a1ff",
-  "#cdb3d7ff",
+  "#f1ad85",
+  "#87b8a4",
+  "#85c9f1",
+  "#eae4a1",
+  "#cdb3d7",
 ];
 
 export type UserInstrument = {
@@ -29,6 +31,8 @@ export type InstrumentInstruction = {
   noteId: number;
   userInstrumentIndex: number;
   noteWidth: number;
+  midiBeat: MidiBeat;
+  midiNote: MidiNoteNum;
   sampleStart: SampleStart;
 };
 export type Composition = {

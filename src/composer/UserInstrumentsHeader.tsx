@@ -15,10 +15,11 @@ const SoundfontHeader = styled.div<{ $color: string }>`
 `;
 const ColorPicker = styled.div`
   border: 1px solid black;
-  width: 16px; 
-  height: 16px;
+  width: 18px; 
+  height: 18px;
   margin-left: 4px;
   cursor: pointer;
+  position: relative;
 `;
 const FileInputLabel = styled.label`
   background: white;
@@ -118,6 +119,13 @@ export function UserInstrumentsHeader({
     setUserInstruments([...userInstruments]);
   }, [userInstruments, userInstrumentIndex]);
 
+  const onColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const userInstrument = userInstruments[userInstrumentIndex];
+    userInstrument.color = e.target.value;
+    userInstruments[userInstrumentIndex] = { ...userInstrument };
+    setUserInstruments([...userInstruments]);
+  }, [userInstruments, userInstrumentIndex]);
+
   const sf2InstOptions = useMemo(() => currUserInstrument.sf2Sampler?.instrumentNames.map(
     (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>), 
     [currUserInstrument.sf2Sampler]
@@ -133,11 +141,32 @@ export function UserInstrumentsHeader({
       onClick={() => setUserInstrumentIndex(index)}>{userInstrument.name ?? index}</UserInstrumentTab>
   )), [userInstruments, userInstrumentIndex]);
   
+  const currColor = currUserInstrument.color ?? 'white';
   return (
     <>
-      <SoundfontHeader $color={currUserInstrument.color ?? 'white'}>
+      <SoundfontHeader $color={currColor}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8}}>
-          <ColorPicker>&nbsp;</ColorPicker>
+          <ColorPicker>
+            <label htmlFor="instrument-color" style={{
+              background: `url('./toolicons1x.png') repeat scroll  0  -126px transparent`,
+              width: 25,
+              height: 21,
+              imageRendering: 'pixelated',
+              position: 'absolute',
+              left: -4,
+              top: -2,
+              userSelect: 'none',
+              cursor: 'pointer',
+            }}>&nbsp;</label>
+            <input
+              type="color"
+              style={{ opacity: 0, width: 20, height: 20, }}
+              id="instrument-color"
+              name="instrument-color"
+              value={currColor}
+              onChange={onColorChange}
+            />
+          </ColorPicker>
           <div style={{ textAlign: 'left', }}>
             <b>Name:</b>
             <input type="text" value={currUserInstrument.name} onChange={(e) => {
