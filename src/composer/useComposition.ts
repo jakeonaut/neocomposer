@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Composition, InputMode, UserInstrument } from "./consts";
+import { Composition, InputMode, MidiBeat, MidiNoteNum, UserInstrument } from "./consts";
+import { toMidi } from "../smplr/player/midi";
 
 let globalNoteId = 0;
 let globalIsPlaying = false;
@@ -32,8 +33,8 @@ export function useComposition({
     ({
       midiBeat, midiNote, noteWidth, noteId,
     }: {
-      midiBeat: number, 
-      midiNote: string, 
+      midiBeat: MidiBeat, 
+      midiNote: MidiNoteNum, 
       noteWidth: number, 
       noteId: number | undefined
     }) => {

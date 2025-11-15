@@ -109,7 +109,7 @@ export function Maestro() {
       if (e.repeat) {
         return;
       }
-      if (e.key === "Shift") {
+      if (e.key === "Meta" || e.key === "Control") {
         trySetInputMode(InputMode.SELECT);
         if (isCompositionMouseDown) {
           setOnCompositionMouseUp(() => (() => setInputMode(InputMode.SELECT)));
@@ -149,7 +149,7 @@ export function Maestro() {
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    if (e.key === "Shift") {
+    if (e.key === "Meta" || e.key === "Control") {
       trySetInputMode(InputMode.DEFAULT);
       if (isCompositionMouseDown) {
         setOnCompositionMouseUp(() => (() => setInputMode(InputMode.DEFAULT)));
