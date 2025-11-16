@@ -3,10 +3,10 @@ import { SoundFont2 } from 'soundfont2';
 import { Soundfont2Sampler } from '../smplr/soundfont2';
 
 export function useUploadSf2({
-  context,
+  audioContext,
   onLoadSuccess,
 } : {
-  context: AudioContext,
+  audioContext: AudioContext,
   onLoadSuccess: (sampler: Soundfont2Sampler, instrumentName: string) => void,
 }) {
   const handleUploadSf2 = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -17,19 +17,20 @@ export function useUploadSf2({
       return;
     }
 
-    if (context.state === "suspended") { context.resume(); }
+    if (audioContext.state === "suspended") { audioContext.resume(); }
 
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);
     reader.onload = readerEvent => {
       const arrayBuffer = readerEvent.target?.result;
+      console.log(arrayBuffer);
       if (!(arrayBuffer instanceof ArrayBuffer)) {
         console.log("Failed to parse file.");
         return;
       }
       const buffer = new Uint8Array(arrayBuffer);
 
-      const soundfont2Sampler = new Soundfont2Sampler(context, {
+      const soundfont2Sampler = new Soundfont2Sampler(audioContext, {
         data: buffer,
         createSoundfont: (data) => new SoundFont2(data),
       })
@@ -39,6 +40,6 @@ export function useUploadSf2({
         onLoadSuccess(sampler, sampler.instrumentNames[0]);
       });
     }
-  }, [context, onLoadSuccess]);
+  }, [audioContext, onLoadSuccess]);
   return handleUploadSf2;
 }

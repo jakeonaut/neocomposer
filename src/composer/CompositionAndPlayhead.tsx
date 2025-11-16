@@ -1,5 +1,6 @@
-import React, { ReactElement, ReactEventHandler, useCallback, useMemo, useState } from "react";
+import React, { ReactElement, ReactEventHandler, useCallback, useContext, useMemo, useState } from "react";
 import {
+  AudioContextContext,
   Composition,
   getPlacedNotesFromComposition,
   InputMode,
@@ -14,6 +15,9 @@ import {
 import styled from "styled-components";
 import { toMidi } from "../smplr/player/midi";
 import { PlacedNote } from "./PlacedNote";
+import { CompositionContext } from "./contexts/CompositionContextProvider";
+import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
+import { SongSettingsContext } from "./contexts/SongSettingsContextProvider";
 
 type CursorPosition = { midiNote: MidiNote; midiBeat: MidiBeat; };
 const fullOctave: OctavelessMidiNote[] = [
@@ -88,39 +92,37 @@ const RectSelector = styled.div<{ $width: number, $height: number }>`
   pointer-events: none;
 `;
 
-
+const BabyPlayheadImg = styled.img<{ $frame: number }>`
+  width: 20px;
+  height: 20px;
+  image-rendering: pixelated;
+  background-image: url("baby_dance_sheet.png");
+  position: relative;
+  left: -10px;
+  top: -6px;
+  background-position: ${({ $frame }) => `${$frame * -20}px 0px`};
+`;
 
 export function CompositionAndPlayhead({
-  context,
-  composition,
-  userInstruments,
-  userInstrumentIndex,
-  isCompositionMouseDown: isMouseDown,
-  setIsCompositionMouseDown: setIsMouseDown,
-  onCompositionMouseUp,
-  setOnCompositionMouseUp,
-  addCompositionNotes,
-  removeCompositionNotes,
-  playheadNode,
-  playheadPosX,
   inputMode,
 }: {
-  context: AudioContext;
-  composition: Composition;
-  userInstruments: Array<UserInstrument>;
-  userInstrumentIndex: number;
-  // TODO(jaketrower): there are so many composition related vars here, should probably just
-  // use a ContextProvider instead of passing them all down...
-  isCompositionMouseDown: boolean;
-  setIsCompositionMouseDown: (newValue: boolean) => void;
-  onCompositionMouseUp: (() => void) | undefined
-  setOnCompositionMouseUp: (callback: (() => void) | undefined) => void;
-  addCompositionNotes: (notesToAdd: (Omit<InstrumentInstruction, 'noteId' | 'sampleStart'> & { noteId?: number })[]) => void;
-  removeCompositionNotes: (noteIdsToRemove: string[]) => void;
-  playheadNode: ReactElement;
-  playheadPosX: number;
   inputMode: InputMode;
 }) {
+  const audioContext = useContext(AudioContextContext)!;
+  const { playheadPosX, babyDanceFrame } = useContext(SongSettingsContext)!;
+  const {
+    userInstruments,
+    userInstrumentIndex,
+  } = useContext(UserInstrumentContext)!;
+  const {
+    composition,
+    isCompositionMouseDown: isMouseDown,
+    setIsCompositionMouseDown: setIsMouseDown,
+    onCompositionMouseUp,
+    setOnCompositionMouseUp,
+    addCompositionNotes,
+    removeCompositionNotes,
+  } = useContext(CompositionContext)!;
   const currUserInstrument = useMemo(
     () => userInstruments[userInstrumentIndex],
     [userInstruments, userInstrumentIndex]
@@ -151,19 +153,21 @@ export function CompositionAndPlayhead({
         setIsMouseDown(true);
         setCursorPosition({ midiNote, midiBeat: midiBeat - globalCursorXOffset });
         setStartingCursorPos({ midiNote, midiBeat });
+        if (!globalClickedNote && inputMode === InputMode.DEFAULT) {
+          currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 });
+        }
       }
       globalHasMouseMoved = false;
-      if (context.state === "suspended") {
-        context.resume();
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
       }
-      currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 });
       if (!globalClickedNote || !globalIsNoteSelected(globalClickedNote)) {
         setSelectedNotes({});
         globalSelectedNotes = {};
       }
       return false;
     },
-    [currUserInstrument, context, composition, inputMode]
+    [currUserInstrument, audioContext, composition, inputMode]
   );
   const handleMouseUp = useCallback(
     (
@@ -197,25 +201,25 @@ export function CompositionAndPlayhead({
               ).map(
                 ([noteId, noteWithOffset]) => {
                   const offset = noteWithOffset.offset;
+                  const newMidiBeat = cursorPosition.midiBeat + globalCursorXOffset + offset.x;
+                  const newMidiNote = toMidi(midiNote)! - offset.y;
+                  // Update the offset and midiBeat / midiNote for the selection too.....
+                  // globalSelectedNotes[noteId].instrumentInstruction.midiBeat = newMidiBeat;
+                  // globalSelectedNotes[noteId].instrumentInstruction.midiNote = newMidiNote;
+                  // globalSelectedNotes[noteId].offset = { x: 0, y: 0 };
                   return {
                     noteId: parseInt(noteId),
-                    midiBeat: cursorPosition.midiBeat + globalCursorXOffset + offset.x,
-                    midiNote: toMidi(midiNote)! + offset.y,
+                    midiBeat: newMidiBeat,
+                    midiNote: newMidiNote,
                     noteWidth: noteWithOffset.instrumentInstruction.noteWidth,
                     userInstrumentIndex: noteWithOffset.instrumentInstruction.userInstrumentIndex,
                   };
                 }))
             ]);
-            // TODO(jaketrower): Place all the selected notes ? ??
-            // clickedNotes.forEach((clickedNote) => {
-            //   const noteWidth = clickedNote.noteWidth;
-            //   handleUpdateCompositionAtBeatAndNote({
-            //     midiBeat: cursorPosition.midiBeat + globalCursorXOffset,
-            //     midiNote: toMidi(midiNote)!,
-            //     noteWidth,
-            //     noteId: clickedNote.noteId,
-            //   });
-            // });
+            // setSelectedNotes({...globalSelectedNotes});
+            // fuck it just clear the selected notes
+            setSelectedNotes({});
+            globalSelectedNotes = {};
           }
         } else if (inputMode === InputMode.SELECT) {
           const bounds = {
@@ -272,14 +276,21 @@ export function CompositionAndPlayhead({
         setCursorPosition({ midiNote, midiBeat });
         if (inputMode !== InputMode.DEFAULT) return;
         if (midiNote !== cursorPosition.midiNote) {
-          currUserInstrument.sf2Sampler?.start({
-            note: midiNote,
-            duration: 0.25,
-          });
+          if (globalClickedNote) {
+            userInstruments[globalClickedNote.userInstrumentIndex].sf2Sampler?.start({
+              note: midiNote,
+              duration: 0.25,
+            });
+          } else {
+            currUserInstrument.sf2Sampler?.start({
+              note: midiNote,
+              duration: 0.25,
+            });
+          }
         }
       }
     },
-    [isMouseDown, cursorPosition, currUserInstrument]
+    [isMouseDown, cursorPosition, currUserInstrument, clickedNote]
   );
 
   const handlePlacedNoteMouseDown = useCallback(
@@ -312,9 +323,12 @@ export function CompositionAndPlayhead({
         setSelectedNotes({});
         globalSelectedNotes = {};
       }
+      userInstruments[noteJustClicked.userInstrumentIndex].sf2Sampler?.start({ note: midiNote, duration: 0.25 });
     },
-    [removeCompositionNotes, inputMode, selectedNotes]
+    [removeCompositionNotes, inputMode, selectedNotes, userInstruments]
   );
+
+  const playheadNode = useMemo(() => <BabyPlayheadImg src="trans.png" $frame={babyDanceFrame} />, [])
 
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>

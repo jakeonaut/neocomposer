@@ -1,28 +1,19 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import styled from "styled-components";
 import { TodoList } from "../TodoList";
 import { CompositionAndPlayhead } from "./CompositionAndPlayhead";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
-import { InputMode, sf2DefaultColours, UserInstrument } from "./consts";
-import { useComposition } from "./useComposition";
+import { AudioContextContext, InputMode, sf2DefaultColours, UserInstrument } from "./consts";
+import { CompositionContext } from "./contexts/CompositionContextProvider";
 import { SongOptionsHeader } from "./SongOptionsHeader";
-import { ActionButton, ActionButtonsContainer } from "./styled";
+import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
+import { SongSettingsContext } from "./contexts/SongSettingsContextProvider";
+import { ActionButtons } from "./ActionButtons";
 
 const MaestroContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
-`;
-
-const BabyPlayheadImg = styled.img<{ $frame: number }>`
-  width: 20px;
-  height: 20px;
-  image-rendering: pixelated;
-  background-image: url("baby_dance_sheet.png");
-  position: relative;
-  left: -10px;
-  top: -6px;
-  background-position: ${({ $frame }) => `${$frame * -20}px 0px`};
 `;
 
 const keyboardPianoKeys = new Map(
@@ -49,63 +40,46 @@ const keyboardPianoKeys = new Map(
 );
 
 export function Maestro() {
-  const [context] = useState(new AudioContext());
-  const [songName, setSongName] = useState('new_song');
-  const [userInstruments, setUserInstruments] = useState<Array<UserInstrument>>(
-    [
-      {
-        name: "ins0",
-        color: sf2DefaultColours[0],
-        sf2Sampler: undefined,
-        sf2InstrumentName: undefined,
-        volume: 100,
-      },
-    ]
-  );
-  const [userInstrumentIndex, setUserInstrumentIndex] = useState(0);
-  const [masterVolume, setMasterVolume] = useState(100);
-  const [isCompositionMouseDown, setIsCompositionMouseDown] = useState(false);
   const [inputMode, setInputMode] = useState(InputMode.DEFAULT);
-  const [tempo, setTempo] = useState(68);
-  const [babyDanceFrame, setBabyDanceFrame] = useState(0);
-  const incrementBabyDanceFrame = useCallback(
-    () => setBabyDanceFrame((prev) => (prev < 3 ? prev + 1 : 0)),
-    []
-  );
-  const [babyPlayheadPosX, setBabyPlayheadPosX] = useState(1);
+  const audioContext = useContext(AudioContextContext)!;
   const {
-    composition,
-    addCompositionNotes,
-    removeCompositionNotes,
-    handlePlayComposition,
-    handleStopComposition,
-    handleClearComposition,
-    handleExportComposition,
-    handleImportComposition,
-    isPlaying,
-    handleStartLoop,
-    handleStopLoop,
-    isLooping,
-  } = useComposition({
-    songName,
-    context,
-    tempo,
+    babyDanceFrame,
+    incrementBabyDanceFrame,
+  } = useContext(SongSettingsContext)!;
+  const {
     userInstruments,
-    setPlayheadPosX: (posX: number) => {
-      setBabyPlayheadPosX(posX);
-      incrementBabyDanceFrame();
-    },
-  });
+    userInstrumentIndex,
+    setUserInstrumentIndex,
+  } = useContext(UserInstrumentContext)!;
+  const {
+    isCompositionMouseDown,
+    setOnCompositionMouseUp,
+    isPlaying,
+    handleStopComposition,
+    handlePlayComposition,
+  } = useContext(CompositionContext)!;
 
-  const [onCompositionMouseUp, setOnCompositionMouseUp] = useState<(() => void) | undefined>();
   const trySetInputMode = useCallback((newInputMode: InputMode) => {
     if (isCompositionMouseDown) return;
     setInputMode(newInputMode);
   }, [isCompositionMouseDown]);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.repeat) {
         return;
+      }
+      if (!Number.isNaN(parseInt(e.key))) {
+        let index = parseInt(e.key);
+        if (index === 0) {
+          index = 9;
+        } else {
+          index -= 1
+        }
+        if (userInstruments.length > index) {
+          setUserInstrumentIndex(index);
+        }
+        return false;
       }
       if (e.key === "Meta" || e.key === "Control") {
         trySetInputMode(InputMode.SELECT);
@@ -123,12 +97,10 @@ export function Maestro() {
         ? keyboardPianoKeys.get(e.key)
         : undefined;
       const currUserInstrument = userInstruments[userInstrumentIndex];
-      if (!currUserInstrument.sf2Sampler || !playedNote) {
-        return;
-      }
+      if (!currUserInstrument.sf2Sampler || !playedNote) return;
       currUserInstrument.sf2Sampler.start({
         note: playedNote,
-        time: context.currentTime,
+        time: audioContext.currentTime,
         duration: 0.25,
       });
       incrementBabyDanceFrame();
@@ -136,7 +108,7 @@ export function Maestro() {
     [
       userInstruments,
       userInstrumentIndex,
-      context.currentTime,
+      audioContext,
       incrementBabyDanceFrame,
       isPlaying,
       handleStopComposition,
@@ -156,20 +128,6 @@ export function Maestro() {
     }
   }, [trySetInputMode, isCompositionMouseDown]);
 
-  const onMasterVolumeChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setMasterVolume(parseInt(e.target.value));
-    },
-    []
-  );
-
-  const onTempoChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      setTempo(parseInt(e.target.value));
-    },
-    []
-  );
-
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
     document.addEventListener("keyup", handleKeyUp);
@@ -181,118 +139,22 @@ export function Maestro() {
 
   return (
     <MaestroContainer>
-      {/* <div style={{ display: 'flex', alignItems: 'center', }}>
-        <label htmlFor="master-instrument-volume">
-          &nbsp;
-          {masterVolume == 0
-            ? '🔇'
-            : masterVolume < 10
-              ? '🔈' 
-              : masterVolume < 67
-                ? '🔉'
-                : masterVolume < 120 ? '🔊' : '💯'}
-          &nbsp;<b>Master Volume:</b></label>
-        <input style={{ width: 100 }} type="range" min="0" max="127"
-          id="master-instrument-volume"
-          value={masterVolume}
-          onChange={onMasterVolumeChange}
-        />
-      </div> */}
-      <SongOptionsHeader
-        songName={songName}
-        setSongName={setSongName}
-        handleClearComposition={handleClearComposition}
-        handleExportComposition={handleExportComposition}
-        handleImportComposition={handleImportComposition}
-        babyDanceFrame={babyDanceFrame}
-        incrementBabyDanceFrame={incrementBabyDanceFrame}
-      />
-      <UserInstrumentsHeader
-        context={context}
-        userInstruments={userInstruments}
-        setUserInstruments={setUserInstruments}
-        userInstrumentIndex={userInstrumentIndex}
-        setUserInstrumentIndex={setUserInstrumentIndex}
-        incrementBabyDanceFrame={incrementBabyDanceFrame}
-      />
-      <CompositionAndPlayhead
-        context={context}
-        composition={composition}
-        userInstruments={userInstruments}
-        userInstrumentIndex={userInstrumentIndex}
-        inputMode={inputMode}
-        isCompositionMouseDown={isCompositionMouseDown}
-        setIsCompositionMouseDown={setIsCompositionMouseDown}
-        onCompositionMouseUp={onCompositionMouseUp}
-        setOnCompositionMouseUp={setOnCompositionMouseUp}
-        addCompositionNotes={addCompositionNotes}
-        removeCompositionNotes={removeCompositionNotes}
-        playheadNode={<BabyPlayheadImg src="trans.png" $frame={babyDanceFrame} />}
-        playheadPosX={babyPlayheadPosX}
-      />
-      <ActionButtonsContainer style={{ marginTop: 8, justifyContent: 'center' }}>
-        <ActionButton onClick={isPlaying ? handleStopComposition : () => handlePlayComposition({})}>
-          {isPlaying ? '⏹️' : '▶️'}
-        </ActionButton>
-        <ActionButton onClick={isLooping ? handleStopLoop : handleStartLoop}>
-          {isLooping ? '📴' : '🔁'}
-        </ActionButton>
-        <label htmlFor="tempo">
-          <b>Tempo:</b>
-        </label>
-        <input
-          id="tempo"
-          type="range"
-          min="20"
-          max="200"
-          value={tempo}
-          onChange={onTempoChange}
-        />
-        <ActionButton
-          onClick={() => trySetInputMode(InputMode.DEFAULT)}
-          style={{
-            border: '1px solid black',
-            paddingBottom: 4,
-            paddingTop: 1,
-            paddingRight: 1,
-            ...(
-              inputMode === InputMode.DEFAULT ? {
-                background: 'black',
-                opacity: 0.5,
-              } : {}
-            ),
-          }}>
-          <div style={{
-            background: `url('./toolicons1x.png') repeat scroll ${inputMode === InputMode.DEFAULT ? '-25px' : '0'} -147px transparent`,
-            width: 25,
-            height: 21,
-          }} />
-        </ActionButton>
-        <ActionButton
-          onClick={() => trySetInputMode(InputMode.SELECT)}
-          style={{
-            border: '1px solid black',
-            paddingBottom: 3,
-            paddingTop: 2,
-            paddingRight: 1,
-            marginLeft: -6,
-            ...(
-              inputMode === InputMode.SELECT ? {
-                background: 'black',
-                opacity: 0.5,
-              } : {}
-            ),
-          }}>
-          <div style={{
-            background: `url('./toolicons1x.png') repeat scroll  ${inputMode === InputMode.SELECT ? '-25px' : '0'}  -21px transparent`,
-            width: 25,
-            height: 21,
-            imageRendering: 'pixelated',
-          }} />
-        </ActionButton>
-      </ActionButtonsContainer>
+      <SongOptionsHeader />
+      <UserInstrumentsHeader />
+      <CompositionAndPlayhead inputMode={inputMode} />
+      <ActionButtons inputMode={inputMode} trySetInputMode={trySetInputMode} />
       <br />
+      <div style={{ textAlign: 'left'}}>
       <TodoList />
+      <h3>&nbsp;&nbsp;&nbsp;Tips!</h3>
+      <ul>
+        <li>Click (and drag) the grid to place notes!</li>
+        <li>Click a note again to delete it.</li>
+        <li>Use asdfghjkl;wetyuop keys to practice!</li>
+        <li>Use 1, 2, 3, etc. to quickly swap between instruments!</li>
+        <li>Use ctrl/cmd to quickly swap between note pencil and select mode!</li>
+      </ul>
+      </div>
     </MaestroContainer>
   );
 }

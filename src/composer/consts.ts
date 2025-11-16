@@ -1,3 +1,4 @@
+import { createContext } from "react";
 import { toMidi } from "../smplr/player/midi";
 import { SampleStart } from "../smplr/player/types";
 import { Soundfont2Sampler } from "../smplr/soundfont2";
@@ -73,3 +74,5 @@ export enum InputMode {
   DEFAULT = "default",
   SELECT = "select"
 }
+
+export const AudioContextContext = createContext<AudioContext | undefined>(undefined);

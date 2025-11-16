@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useContext, useMemo } from 'react';
 import styled from 'styled-components'
-import { Composition } from './consts';
-import { ActionButton, ActionButtonsContainer } from './styled';
+import { CompositionContext } from './contexts/CompositionContextProvider';
+import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
+import { ActionButtonsContainer } from './ActionButtons';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -29,23 +30,26 @@ const DivButton = styled.div`
   cursor: pointer;
 `;
 
-export function SongOptionsHeader({
-  songName,
-  setSongName,
-  handleClearComposition,
-  handleImportComposition,
-  handleExportComposition,
-  babyDanceFrame,
-  incrementBabyDanceFrame,
-}: {
-  songName: string,
-  setSongName: (songName: string) => void,
-  handleClearComposition: () => void,
-  handleImportComposition: () => void,
-  handleExportComposition: () => void,
-  babyDanceFrame: number,
-  incrementBabyDanceFrame: () => void
-}) {
+export function SongOptionsHeader({}: {}) {
+  const {
+    songName,
+    setSongName,
+    // masterVolume,
+    // setMasterVolume,
+    babyDanceFrame,
+    incrementBabyDanceFrame,
+  } = useContext(SongSettingsContext)!;
+  const { 
+    handleClearComposition,
+    handleImportComposition,
+    handleExportComposition,
+  } = useContext(CompositionContext)!;
+  // const onMasterVolumeChange = useCallback(
+  //   (e: React.ChangeEvent<HTMLInputElement>) => {
+  //     setMasterVolume(parseInt(e.target.value));
+  //   },
+  //   []
+  // );
   return (
     <>
       <SongHeaderContainer>
@@ -59,6 +63,23 @@ export function SongOptionsHeader({
               setSongName(e.target.value)
             }} />
           </div>
+          {/* <div style={{ display: 'flex', alignItems: 'center', }}>
+            <label htmlFor="master-instrument-volume">
+              &nbsp;
+              {masterVolume == 0
+                ? '🔇'
+                : masterVolume < 10
+                  ? '🔈' 
+                  : masterVolume < 67
+                    ? '🔉'
+                    : masterVolume < 120 ? '🔊' : '💯'}
+              &nbsp;<b>Master Volume:</b></label>
+            <input style={{ width: 100 }} type="range" min="0" max="127"
+              id="master-instrument-volume"
+              value={masterVolume}
+              onChange={onMasterVolumeChange}
+            />
+          </div> */}
         </div>
         <ActionButtonsContainer style={{ flexGrow: 1, marginRight: 8, justifyContent: 'end', }}>
           <DivButton onClick={handleClearComposition}>💣 New</DivButton>

@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
-import { Composition, InputMode, InstrumentInstruction, MidiBeat, MidiNoteNum, UserInstrument } from "./consts";
-import { toMidi } from "../smplr/player/midi";
+import React, { createContext, useCallback, useContext, useState } from "react";
+import { AudioContextContext, Composition, InputMode, InstrumentInstruction, MidiBeat, MidiNoteNum, UserInstrument } from "../consts";
+import { SongSettingsContext } from "./SongSettingsContextProvider";
+import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 
 let globalNoteId = 0;
 let globalIsPlaying = false;
@@ -19,20 +20,18 @@ function deleteNoteFromComposition(composition: Composition, midiBeat: MidiBeat,
   delete globalCompositionByNoteId[noteId];
 }
 
-export function useComposition({
-  songName,
-  context,
-  tempo,
-  userInstruments,
-  setPlayheadPosX,
+export function CompositionContextProvider({
+  children,
 }: {
-  songName: string;
-  context: AudioContext;
-  tempo: number;
-  userInstruments: Array<UserInstrument | undefined>;
-  setPlayheadPosX: (posX: number) => void;
+  children: React.ReactNode
 }) {
+  const audioContext = useContext(AudioContextContext)!;
+  const { songName, tempo, setPlayheadPosX } = useContext(SongSettingsContext)!;
+  const { userInstruments } = useContext(UserInstrumentContext)!;
+
   const [composition, setComposition] = useState<Composition>({});
+  const [isCompositionMouseDown, setIsCompositionMouseDown] = useState(false);
+  const [onCompositionMouseUp, setOnCompositionMouseUp] = useState<(() => void) | undefined>();
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLooping, setIsLooping] = useState<boolean>(false);
 
@@ -83,7 +82,7 @@ export function useComposition({
     const beatLengthInSeconds = 1 / nthNotesPerSec;
     // TODO(jaketrower): totally based on bpm... 120 beats per minute = 2 beats per second, 32 noteBlocks per second = duration of 0.03125
     // so beatLengthInSeconds = tempo / 2
-    const now = context.currentTime;
+    const now = audioContext.currentTime;
     setPlayheadPosX(1);
     let lastBeat = -1; 
     Object.keys(composition).forEach((beatStr) => {
@@ -181,19 +180,50 @@ export function useComposition({
     document.body.removeChild(a);
   }, [songName, composition]);
 
-  return {
-    composition,
-    setComposition,
-    addCompositionNotes,
-    removeCompositionNotes,
-    handlePlayComposition,
-    handleStopComposition,
-    handleClearComposition,
-    handleExportComposition,
-    handleImportComposition,
-    isPlaying,
-    handleStartLoop,
-    handleStopLoop,
-    isLooping,
-  };
+  return (
+    <CompositionContext value={{
+      composition,
+      isCompositionMouseDown,
+      setIsCompositionMouseDown,
+      onCompositionMouseUp,
+      setOnCompositionMouseUp,
+      addCompositionNotes,
+      removeCompositionNotes,
+      handlePlayComposition,
+      handleStopComposition,
+      handleClearComposition,
+      handleExportComposition,
+      handleImportComposition,
+      isPlaying,
+      handleStartLoop,
+      handleStopLoop,
+      isLooping,
+    }}>
+      {children}
+    </CompositionContext>
+  );
 }
+
+export const CompositionContext = createContext<{
+  composition: Composition,
+  isCompositionMouseDown: boolean,
+  setIsCompositionMouseDown: (isMouseDown: boolean) => void,
+  onCompositionMouseUp: (() => void) | undefined,
+  setOnCompositionMouseUp: (callback: (() => void) | undefined) => void,
+  addCompositionNotes: (notesToAdd: (
+    Omit<InstrumentInstruction, "noteId" | "sampleStart"> & {
+      noteId?: number;
+    })[]) => void,
+  removeCompositionNotes: (noteIdsToRemove: string[]) => void,
+  handlePlayComposition: ({ wasStartedFromLoop }: {
+      wasStartedFromLoop?: boolean | undefined;
+    }) => void,
+  handleStopComposition: () => void,
+  handleClearComposition: () => void,
+  handleExportComposition: () => void,
+  handleImportComposition: () => void,
+  isPlaying: boolean,
+  handleStartLoop: () => void,
+  handleStopLoop: () => void,
+  isLooping: boolean,
+} | undefined>(undefined);
