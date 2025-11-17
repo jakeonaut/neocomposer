@@ -1,10 +1,11 @@
-import React, { ReactElement, ReactEventHandler, useCallback, useContext, useMemo, useState } from "react";
+import React, { ReactElement, ReactEventHandler, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
   AudioContextContext,
   Composition,
   getPlacedNotesFromComposition,
   InputMode,
   InstrumentInstruction,
+  InstrumentInstructionWithOffset,
   MidiBeat,
   MidiNote,
   MidiNoteNum,
@@ -40,7 +41,7 @@ const pianoRollKeys: MidiNote[] = [];
     pianoRollKeys.push(`${note}${octave}`)
   )
 );
-pianoRollKeys.push("C5");
+pianoRollKeys.push(...["C5", "Db5", "D5", "Eb5", "E5", "F5"]);
 pianoRollKeys.reverse();
 const beatWidth = 16;
 const pianoRollBeats: number[] = new Array(70);
@@ -48,8 +49,6 @@ pianoRollBeats.fill(0);
 let globalCursorXOffset = 0;
 let globalHasMouseMoved = false;
 let globalClickedNote: InstrumentInstruction | undefined;
-type Offset = { x: number, y: number };
-type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
 let globalSelectedNotes: Record<string, InstrumentInstructionWithOffset> = {};
 function globalIsNoteSelected(instrumentInstruction: InstrumentInstruction) {
   return !!Object.keys(globalSelectedNotes).find((noteId) => parseInt(noteId) === instrumentInstruction.noteId);
@@ -105,8 +104,10 @@ const BabyPlayheadImg = styled.img<{ $frame: number }>`
 
 export function CompositionAndPlayhead({
   inputMode,
+  setInputMode,
 }: {
   inputMode: InputMode;
+  setInputMode: (inputMode: InputMode) => void;
 }) {
   const audioContext = useContext(AudioContextContext)!;
   const { playheadPosX, babyDanceFrame } = useContext(SongSettingsContext)!;
@@ -116,20 +117,26 @@ export function CompositionAndPlayhead({
   } = useContext(UserInstrumentContext)!;
   const {
     composition,
-    isCompositionMouseDown: isMouseDown,
-    setIsCompositionMouseDown: setIsMouseDown,
-    onCompositionMouseUp,
-    setOnCompositionMouseUp,
+    isCompositionMouseDown: isMouseDown, setIsCompositionMouseDown: setIsMouseDown,
+    onCompositionMouseUp, setOnCompositionMouseUp,
+    heldPianoKeys,
     addCompositionNotes,
     removeCompositionNotes,
+    clickedNote, setClickedNote,
+    selectedNotes, setSelectedNotes,
   } = useContext(CompositionContext)!;
   const currUserInstrument = useMemo(
     () => userInstruments[userInstrumentIndex],
     [userInstruments, userInstrumentIndex]
   );
+  // This is stupid but, now that I'm setting clickedNotes/selectedNotes elsewhere, I need to update the globalVars
+  // I shouldn't be using the global vars, but the event propagation of handlePlacedNoteDown / handleMouseDown
+  // is not properly allowing the state to be updated before handleMouseDown is invoked immediately after handlePlacedNoteDown...
+  useEffect(() => {
+    globalClickedNote = clickedNote;
+    globalSelectedNotes = selectedNotes;
+  }, [clickedNote, selectedNotes]);
   
-  const [clickedNote, setClickedNote] = useState<InstrumentInstruction | undefined>(undefined);
-  const [selectedNotes, setSelectedNotes] = useState<Record<string, InstrumentInstructionWithOffset>>({});
   const [cursorPosition, setCursorPosition] = useState<
     CursorPosition | undefined
   >();
@@ -175,51 +182,57 @@ export function CompositionAndPlayhead({
       midiBeat: number,
       midiNote: string
     ) => {
-      if (isMouseDown && cursorPosition && startingCursorPos && (!clickedNote || globalHasMouseMoved)) {
+      if (isMouseDown && cursorPosition && startingCursorPos) {
         if (inputMode === InputMode.DEFAULT) {
-          if (!clickedNote) {
-            const noteWidth = Math.abs(cursorPosition.midiBeat - startingCursorPos.midiBeat) + 1;
-            addCompositionNotes([{
-              midiBeat: Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat),
-              midiNote: toMidi(midiNote)!,
-              noteWidth,
-              userInstrumentIndex,
-            }]);
-          } else {
-            addCompositionNotes([
-              // Place the note that you were clicking and dragging
-              {
-                noteId: clickedNote.noteId,
-                midiBeat: cursorPosition.midiBeat + globalCursorXOffset,
+          if ((!clickedNote || globalHasMouseMoved)) {
+            if (!clickedNote) {
+              const noteWidth = Math.abs(cursorPosition.midiBeat - startingCursorPos.midiBeat) + 1;
+              addCompositionNotes([{
+                midiBeat: Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat),
                 midiNote: toMidi(midiNote)!,
-                noteWidth: clickedNote.noteWidth,
-                userInstrumentIndex: clickedNote.userInstrumentIndex,
-              },
-              // Place all other notes that were currently selected
-              ...(Object.entries(selectedNotes).filter(
-                ([noteId, _]) => noteId !== clickedNote.noteId.toString()
-              ).map(
-                ([noteId, noteWithOffset]) => {
-                  const offset = noteWithOffset.offset;
-                  const newMidiBeat = cursorPosition.midiBeat + globalCursorXOffset + offset.x;
-                  const newMidiNote = toMidi(midiNote)! - offset.y;
-                  // Update the offset and midiBeat / midiNote for the selection too.....
-                  // globalSelectedNotes[noteId].instrumentInstruction.midiBeat = newMidiBeat;
-                  // globalSelectedNotes[noteId].instrumentInstruction.midiNote = newMidiNote;
-                  // globalSelectedNotes[noteId].offset = { x: 0, y: 0 };
-                  return {
-                    noteId: parseInt(noteId),
-                    midiBeat: newMidiBeat,
-                    midiNote: newMidiNote,
-                    noteWidth: noteWithOffset.instrumentInstruction.noteWidth,
-                    userInstrumentIndex: noteWithOffset.instrumentInstruction.userInstrumentIndex,
-                  };
-                }))
-            ]);
-            // setSelectedNotes({...globalSelectedNotes});
-            // fuck it just clear the selected notes
-            setSelectedNotes({});
-            globalSelectedNotes = {};
+                noteWidth,
+                userInstrumentIndex,
+              }]);
+            } else {
+              removeCompositionNotes([clickedNote.noteId.toString()]);
+              removeCompositionNotes(Object.keys(selectedNotes));
+              addCompositionNotes([
+                // Place the note that you were clicking and dragging
+                {
+                  noteId: clickedNote.noteId,
+                  midiBeat: cursorPosition.midiBeat + globalCursorXOffset,
+                  midiNote: toMidi(midiNote)!,
+                  noteWidth: clickedNote.noteWidth,
+                  userInstrumentIndex: clickedNote.userInstrumentIndex,
+                },
+                // Place all other notes that were currently selected
+                ...(Object.entries(selectedNotes).filter(
+                  ([noteId, _]) => noteId !== clickedNote.noteId.toString()
+                ).map(
+                  ([noteId, noteWithOffset]) => {
+                    const offset = noteWithOffset.offset;
+                    const newMidiBeat = cursorPosition.midiBeat + globalCursorXOffset + offset.x;
+                    const newMidiNote = toMidi(midiNote)! - offset.y;
+                    // Update the offset and midiBeat / midiNote for the selection too.....
+                    // globalSelectedNotes[noteId].instrumentInstruction.midiBeat = newMidiBeat;
+                    // globalSelectedNotes[noteId].instrumentInstruction.midiNote = newMidiNote;
+                    // globalSelectedNotes[noteId].offset = { x: 0, y: 0 };
+                    return {
+                      noteId: parseInt(noteId),
+                      midiBeat: newMidiBeat,
+                      midiNote: newMidiNote,
+                      noteWidth: noteWithOffset.instrumentInstruction.noteWidth,
+                      userInstrumentIndex: noteWithOffset.instrumentInstruction.userInstrumentIndex,
+                    };
+                  }))
+              ]);
+              // setSelectedNotes({...globalSelectedNotes});
+              // fuck it just clear the selected notes
+              setSelectedNotes({});
+              globalSelectedNotes = {};
+            }
+          } else if (clickedNote && !globalHasMouseMoved) {
+            removeCompositionNotes([clickedNote.noteId.toString()]);
           }
         } else if (inputMode === InputMode.SELECT) {
           const bounds = {
@@ -243,6 +256,8 @@ export function CompositionAndPlayhead({
       setStartingCursorPos(undefined);
       if (onCompositionMouseUp) {
         onCompositionMouseUp();
+      } else {
+        setInputMode(InputMode.DEFAULT);
       }
       setOnCompositionMouseUp(undefined);
       globalCursorXOffset = 0;
@@ -254,6 +269,7 @@ export function CompositionAndPlayhead({
       addCompositionNotes,
       userInstrumentIndex,
       clickedNote,
+      selectedNotes,
       isMouseDown,
       startingCursorPos,
       onCompositionMouseUp,
@@ -307,7 +323,6 @@ export function CompositionAndPlayhead({
       if (globalIsNoteSelected(noteJustClicked)) {
         setClickedNote(noteJustClicked);
         globalClickedNote = noteJustClicked;
-        removeCompositionNotes(Object.keys(globalSelectedNotes));
         Object.entries(globalSelectedNotes).forEach(([noteId, noteWithOffset]) => {
           if (noteId === noteJustClicked.noteId.toString()) return;
           noteWithOffset.offset = {
@@ -319,7 +334,6 @@ export function CompositionAndPlayhead({
       } else {
         setClickedNote(noteJustClicked);
         globalClickedNote = noteJustClicked;
-        removeCompositionNotes([noteJustClicked.noteId.toString()]);
         setSelectedNotes({});
         globalSelectedNotes = {};
       }
@@ -363,7 +377,13 @@ export function CompositionAndPlayhead({
         }}
       >
         {pianoRollKeys.map((midiNote, _) => (
-          <div style={{ display: "flex", height: beatWidth - 1 }}>
+          <div style={{
+            display: "flex",
+            height: beatWidth - 1,
+            ...(heldPianoKeys[midiNote] ? {
+              background: currUserInstrument ? `${currUserInstrument.color}40` : '#b2bcc240',
+            } : {}),
+          }}>
             <div
               key={`row-${midiNote}`}
               style={{
@@ -371,7 +391,14 @@ export function CompositionAndPlayhead({
                 minWidth: beatWidth * 2,
                 textAlign: "left",
                 userSelect: "none",
+                cursor: 'pointer',
+                ...(heldPianoKeys[midiNote] ? {
+                  fontWeight: 700,
+                  fontSize: 16,
+                  marginTop: -2,
+                } : {}),
               }}
+              onMouseDown={() => { currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 }); }}
             >
               {midiNote}
             </div>
@@ -393,6 +420,9 @@ export function CompositionAndPlayhead({
                   {/* STATIC(ISH) PLACED NOTES */}
                   {composition[index]?.[toMidi(midiNote)!] !== undefined && (
                     Object.values(composition[index]?.[toMidi(midiNote)!]).map((instrumentInstruction) => {
+                      if (clickedNote && (instrumentInstruction.noteId === clickedNote.noteId || globalIsNoteSelected(instrumentInstruction))) {
+                        return null;
+                      }
                       const bgColor = userInstruments[instrumentInstruction.userInstrumentIndex].color ?? 'gray';
                       return (<PlacedNote
                         bgColor={bgColor}

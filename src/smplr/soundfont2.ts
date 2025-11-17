@@ -45,7 +45,7 @@ export type Soundfont2Options = Partial<RegionPlayerOptions> & {
 export class Soundfont2Sampler {
   player: RegionPlayer;
   soundfont: Sf2 | undefined;
-  load: Promise<this>;
+  load: this;
   _instrumentNames: string[] = [];
 
   constructor(
@@ -53,14 +53,14 @@ export class Soundfont2Sampler {
     public readonly options: Soundfont2Options
   ) {
     this.player = new RegionPlayer(context, options);
-    this.load = loadSoundfont(options)
-      .then((soundfont) => {
-        this.soundfont = soundfont;
-        this._instrumentNames = soundfont.instruments.map(
-          (instrument) => instrument.header.name
-        );
-      })
-      .then(() => this);
+    this.load = (() => {
+      const soundfont = loadSoundfont(options);
+      this.soundfont = soundfont;
+      this._instrumentNames = soundfont.instruments.map(
+        (instrument) => instrument.header.name
+      );
+      return this;
+    })();
   }
 
   get instrumentNames() {
@@ -143,6 +143,6 @@ function getAudioBufferFromSample(
   return audioBuffer;
 }
 
-async function loadSoundfont(options: Soundfont2Options) {
+function loadSoundfont(options: Soundfont2Options) {
   return options.createSoundfont(options.data);
 }

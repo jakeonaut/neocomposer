@@ -18,10 +18,10 @@ export const ActionButton = styled.div`
 
 export function ActionButtons({
   inputMode,
-  trySetInputMode,
+  setInputMode,
 }: {
   inputMode: InputMode,
-  trySetInputMode: (inputMode: InputMode) => void
+  setInputMode: (inputMode: InputMode) => void
 }) {
   const { tempo, setTempo } = useContext(SongSettingsContext)!;
   const {
@@ -55,7 +55,7 @@ export function ActionButtons({
         onChange={onTempoChange}
       />
       <ActionButton
-        onClick={() => trySetInputMode(InputMode.DEFAULT)}
+        onClick={() => setInputMode(InputMode.DEFAULT)}
         style={{
           border: '1px solid black',
           paddingBottom: 4,
@@ -63,8 +63,8 @@ export function ActionButtons({
           paddingRight: 1,
           ...(
             inputMode === InputMode.DEFAULT ? {
-              background: 'black',
-              opacity: 0.5,
+              background: 'gray',
+              cursor: 'unset',
             } : {}
           ),
         }}>
@@ -75,7 +75,7 @@ export function ActionButtons({
         }} />
       </ActionButton>
       <ActionButton
-        onClick={() => trySetInputMode(InputMode.SELECT)}
+        onClick={() => setInputMode(InputMode.SELECT)}
         style={{
           border: '1px solid black',
           paddingBottom: 3,
@@ -84,8 +84,8 @@ export function ActionButtons({
           marginLeft: -6,
           ...(
             inputMode === InputMode.SELECT ? {
-              background: 'black',
-              opacity: 0.5,
+              background: 'gray',
+              cursor: 'unset',
             } : {}
           ),
         }}>

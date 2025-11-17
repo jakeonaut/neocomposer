@@ -53,7 +53,15 @@ export function Maestro() {
   } = useContext(UserInstrumentContext)!;
   const {
     isCompositionMouseDown,
+    setIsCompositionMouseDown,
     setOnCompositionMouseUp,
+    clickedNote,
+    setClickedNote,
+    selectedNotes,
+    setSelectedNotes,
+    heldPianoKeys,
+    setHeldPianoKeys,
+    removeCompositionNotes,
     isPlaying,
     handleStopComposition,
     handlePlayComposition,
@@ -69,6 +77,32 @@ export function Maestro() {
       if (e.repeat) {
         return;
       }
+      if (e.key === "Backspace") {
+        if (isCompositionMouseDown) {
+          setIsCompositionMouseDown(false);
+        }
+        if (Object.keys(selectedNotes).length > 0) {
+          removeCompositionNotes(Object.keys(selectedNotes));
+          setSelectedNotes({});
+          setClickedNote(undefined);
+        } else if (clickedNote) {
+          removeCompositionNotes([clickedNote.noteId.toString()]);
+          setClickedNote(undefined);
+        }
+        return false;
+      }
+      if (e.key === "Escape") {
+        if (isCompositionMouseDown) {
+          setIsCompositionMouseDown(false);
+        }
+        if (clickedNote) {
+          setClickedNote(undefined);
+        }
+        if (Object.keys(selectedNotes).length > 0) {
+          setSelectedNotes({});
+        }
+        return false;
+      }
       if (!Number.isNaN(parseInt(e.key))) {
         let index = parseInt(e.key);
         if (index === 0) {
@@ -78,6 +112,7 @@ export function Maestro() {
         }
         if (userInstruments.length > index) {
           setUserInstrumentIndex(index);
+          userInstruments[index].sf2Sampler?.start({ note: 'C4', duration: 0.25 });
         }
         return false;
       }
@@ -96,8 +131,12 @@ export function Maestro() {
       const playedNote = keyboardPianoKeys.has(e.key)
         ? keyboardPianoKeys.get(e.key)
         : undefined;
+      if (!playedNote) return;
+      console.log("keydown before:",heldPianoKeys);
+      heldPianoKeys[playedNote] = true;
+      setHeldPianoKeys({...heldPianoKeys});
       const currUserInstrument = userInstruments[userInstrumentIndex];
-      if (!currUserInstrument.sf2Sampler || !playedNote) return;
+      if (!currUserInstrument.sf2Sampler) return;
       currUserInstrument.sf2Sampler.start({
         note: playedNote,
         time: audioContext.currentTime,
@@ -106,6 +145,7 @@ export function Maestro() {
       incrementBabyDanceFrame();
     },
     [
+      heldPianoKeys,
       userInstruments,
       userInstrumentIndex,
       audioContext,
@@ -115,6 +155,7 @@ export function Maestro() {
       handlePlayComposition,
       trySetInputMode,
       isCompositionMouseDown,
+      selectedNotes,
     ]
   );
 
@@ -126,7 +167,14 @@ export function Maestro() {
       }
       return false;
     }
-  }, [trySetInputMode, isCompositionMouseDown]);
+    const playedNote = keyboardPianoKeys.has(e.key)
+      ? keyboardPianoKeys.get(e.key)
+      : undefined;
+    if (!playedNote) return;
+    delete heldPianoKeys[playedNote];
+    console.log("keyup:",heldPianoKeys);
+    setHeldPianoKeys({...heldPianoKeys});
+  }, [trySetInputMode, isCompositionMouseDown, heldPianoKeys]);
 
   useEffect(() => {
     document.addEventListener("keydown", handleKeyDown);
@@ -141,8 +189,10 @@ export function Maestro() {
     <MaestroContainer>
       <SongOptionsHeader />
       <UserInstrumentsHeader />
-      <CompositionAndPlayhead inputMode={inputMode} />
-      <ActionButtons inputMode={inputMode} trySetInputMode={trySetInputMode} />
+      {/* Pass setInputMode in directly since we are firing it at the end of a handleMouseUp callback and
+        * isCompositionMouseDown won't update the state and the trySetInputMode function until after the event bubbling */}
+      <CompositionAndPlayhead inputMode={inputMode} setInputMode={setInputMode} />
+      <ActionButtons inputMode={inputMode} setInputMode={trySetInputMode} />
       <br />
       <div style={{ textAlign: 'left'}}>
       <TodoList />

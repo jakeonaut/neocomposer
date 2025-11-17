@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useMemo } from 'react';
 import styled from 'styled-components'
 import { useUploadSf2 } from './hooks/useUploadSf2';
 import { Soundfont2Sampler } from '../smplr/soundfont2';
-import { AudioContextContext, sf2DefaultColours, UserInstrument } from './consts';
+import { AudioContextContext, InstrumentInstruction, sf2DefaultColours, UserInstrument } from './consts';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 
@@ -58,19 +58,17 @@ export function UserInstrumentsHeader({}: {}) {
     setUserInstruments,
     userInstrumentIndex,
     setUserInstrumentIndex,
+    getNewUserInstrument,
   } = useContext(UserInstrumentContext)!;
   const currUserInstrument = useMemo(() => userInstruments[userInstrumentIndex], [userInstruments, userInstrumentIndex]);
   const selectedSf2InstOption = useMemo(() => currUserInstrument.sf2InstrumentName, [currUserInstrument.sf2InstrumentName]);
 
   const onAddNewUserInstrument = useCallback(() => {
-    setUserInstruments([...userInstruments, {
-      name: `ins${userInstruments.length+1}`,
-      color: sf2DefaultColours[userInstruments.length] ?? 'gray',
-      sf2Sampler: undefined,
-      sf2InstrumentName: undefined,
-      volume: 100,
-    }]);
+    const newInstrument = getNewUserInstrument(audioContext, userInstruments.length);
+    setUserInstruments([...userInstruments, newInstrument]);
     setUserInstrumentIndex(userInstruments.length);
+    newInstrument.sf2Sampler?.start({ note: 'C4', duration: 0.25 });
+
   }, [userInstruments]);
 
   const onSf2UploadSuccess = useCallback((sampler: Soundfont2Sampler, sf2InstrumentName: string) => {
@@ -86,6 +84,8 @@ export function UserInstrumentsHeader({}: {}) {
         onStart: () => incrementBabyDanceFrame(),
       });
     });
+    // weird. https://stackoverflow.com/questions/12030686/html-input-file-selection-event-not-firing-upon-selecting-the-same-file
+    (document.getElementById(`sf-uploader-${userInstrumentIndex}`) as HTMLInputElement)!.value = null as unknown as string;
   }, [userInstruments, userInstrumentIndex]);
   const onUploadSf2 = useUploadSf2({
     audioContext,
@@ -136,20 +136,10 @@ export function UserInstrumentsHeader({}: {}) {
         backgroundColor: userInstrument.color ?? 'white',
         fontWeight: index === userInstrumentIndex ? 700 : 400
       }}
-      onClick={() => setUserInstrumentIndex(index)}>
-        {userInstrument.sf2Sampler && (<div style={{
-          background: `url('./toolicons1x.png') repeat scroll -25px -168px transparent`,
-          width: 25,
-          height: 21,
-          imageRendering: 'pixelated',
-          userSelect: 'none',
-          cursor: 'pointer',
-          position: 'relative',
-          left: -13,
-          top: -6,
-          transform: 'scale(0.5)',
-          marginRight: -18,
-        }}>&nbsp;</div>)}
+      onClick={() => {
+        setUserInstrumentIndex(index);
+        userInstruments[index].sf2Sampler?.start({ note: 'C4', duration: 0.25 });
+      }}>
         {userInstrument.name ?? index}
       </UserInstrumentTab>
   )), [userInstruments, userInstrumentIndex]);
@@ -173,7 +163,7 @@ export function UserInstrumentsHeader({}: {}) {
             }}>&nbsp;</label>
             <input
               type="color"
-              style={{ opacity: 0, width: 20, height: 20, }}
+              style={{ opacity: 0, width: 20, height: 20, cursor: 'pointer', }}
               id="instrument-color"
               name="instrument-color"
               value={currColor}
@@ -199,8 +189,8 @@ export function UserInstrumentsHeader({}: {}) {
             </>)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', }}>
-            <FileInputLabel htmlFor="sf-uploader">Upload .sf2</FileInputLabel>
-            <input id="sf-uploader" type="file" accept=".sf2" onChange={onUploadSf2} style={{ display: 'none' }} />
+            <FileInputLabel htmlFor={`sf-uploader-${userInstrumentIndex}`}>Upload .sf2</FileInputLabel>
+            <input id={`sf-uploader-${userInstrumentIndex}`} type="file" accept=".sf2" onChange={onUploadSf2} style={{ display: 'none' }} />
             &nbsp;&nbsp;
             <label htmlFor="user-instrument-volume">volume:</label>
             <input type="range" min="0" max="127"

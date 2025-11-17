@@ -1,8 +1,9 @@
 import React, { useCallback, useContext, useMemo } from 'react';
 import styled from 'styled-components'
-import { CompositionContext } from './contexts/CompositionContextProvider';
+import { CompositionContext, convertCompositionToCompositionByInstrument } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtons';
+import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -37,19 +38,45 @@ export function SongOptionsHeader({}: {}) {
     // masterVolume,
     // setMasterVolume,
     babyDanceFrame,
+    tempo,
     incrementBabyDanceFrame,
   } = useContext(SongSettingsContext)!;
   const { 
+    composition,
     handleClearComposition,
-    handleImportComposition,
-    handleExportComposition,
   } = useContext(CompositionContext)!;
+  const { userInstruments } = useContext(UserInstrumentContext)!;
   // const onMasterVolumeChange = useCallback(
   //   (e: React.ChangeEvent<HTMLInputElement>) => {
   //     setMasterVolume(parseInt(e.target.value));
   //   },
   //   []
   // );
+  const handleImportComposition = useCallback(() => {}, []);
+  const handleExportComposition = useCallback(() => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([JSON.stringify({
+      songName,
+      tempo,
+      userInstruments: userInstruments.map((inst) => ({
+        color: inst.color,
+        volume: inst.volume,
+        name: inst.name,
+        sf2InstrumentName: inst.sf2InstrumentName,
+        // TODO(jaketrower): Allow user uploaded .sf2 files to have a "memory" ???
+        // if we remind them what .sf2 file names were uploaded, and prompt them to upload them?
+        // otherwise default to our default soundfont
+      })),
+      composition: convertCompositionToCompositionByInstrument(composition),
+    })], {
+      type: "text/plain"
+    }));
+    a.setAttribute("download", `${songName}.json`);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }, [songName, composition, userInstruments]);
+
   return (
     <>
       <SongHeaderContainer>

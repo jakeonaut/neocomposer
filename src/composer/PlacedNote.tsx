@@ -14,8 +14,8 @@ const StyledNote = styled.div<{
   content: " ";
   background-color: ${({ $bgColor }) => $bgColor};
   position: absolute;
-  left: ${({ $isClickedNote }) => $isClickedNote ? '-1px' : '0' };
-  top: ${({ $isClickedNote }) => $isClickedNote ? '-1px' : '0' };
+  left: ${({ $isClickedNote, $isNoteSelected }) => $isClickedNote || $isNoteSelected ? '-1px' : '0' };
+  top: ${({ $isClickedNote, $isNoteSelected }) => $isClickedNote || $isNoteSelected ? '-1px' : '0' };
   z-index: ${({ $isClickedNote, $isNoteSelected }) => $isClickedNote
     ? zIndex_clickedNote
     : $isNoteSelected
@@ -23,9 +23,11 @@ const StyledNote = styled.div<{
       : zIndex_placedNote };
   border-radius: 0;
   box-shadow: ${({ $isClickedNote, $isNoteSelected }) => `0px 0px 0px ${
-    $isNoteSelected ? '2px blue' : '1px black'
+    $isNoteSelected ? '1px blue' : '1px black'
   }${
-    $isClickedNote ? ', 2px 2px 0px 0px black' : ''
+    $isNoteSelected
+      ? ', 2px 2px 0px 0px blue'
+      : $isClickedNote ? ', 2px 2px 0px 0px black' : ''
   }` };
   pointer-events: ${({ $shouldMouseIgnoreMe, $isClickedNote }) => $shouldMouseIgnoreMe || $isClickedNote ? 'none' : 'unset' };
 `;

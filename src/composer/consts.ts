@@ -2,6 +2,7 @@ import { createContext } from "react";
 import { toMidi } from "../smplr/player/midi";
 import { SampleStart } from "../smplr/player/types";
 import { Soundfont2Sampler } from "../smplr/soundfont2";
+import { Soundfont } from "../smplr/soundfont/soundfont";
 
 export const zIndex_placedNote = 1;
 export const zIndex_selectedNote = 2;
@@ -34,8 +35,9 @@ export type InstrumentInstruction = {
   noteWidth: number;
   midiBeat: MidiBeat;
   midiNote: MidiNoteNum;
-  sampleStart: SampleStart;
 };
+export type Offset = { x: number, y: number };
+export type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
 export type Composition = {
   [id: MidiBeat]: {
     [id: MidiNoteNum]: {
