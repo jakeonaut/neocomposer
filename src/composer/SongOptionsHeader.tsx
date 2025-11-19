@@ -4,6 +4,7 @@ import { CompositionContext, convertCompositionToCompositionByInstrument } from 
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtons';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
+import { AudioContextContext, SongJsonExport, UserInstrument } from './consts';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -30,8 +31,15 @@ const DivButton = styled.div`
   border: 1px solid black;
   cursor: pointer;
 `;
+const FileInputLabel = styled.label`
+  background: white;
+  padding: 2px;
+  border: 1px solid black;
+  cursor: pointer;
+`;
 
 export function SongOptionsHeader({}: {}) {
+  const audioContext = useContext(AudioContextContext)!;
   const {
     songName,
     setSongName,
@@ -39,21 +47,40 @@ export function SongOptionsHeader({}: {}) {
     // setMasterVolume,
     babyDanceFrame,
     tempo,
+    setTempo,
     incrementBabyDanceFrame,
   } = useContext(SongSettingsContext)!;
   const { 
     composition,
     handleClearComposition,
   } = useContext(CompositionContext)!;
-  const { userInstruments } = useContext(UserInstrumentContext)!;
+  const {
+    userInstruments,
+    setUserInstruments,
+    getNewUserInstrument,
+    setHowManyInstrumentsIEverMade,
+  } = useContext(UserInstrumentContext)!;
   // const onMasterVolumeChange = useCallback(
   //   (e: React.ChangeEvent<HTMLInputElement>) => {
   //     setMasterVolume(parseInt(e.target.value));
   //   },
   //   []
   // );
-  const handleImportComposition = useCallback(() => {}, []);
-  const handleExportComposition = useCallback(() => {
+  const handleLoadCompositionFromFileJson = useCallback((jsonObj: SongJsonExport) => {
+    setSongName(jsonObj.songName);
+    setTempo(jsonObj.tempo);
+    const newUserInstruments = [...jsonObj.userInstruments.map((jsonInstrument, index) => {
+      const sf2Sampler = getNewUserInstrument(audioContext, index).sf2Sampler;
+      sf2Sampler?.loadInstrument(jsonInstrument.sf2InstrumentName!);
+      return {
+        ...jsonInstrument,
+        sf2Sampler,
+      }
+    })];
+    setUserInstruments(newUserInstruments);
+    setHowManyInstrumentsIEverMade(newUserInstruments.length);
+  }, [audioContext, getNewUserInstrument, setHowManyInstrumentsIEverMade, setSongName, setTempo, setUserInstruments]);
+  const handleSaveCompositionToFile = useCallback(() => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify({
       songName,
@@ -68,14 +95,32 @@ export function SongOptionsHeader({}: {}) {
         // otherwise default to our default soundfont
       })),
       composition: convertCompositionToCompositionByInstrument(composition),
-    })], {
+    } as SongJsonExport)], {
       type: "text/plain"
     }));
     a.setAttribute("download", `${songName}.json`);
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-  }, [songName, composition, userInstruments]);
+  }, [songName, tempo, userInstruments, composition]);
+
+  const onLoadSongJson = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target?.files?.[0]; 
+    if (!file) {
+      console.log("Failed to load file.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.readAsText(file);
+    reader.onload = readerEvent => {
+      const jsonText = readerEvent.target?.result;
+      if (!(typeof jsonText === typeof '')) {
+        console.log("Failed to parse file.");
+        return;
+      }
+      handleLoadCompositionFromFileJson(JSON.parse(jsonText as string));
+    }
+  }, [handleLoadCompositionFromFileJson]);
 
   return (
     <>
@@ -110,8 +155,9 @@ export function SongOptionsHeader({}: {}) {
         </div>
         <ActionButtonsContainer style={{ flexGrow: 1, marginRight: 8, justifyContent: 'end', }}>
           <DivButton onClick={handleClearComposition}>💣 New</DivButton>
-          <DivButton onClick={handleExportComposition}>💾 Save</DivButton>
-          <DivButton onClick={handleImportComposition}>📥 Load</DivButton>
+          <DivButton onClick={handleSaveCompositionToFile}>💾 Save As</DivButton>
+          <FileInputLabel htmlFor={`song-to-load`}>📥 Load</FileInputLabel>
+          <input id={`song-to-load`} type="file" accept=".json" onChange={onLoadSongJson} style={{ display: 'none' }} />
         </ActionButtonsContainer>
       </SongHeaderContainer>
     </>

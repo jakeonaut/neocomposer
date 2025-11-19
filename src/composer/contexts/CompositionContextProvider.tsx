@@ -70,7 +70,7 @@ export function CompositionContextProvider({
 }) {
   const audioContext = useContext(AudioContextContext)!;
   const { songName, tempo, setPlayheadPosX } = useContext(SongSettingsContext)!;
-  const { userInstruments } = useContext(UserInstrumentContext)!;
+  const { userInstruments, setHowManyInstrumentsIEverMade, setUserInstruments, getNewUserInstrument } = useContext(UserInstrumentContext)!;
   const [heldPianoKeys, setHeldPianoKeys] = useState<Record<string, boolean>>({});
   const [composition, setComposition] = useState<Composition>({});
   const [isCompositionMouseDown, setIsCompositionMouseDown] = useState(false);
@@ -209,6 +209,8 @@ export function CompositionContextProvider({
     setComposition({});
     globalCompositionByInstructionId = {};
     setIsPlaying(false);
+    setUserInstruments([getNewUserInstrument(audioContext, 1)]);
+    setHowManyInstrumentsIEverMade(1);
   }, [userInstruments]);
 
   return (

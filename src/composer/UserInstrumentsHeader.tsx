@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useMemo } from 'react';
 import styled from 'styled-components'
 import { useUploadSf2 } from './hooks/useUploadSf2';
 import { Soundfont2Sampler } from '../smplr/soundfont2';
-import { AudioContextContext, InstrumentInstruction, sf2DefaultColours, UserInstrument } from './consts';
+import { AudioContextContext, getARandomNote } from './consts';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 
@@ -57,6 +57,8 @@ export function UserInstrumentsHeader({}: {}) {
     userInstruments,
     setUserInstruments,
     userInstrumentIndex,
+    howManyInstrumentsIEverMade,
+    setHowManyInstrumentsIEverMade,
     setUserInstrumentIndex,
     getNewUserInstrument,
   } = useContext(UserInstrumentContext)!;
@@ -64,12 +66,12 @@ export function UserInstrumentsHeader({}: {}) {
   const selectedSf2InstOption = useMemo(() => currUserInstrument.sf2InstrumentName, [currUserInstrument.sf2InstrumentName]);
 
   const onAddNewUserInstrument = useCallback(() => {
-    const newInstrument = getNewUserInstrument(audioContext, userInstruments.length);
+    const newInstrument = getNewUserInstrument(audioContext, howManyInstrumentsIEverMade);
+    setHowManyInstrumentsIEverMade(howManyInstrumentsIEverMade + 1);
     setUserInstruments([...userInstruments, newInstrument]);
     setUserInstrumentIndex(userInstruments.length);
-    newInstrument.sf2Sampler?.start({ note: 'C4', duration: 0.25 });
-
-  }, [userInstruments]);
+    newInstrument.sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
+  }, [userInstruments, howManyInstrumentsIEverMade]);
 
   const onSf2UploadSuccess = useCallback((sampler: Soundfont2Sampler, sf2InstrumentName: string) => {
     userInstruments[userInstrumentIndex]!.sf2Sampler = sampler;
@@ -98,7 +100,7 @@ export function UserInstrumentsHeader({}: {}) {
     if (userInstrument.sf2Sampler) {
       if (audioContext.state === "suspended") { audioContext.resume(); }
       userInstrument.sf2Sampler.loadInstrument(instrumentName);
-      userInstrument.sf2Sampler.start({ note: 'C4', duration: 0.25 });
+      userInstrument.sf2Sampler.start({ note: getARandomNote(), duration: 0.25 });
     }
     userInstrument.sf2InstrumentName = instrumentName;
     userInstruments[userInstrumentIndex] = { ...userInstrument };
@@ -124,6 +126,18 @@ export function UserInstrumentsHeader({}: {}) {
     setUserInstruments([...userInstruments]);
   }, [userInstruments, userInstrumentIndex]);
 
+  const onTryDeleteInstrument = useCallback(() => {
+    if (userInstruments.length <= 1) return;
+    const confirmed = window.confirm('Really delete the instrument?');
+    if (!confirmed) return;
+    const newInstruments = [...userInstruments];
+    newInstruments.splice(userInstrumentIndex, 1);
+    if (userInstrumentIndex >= newInstruments.length) {
+      setUserInstrumentIndex(userInstrumentIndex-1);
+    }
+    setUserInstruments(newInstruments);
+  }, [userInstruments, userInstrumentIndex]);
+
   const sf2InstOptions = useMemo(() => currUserInstrument.sf2Sampler?.instrumentNames.map(
     (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>), 
     [currUserInstrument.sf2Sampler]
@@ -138,7 +152,7 @@ export function UserInstrumentsHeader({}: {}) {
       }}
       onClick={() => {
         setUserInstrumentIndex(index);
-        userInstruments[index].sf2Sampler?.start({ note: 'C4', duration: 0.25 });
+        userInstruments[index].sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
       }}>
         {userInstrument.name ?? index}
       </UserInstrumentTab>
@@ -148,7 +162,7 @@ export function UserInstrumentsHeader({}: {}) {
   return (
     <>
       <SoundfontHeader $color={currColor}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8}}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', }}>
           <ColorPicker>
             <label htmlFor="instrument-color" style={{
               background: `url('./toolicons1x.png') repeat scroll  0  -126px transparent`,
@@ -188,7 +202,7 @@ export function UserInstrumentsHeader({}: {}) {
               </select>
             </>)}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', }}>
+          <div style={{ display: 'flex', alignItems: 'center', flexGrow: 1, }}>
             <FileInputLabel htmlFor={`sf-uploader-${userInstrumentIndex}`}>Upload .sf2</FileInputLabel>
             <input id={`sf-uploader-${userInstrumentIndex}`} type="file" accept=".sf2" onChange={onUploadSf2} style={{ display: 'none' }} />
             &nbsp;&nbsp;
@@ -198,6 +212,28 @@ export function UserInstrumentsHeader({}: {}) {
               id="user-instrument-volume"
               value={currUserInstrument.volume}
               onChange={onUserInstrumentVolumeChange} />
+          </div>
+          <div onClick={onTryDeleteInstrument}
+            style={{
+              border: '1px solid black',
+              opacity: userInstruments.length > 1 ? 1.0 : 0.2,
+              cursor: userInstruments.length > 1 ? 'pointer' : 'unset',
+              position: 'relative',
+              width: 20,
+              height: 20,
+              content: '',
+              marginRight: 4,
+            }}>
+            <div style={{
+              background: `url('./toolicons1x.png') repeat scroll  ${userInstruments.length > 1 ? '0' : '-25px'}  0 transparent`,
+              width: 25,
+              height: 21,
+              imageRendering: 'pixelated',
+              userSelect: 'none',
+              position: 'absolute',
+              top: -2,
+              left: -3,
+            }}>&nbsp;</div>
           </div>
         </div>
       </SoundfontHeader>
