@@ -216,7 +216,6 @@ export function UserInstrumentsHeader({}: {}) {
           <div onClick={onTryDeleteInstrument}
             style={{
               border: '1px solid black',
-              opacity: userInstruments.length > 1 ? 1.0 : 0.2,
               cursor: userInstruments.length > 1 ? 'pointer' : 'unset',
               position: 'relative',
               width: 20,

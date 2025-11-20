@@ -14,6 +14,7 @@ export const ActionButton = styled.div`
   font-size: 24px;
   cursor: pointer;
   image-rendering: pixelated;
+  user-select: none;
 `;
 
 export function ActionButtons({

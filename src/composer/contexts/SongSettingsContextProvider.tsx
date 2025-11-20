@@ -1,6 +1,8 @@
 import React, { createContext, useCallback, useState } from "react";
 
 export const SongSettingsContext = createContext<{
+  pristine: boolean,
+  setPristine: (pristine: boolean) => void,
   songName: string,
   setSongName: (name: string) => void
   tempo: number,
@@ -14,8 +16,9 @@ export const SongSettingsContext = createContext<{
 } | undefined>(undefined);
 
 export function SongSettingsContextProvider({ children } : { children: React.ReactNode }) {
+  const [pristine, setPristine] = useState(true);
   const [songName, setSongName] = useState('new_song');
-  const [tempo, setTempo] = useState(68);
+  const [tempo, setTempo] = useState(100);
   const [masterVolume, setMasterVolume] = useState(100);
   const [babyDanceFrame, _setBabyDanceFrame] = useState(0);
   const incrementBabyDanceFrame = useCallback(
@@ -25,6 +28,8 @@ export function SongSettingsContextProvider({ children } : { children: React.Rea
   const [playheadPosX, setPlayheadPosX] = useState(1);
   return (
     <SongSettingsContext value={{
+      pristine,
+      setPristine,
       songName,
       setSongName,
       tempo,

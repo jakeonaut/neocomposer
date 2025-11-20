@@ -1,10 +1,10 @@
-import React, { useCallback, useContext, useMemo } from 'react';
+import React, { useCallback, useContext } from 'react';
 import styled from 'styled-components'
-import { CompositionContext, convertCompositionToCompositionByInstrument } from './contexts/CompositionContextProvider';
+import { CompositionContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtons';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
-import { AudioContextContext, SongJsonExport, UserInstrument } from './consts';
+import { AudioContextContext, SongJsonExport } from './consts';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -15,6 +15,16 @@ const SongHeaderContainer = styled.div`
   margin: 2px;
   align-items: center;
 `;
+// const TinySpriteImg = styled.img<{ $frame: number }>`
+//   margin: 10px 6px 8px 8px;
+//   width: 16px;
+//   height: 16px;
+//   image-rendering: pixelated;
+//   transform: scale(1.5);
+//   background-image: url('__tinySprites.png');
+//   background-position: ${({ $frame }) => `${($frame % 8)*-16}px ${Math.floor($frame / 8)*-16}px`};
+//   cursor: pointer;
+// `;
 const DancingBabyImg = styled.img<{ $frame: number }>`
   margin: 8px 6px 10px 8px;
   width: 20px;
@@ -46,12 +56,14 @@ export function SongOptionsHeader({}: {}) {
     // masterVolume,
     // setMasterVolume,
     babyDanceFrame,
+    incrementBabyDanceFrame,
     tempo,
     setTempo,
-    incrementBabyDanceFrame,
+    setPristine,
   } = useContext(SongSettingsContext)!;
   const { 
     composition,
+    setComposition,
     handleClearComposition,
   } = useContext(CompositionContext)!;
   const {
@@ -60,6 +72,15 @@ export function SongOptionsHeader({}: {}) {
     getNewUserInstrument,
     setHowManyInstrumentsIEverMade,
   } = useContext(UserInstrumentContext)!;
+  // const [tinySpriteFrame, setTinySpriteFrame] = useState(0);
+  // const incrementTinySpriteFrame = useCallback(() => {
+  //   if (tinySpriteFrame >= 15) {
+  //     setTinySpriteFrame(0);
+  //   } else {
+  //     setTinySpriteFrame(tinySpriteFrame + 1);
+  //   }
+  // }, [tinySpriteFrame]);
+
   // const onMasterVolumeChange = useCallback(
   //   (e: React.ChangeEvent<HTMLInputElement>) => {
   //     setMasterVolume(parseInt(e.target.value));
@@ -79,7 +100,9 @@ export function SongOptionsHeader({}: {}) {
     })];
     setUserInstruments(newUserInstruments);
     setHowManyInstrumentsIEverMade(newUserInstruments.length);
-  }, [audioContext, getNewUserInstrument, setHowManyInstrumentsIEverMade, setSongName, setTempo, setUserInstruments]);
+    setComposition(convertCompositionByInstrumentToComposition(jsonObj.composition));
+    setPristine(true);
+  }, [audioContext, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPristine, setSongName, setTempo, setUserInstruments]);
   const handleSaveCompositionToFile = useCallback(() => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify({
@@ -102,6 +125,7 @@ export function SongOptionsHeader({}: {}) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    setPristine(true);
   }, [songName, tempo, userInstruments, composition]);
 
   const onLoadSongJson = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -125,6 +149,9 @@ export function SongOptionsHeader({}: {}) {
   return (
     <>
       <SongHeaderContainer>
+        {/* <div><TinySpriteImg src="trans.png" $frame={tinySpriteFrame} onClick={() => {
+          incrementTinySpriteFrame();
+        }}/></div> */}
         <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={() => {
           incrementBabyDanceFrame();
         }}/></div>

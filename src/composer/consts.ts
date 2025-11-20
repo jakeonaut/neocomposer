@@ -76,12 +76,14 @@ export type OctavelessMidiNote = string;
 export type MidiNoteNum = number;
 export type MidiBeat = number;
 export type NoteId = number;
+export enum SubdivisionType { q ='q', t = 't' };
 export type InstrumentInstruction = {
   noteId: number;
   userInstrumentIndex: number;
-  noteWidth: number;
-  midiBeat: MidiBeat;
+  noteWidth: number; // NoteWidth is in units of SubdivisionType...
+  midiBeat: MidiBeat; // MidiBeat is in units of SubdivisionType...
   midiNote: MidiNoteNum;
+  subdivisionType: SubdivisionType,
 };
 export type Offset = { x: number, y: number };
 export type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
@@ -92,11 +94,14 @@ export type Composition = {
     }
   };
 };
+// The number[] represents [measure, note, subdivision, midiNote, noteWidth]
+// useful to represent as an array in the exported json for brevity
+export type CompositionByInstrument = Record<NoteId, (number | SubdivisionType)[][]>;
 export type SongJsonExport = {
   songName: string,
   tempo: number,
   userInstruments: Omit<UserInstrument, 'sf2Sampler'>[],
-  composition: Record<number, number[][]>
+  composition: CompositionByInstrument
 }
 type Bounds = { left: number, right: number, top: number, bottom: number };
 export function getPlacedNotesFromComposition(composition: Composition, bounds?: Bounds) {

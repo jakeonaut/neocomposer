@@ -20,8 +20,8 @@ export function Maestro() {
   const [inputMode, setInputMode] = useState(InputMode.DEFAULT);
   const audioContext = useContext(AudioContextContext)!;
   const {
-    babyDanceFrame,
     incrementBabyDanceFrame,
+    pristine,
   } = useContext(SongSettingsContext)!;
   const {
     userInstruments,
@@ -151,6 +151,16 @@ export function Maestro() {
       document.removeEventListener("keyup", handleKeyUp)
     };
   }, [handleKeyDown, handleKeyUp]);
+  useEffect(() => {
+    if (pristine) {
+      window.onbeforeunload = null;
+    } else {
+      window.onbeforeunload = () => { return true; };
+    }
+    return () => {
+      window.onbeforeunload = null;
+    }
+  }, [pristine]);
 
   return (
     <MaestroContainer>

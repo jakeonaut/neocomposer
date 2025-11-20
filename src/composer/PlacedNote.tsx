@@ -10,7 +10,7 @@ const StyledNote = styled.div<{
   $isNoteSelected?: boolean,
 }>`
   width: ${({ $width }) => `${$width}px`};
-  height: 14px;
+  height: 13px;
   content: " ";
   background-color: ${({ $bgColor }) => $bgColor};
   position: absolute;
@@ -35,6 +35,7 @@ const StyledNote = styled.div<{
 export function PlacedNote({
   children,
   bgColor,
+  beatWidth,
   noteWidth,
   shouldMouseIgnoreMe,
   onMouseDown,
@@ -44,6 +45,7 @@ export function PlacedNote({
 }: {
   children?: React.ReactNode
   bgColor: string;
+  beatWidth: number;
   noteWidth: number;
   shouldMouseIgnoreMe?: boolean;
   onMouseDown?: ReactEventHandler
@@ -55,7 +57,7 @@ export function PlacedNote({
     <StyledNote
       $bgColor={bgColor}
       $isNoteSelected={isNoteSelected}
-      $width={noteWidth * 16 - 1}
+      $width={noteWidth * beatWidth - 1}
       $shouldMouseIgnoreMe={shouldMouseIgnoreMe}
       $isClickedNote={isClickedNote}
       onMouseDown={onMouseDown}

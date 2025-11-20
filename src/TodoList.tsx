@@ -5,6 +5,18 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
+        <li>[ ] Unfortunately, in order to allow switching between subdivisionTypes and allowing triplets, we need to render 
+          <br/>
+          placedNotes x position independent from the grid X position (so not an html child...!)
+          <br />
+          then, note position over the grid can be determined by 
+          y = midiNote * beatHeight
+          x = (measure*16*15 + note*4*15 + (subdivision === 'q' ? subdivision * 15 : subdivision * 20 ))px
+        </li>
+        <li>
+          Pressing [NEW] often leads to and `variable.sf2InstrumentName` undefined error in UserInstrumentsHeader.tsx
+        </li>
+        <hr />
         <li>[ ] import with different sf2s then the default????</li>
         <li>[ ] add an eye icon u can press on an instrument to toggle opacity or visibility and pointer interaction for all notes</li>
         <li>[ ] also add a mute or Solo button for all notes too</li>
