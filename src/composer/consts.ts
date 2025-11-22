@@ -1,8 +1,5 @@
 import { createContext } from "react";
-import { toMidi } from "../smplr/player/midi";
-import { SampleStart } from "../smplr/player/types";
 import { Soundfont2Sampler } from "../smplr/soundfont2";
-import { Soundfont } from "../smplr/soundfont/soundfont";
 
 export const zIndex_placedNote = 1;
 export const zIndex_selectedNote = 2;
@@ -88,13 +85,13 @@ export type InstrumentInstruction = {
 export type Offset = { x: number, y: number };
 export type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
 export type Composition = {
-  [id: MidiBeat]: {
-    [id: MidiNoteNum]: {
+  [id: MidiNoteNum]: {
+    [id: MidiBeat]: {
       [id: NoteId]: InstrumentInstruction;
     }
   };
 };
-// The number[] represents [measure, note, subdivision, midiNote, noteWidth]
+// The (number | SubdivisionType)[] represents [measure, note, subdivision, midiNote, noteWidth]
 // useful to represent as an array in the exported json for brevity
 export type CompositionByInstrument = Record<NoteId, (number | SubdivisionType)[][]>;
 export type SongJsonExport = {
@@ -107,17 +104,17 @@ type Bounds = { left: number, right: number, top: number, bottom: number };
 export function getPlacedNotesFromComposition(composition: Composition, bounds?: Bounds) {
   const allPlacedNotes: InstrumentInstruction[] = [];
   if (bounds) {
-    for (let x = bounds.left; x < bounds.right + 1; x++) {
-      for (let y = bounds.top; y < bounds.bottom + 1; y++) {
-        if (composition[x]?.[y]) {
-          allPlacedNotes.push(...Object.values(composition[x][y]));
+    for (let y = bounds.top; y < bounds.bottom + 1; y++) {
+      for (let x = bounds.left; x < bounds.right + 1; x++) {
+        if (composition[y]?.[x]) {
+          allPlacedNotes.push(...Object.values(composition[y][x]));
         }
       }
     }
   } else {
-    Object.entries(composition).forEach(([_, column]) => {
-      Object.entries(column).forEach(([_, allPlacedNotesStartingHere]) => {
-        Object.values(allPlacedNotesStartingHere).forEach((placedNote) => {
+    Object.entries(composition).forEach(([_, row]) => {
+      Object.entries(row).forEach(([_, instructions]) => {
+        Object.values(instructions).forEach((placedNote) => {
           allPlacedNotes.push(placedNote);
         });
       });

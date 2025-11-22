@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { TodoList } from "../TodoList";
 import { CompositionAndPlayhead } from "./CompositionAndPlayhead";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
-import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys } from "./consts";
+import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, SubdivisionType } from "./consts";
 import { CompositionContext } from "./contexts/CompositionContextProvider";
 import { SongOptionsHeader } from "./SongOptionsHeader";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
@@ -14,6 +14,18 @@ const MaestroContainer = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
+`;
+
+const Header = styled.div`
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
+`;
+
+const Footer = styled.div`
+  max-width: 960px;
+  display: flex;
+  flex-direction: column;
 `;
 
 export function Maestro() {
@@ -32,6 +44,8 @@ export function Maestro() {
     isCompositionMouseDown,
     setIsCompositionMouseDown,
     setOnCompositionMouseUp,
+    subdivisionType,
+    setSubdivisionType,
     clickedNote,
     setClickedNote,
     selectedNotes,
@@ -49,6 +63,14 @@ export function Maestro() {
     setInputMode(newInputMode);
   }, [isCompositionMouseDown]);
 
+  const onToggleSubdivisionType = useCallback(() => {
+      if (subdivisionType === SubdivisionType.q) {
+        setSubdivisionType(SubdivisionType.t);
+      } else if (subdivisionType === SubdivisionType.t) {
+        setSubdivisionType(SubdivisionType.q);
+      }
+    }, [setSubdivisionType, subdivisionType]);
+
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.repeat) {
@@ -56,6 +78,10 @@ export function Maestro() {
       }
       if (document.activeElement?.tagName === "INPUT") {
         return;
+      }
+      if (e.key === "q") {
+        onToggleSubdivisionType();
+        return false;
       }
       if (e.key === "Backspace") {
         if (isCompositionMouseDown) {
@@ -123,7 +149,7 @@ export function Maestro() {
       });
       incrementBabyDanceFrame();
     },
-    [heldPianoKeys, setHeldPianoKeys, userInstruments, userInstrumentIndex, audioContext.currentTime, incrementBabyDanceFrame, isCompositionMouseDown, selectedNotes, clickedNote, setIsCompositionMouseDown, removeCompositionNotes, setSelectedNotes, setClickedNote, setUserInstrumentIndex, trySetInputMode, setOnCompositionMouseUp, isPlaying, handleStopComposition, handlePlayComposition]
+    [heldPianoKeys, setHeldPianoKeys, userInstruments, userInstrumentIndex, audioContext.currentTime, incrementBabyDanceFrame, onToggleSubdivisionType, isCompositionMouseDown, selectedNotes, clickedNote, setIsCompositionMouseDown, removeCompositionNotes, setSelectedNotes, setClickedNote, setUserInstrumentIndex, trySetInputMode, setOnCompositionMouseUp, isPlaying, handleStopComposition, handlePlayComposition]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
@@ -164,24 +190,29 @@ export function Maestro() {
 
   return (
     <MaestroContainer>
-      <SongOptionsHeader />
-      <UserInstrumentsHeader />
+      <Header>
+        <SongOptionsHeader />
+        <UserInstrumentsHeader />
+      </Header>
       {/* Pass setInputMode in directly since we are firing it at the end of a handleMouseUp callback and
         * isCompositionMouseDown won't update the state and the trySetInputMode function until after the event bubbling */}
       <CompositionAndPlayhead inputMode={inputMode} setInputMode={setInputMode} />
-      <ActionButtons inputMode={inputMode} setInputMode={trySetInputMode} />
-      <br />
-      <div style={{ textAlign: 'left'}}>
-      <TodoList />
-      <h3>&nbsp;&nbsp;&nbsp;Tips!</h3>
-      <ul>
-        <li>Click (and drag) the grid to place notes!</li>
-        <li>Click a note again to delete it.</li>
-        <li>Use asdfghjkl;wetyuop keys to practice!</li>
-        <li>Use 1, 2, 3, etc. to quickly swap between instruments!</li>
-        <li>Use ctrl/cmd to quickly swap between note pencil and select mode!</li>
-      </ul>
-      </div>
+      <Footer>
+        <ActionButtons inputMode={inputMode} setInputMode={trySetInputMode} />
+        <br />
+        <div style={{ textAlign: 'left'}}>
+        <TodoList />
+        <h3>&nbsp;&nbsp;&nbsp;Tips!</h3>
+        <ul>
+          <li>Click (and drag) the grid to place notes!</li>
+          <li>Click a note again to delete it.</li>
+          <li>Use asdfghjkl;wetyuop keys to practice!</li>
+          <li>Use 1, 2, 3, etc. to quickly swap between instruments!</li>
+          <li>Use ctrl/cmd to quickly swap between note pencil and select mode!</li>
+          <li>Use Q to toggle triplet-mode! </li>
+        </ul>
+        </div>
+      </Footer>
     </MaestroContainer>
   );
 }

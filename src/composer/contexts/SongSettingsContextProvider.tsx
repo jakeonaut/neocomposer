@@ -11,8 +11,8 @@ export const SongSettingsContext = createContext<{
   setMasterVolume: (volume: number) => void,
   babyDanceFrame: number,
   incrementBabyDanceFrame: () => void,
-  playheadPosX: number
-  setPlayheadPosX: (x: number) => void,
+  playheadPosX: number,
+  setPlayheadPosX: React.Dispatch<React.SetStateAction<number>>,
 } | undefined>(undefined);
 
 export function SongSettingsContextProvider({ children } : { children: React.ReactNode }) {
@@ -25,7 +25,7 @@ export function SongSettingsContextProvider({ children } : { children: React.Rea
     () => _setBabyDanceFrame((prev) => (prev < 3 ? prev + 1 : 0)),
     []
   );
-  const [playheadPosX, setPlayheadPosX] = useState(1);
+  const [playheadPosX, setPlayheadPosX] = useState(0);
   return (
     <SongSettingsContext value={{
       pristine,

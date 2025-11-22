@@ -2,7 +2,7 @@ import React, { useCallback, useContext } from 'react';
 import styled from "styled-components";
 import { CompositionContext } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
-import { InputMode } from './consts';
+import { InputMode, SubdivisionType } from './consts';
 
 export const ActionButtonsContainer = styled.div`
   display: flex;
@@ -26,6 +26,8 @@ export function ActionButtons({
 }) {
   const { tempo, setTempo } = useContext(SongSettingsContext)!;
   const {
+    subdivisionType,
+    setSubdivisionType,
     isPlaying,
     handleStopComposition,
     handlePlayComposition,
@@ -33,6 +35,13 @@ export function ActionButtons({
     handleStopLoop,
     handleStartLoop
   } = useContext(CompositionContext)!;
+  const onToggleSubdivisionType = useCallback(() => {
+    if (subdivisionType === SubdivisionType.q) {
+      setSubdivisionType(SubdivisionType.t);
+    } else if (subdivisionType === SubdivisionType.t) {
+      setSubdivisionType(SubdivisionType.q);
+    }
+  }, [setSubdivisionType, subdivisionType]);
   const onTempoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setTempo(parseInt(e.target.value));
   }, []);
@@ -41,9 +50,9 @@ export function ActionButtons({
       <ActionButton onClick={isPlaying ? handleStopComposition : () => handlePlayComposition({})}>
         {isPlaying ? '⏹️' : '▶️'}
       </ActionButton>
-      <ActionButton onClick={isLooping ? handleStopLoop : handleStartLoop}>
+      {/* <ActionButton onClick={isLooping ? handleStopLoop : handleStartLoop}>
         {isLooping ? '📴' : '🔁'}
-      </ActionButton>
+      </ActionButton> */}
       <label htmlFor="tempo">
         <b>Tempo:</b>
       </label>
@@ -70,7 +79,9 @@ export function ActionButtons({
           ),
         }}>
         <div style={{
-          background: `url('./toolicons1x.png') repeat scroll ${inputMode === InputMode.DEFAULT ? '-25px' : '0'} -147px transparent`,
+          background: `url('./toolicons1x.png') repeat scroll ${
+            inputMode === InputMode.DEFAULT ? '-25px' : '0'
+          } -147px transparent`,
           width: 25,
           height: 21,
         }} />
@@ -91,10 +102,28 @@ export function ActionButtons({
           ),
         }}>
         <div style={{
-          background: `url('./toolicons1x.png') repeat scroll  ${inputMode === InputMode.SELECT ? '-25px' : '0'}  -21px transparent`,
+          background: `url('./toolicons1x.png') repeat scroll  ${
+            inputMode === InputMode.SELECT ? '-25px' : '0'
+          }  -21px transparent`,
           width: 25,
           height: 21,
           imageRendering: 'pixelated',
+        }} />
+      </ActionButton>
+      <ActionButton
+        onClick={onToggleSubdivisionType}
+        style={{
+          border: '1px solid black',
+          paddingBottom: 4,
+          paddingTop: 1,
+          paddingRight: 1,
+        }}>
+        <div style={{
+          background: `url('./toolicons1x.png') repeat scroll ${
+            subdivisionType === SubdivisionType.t ? '-25px' : '0'
+          } -63px transparent`,
+          width: 25,
+          height: 21,
         }} />
       </ActionButton>
     </ActionButtonsContainer>

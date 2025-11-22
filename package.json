@@ -18,6 +18,7 @@
     "smplr": "^0.16.3",
     "soundfont2": "^0.5.0",
     "styled-components": "^6.1.19",
+    "tone": "^15.1.22",
     "typescript": "^4.9.5",
     "web-vitals": "^2.1.4"
   },

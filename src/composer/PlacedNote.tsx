@@ -1,21 +1,23 @@
 import React, { CSSProperties, ReactEventHandler } from "react";
 import styled from "styled-components";
-import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote } from "./consts";
+import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType } from "./consts";
 
 const StyledNote = styled.div<{
   $width: number,
+  $left: number,
   $bgColor: string,
   $shouldMouseIgnoreMe?: boolean,
   $isClickedNote?: boolean,
   $isNoteSelected?: boolean,
 }>`
+  cursor: ${({ $shouldMouseIgnoreMe }) => $shouldMouseIgnoreMe ? 'default' : 'pointer' };
   width: ${({ $width }) => `${$width}px`};
   height: 13px;
   content: " ";
   background-color: ${({ $bgColor }) => $bgColor};
   position: absolute;
-  left: ${({ $isClickedNote, $isNoteSelected }) => $isClickedNote || $isNoteSelected ? '-1px' : '0' };
-  top: ${({ $isClickedNote, $isNoteSelected }) => $isClickedNote || $isNoteSelected ? '-1px' : '0' };
+  left: ${({ $left }) => `${$left}px` };
+  top: ${({ $isClickedNote, $isNoteSelected }) => $isClickedNote || $isNoteSelected ? '0' : '1px' };
   z-index: ${({ $isClickedNote, $isNoteSelected }) => $isClickedNote
     ? zIndex_clickedNote
     : $isNoteSelected
@@ -35,8 +37,7 @@ const StyledNote = styled.div<{
 export function PlacedNote({
   children,
   bgColor,
-  beatWidth,
-  noteWidth,
+  instrumentInstruction,
   shouldMouseIgnoreMe,
   onMouseDown,
   isClickedNote,
@@ -45,18 +46,24 @@ export function PlacedNote({
 }: {
   children?: React.ReactNode
   bgColor: string;
-  beatWidth: number;
-  noteWidth: number;
+  instrumentInstruction: Pick<InstrumentInstruction, 'midiBeat' | 'noteWidth' | 'subdivisionType'>,
   shouldMouseIgnoreMe?: boolean;
   onMouseDown?: ReactEventHandler
   isClickedNote?: boolean;
   isNoteSelected?: boolean;
   style?: CSSProperties
 }) {
+  const { midiBeat, noteWidth, subdivisionType } = instrumentInstruction;
+  const pianoKeyWidth = subdivisionType === SubdivisionType.q ? 15 : 10;
+  const beatWidth = subdivisionType === SubdivisionType.q ? 15 : 20;
+  const leftShift = (isClickedNote || isNoteSelected) ? -1 : 0;
+  const x = midiBeat * beatWidth;
+  const left = x + pianoKeyWidth + 1 + leftShift;
   return (
     <StyledNote
       $bgColor={bgColor}
       $isNoteSelected={isNoteSelected}
+      $left={left}
       $width={noteWidth * beatWidth - 1}
       $shouldMouseIgnoreMe={shouldMouseIgnoreMe}
       $isClickedNote={isClickedNote}

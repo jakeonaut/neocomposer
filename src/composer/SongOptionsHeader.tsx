@@ -1,6 +1,6 @@
 import React, { useCallback, useContext } from 'react';
 import styled from 'styled-components'
-import { CompositionContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument } from './contexts/CompositionContextProvider';
+import { CompositionContext, convertCompositionToCompositionByInstrument } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtons';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
@@ -64,6 +64,7 @@ export function SongOptionsHeader({}: {}) {
   const { 
     composition,
     setComposition,
+    convertCompositionByInstrumentToComposition,
     handleClearComposition,
   } = useContext(CompositionContext)!;
   const {
@@ -102,7 +103,7 @@ export function SongOptionsHeader({}: {}) {
     setHowManyInstrumentsIEverMade(newUserInstruments.length);
     setComposition(convertCompositionByInstrumentToComposition(jsonObj.composition));
     setPristine(true);
-  }, [audioContext, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPristine, setSongName, setTempo, setUserInstruments]);
+  }, [audioContext, convertCompositionByInstrumentToComposition, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPristine, setSongName, setTempo, setUserInstruments]);
   const handleSaveCompositionToFile = useCallback(() => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify({
@@ -126,7 +127,7 @@ export function SongOptionsHeader({}: {}) {
     a.click();
     document.body.removeChild(a);
     setPristine(true);
-  }, [songName, tempo, userInstruments, composition]);
+  }, [songName, tempo, userInstruments, composition, setPristine]);
 
   const onLoadSongJson = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target?.files?.[0]; 

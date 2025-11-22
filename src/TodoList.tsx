@@ -5,25 +5,21 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>[ ] Unfortunately, in order to allow switching between subdivisionTypes and allowing triplets, we need to render 
-          <br/>
-          placedNotes x position independent from the grid X position (so not an html child...!)
-          <br />
-          then, note position over the grid can be determined by 
-          y = midiNote * beatHeight
-          x = (measure*16*15 + note*4*15 + (subdivision === 'q' ? subdivision * 15 : subdivision * 20 ))px
-        </li>
+        <li>[ ] randomly, notes seem unable to be deleted. must be an issue with globalCompositionByInstructionId</li>
+        <li>clicking and dragging notes in the wrong subdivision type is buggy</li>
+        <li>baby playhead is buggy with triplet mode</li>
         <li>
           Pressing [NEW] often leads to and `variable.sf2InstrumentName` undefined error in UserInstrumentsHeader.tsx
         </li>
-        <hr />
         <li>[ ] import with different sf2s then the default????</li>
         <li>[ ] add an eye icon u can press on an instrument to toggle opacity or visibility and pointer interaction for all notes</li>
         <li>[ ] also add a mute or Solo button for all notes too</li>
         <li>[ ] copy and paste (or cut and paste) notes as well with ctrl+x / ctrl+c / ctrl+v</li>
         <li><b>EXPORT TO MP3!!!!!: <a href="https://github.com/zhuker/lamejs">https://github.com/zhuker/lamejs</a></b></li>
         <li>[ ] undo/redo. each action (placing a note(s)), should have an opposite action (deleting a note(s)).</li>
-        <ul><li>this seems preferable than caching the entire state of the application multiple times into memory. will have to have a max undo history though probably..</li></ul>
+        <ul><li>this seems preferable than caching the entire state of the application multiple times into memory.
+          <br/>will have to have a max undo history though probably..</li></ul>
+        <li>[ ] Should be allowed to start a click and drag select by clicking a note... if in select mode</li>
         <li>[ ] should we delete notes that were dragged off the left of the playhead? (when selected with an offset)</li>
         <br/>
         <li>[ ] C1 - C7 (?) Piano range</li>
