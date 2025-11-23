@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { TodoList } from "../TodoList";
 import { CompositionAndPlayhead } from "./CompositionAndPlayhead";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
-import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, SubdivisionType } from "./consts";
+import { AudioContextContext, getARandomNote, InputMode, InstrumentInstructionWithOffset, keyboardPianoKeys, SubdivisionType } from "./consts";
 import { CompositionContext } from "./contexts/CompositionContextProvider";
 import { SongOptionsHeader } from "./SongOptionsHeader";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
@@ -41,6 +41,7 @@ export function Maestro() {
     setUserInstrumentIndex,
   } = useContext(UserInstrumentContext)!;
   const {
+    compositionByInstructionIdRef,
     isCompositionMouseDown,
     setIsCompositionMouseDown,
     setOnCompositionMouseUp,
@@ -78,6 +79,19 @@ export function Maestro() {
       }
       if (document.activeElement?.tagName === "INPUT") {
         return;
+      }
+      if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
+        setSelectedNotes({
+          ...(Object.entries(compositionByInstructionIdRef.current).reduce((acc, [noteId, instrumentInstruction]) => ({
+            ...acc,
+            [noteId]: {
+              instrumentInstruction,
+              offset: { x: 0, y: 0 },
+            },
+          }), {} as Record<string, InstrumentInstructionWithOffset>)),
+        });
+        e.preventDefault();
+        return false;
       }
       if (e.key === "q") {
         onToggleSubdivisionType();
@@ -122,7 +136,7 @@ export function Maestro() {
         }
         return false;
       }
-      if (e.key === "Meta" || e.key === "Control") {
+      if (e.key === "Shift") {
         trySetInputMode(InputMode.SELECT);
         if (isCompositionMouseDown) {
           setOnCompositionMouseUp(() => (() => setInputMode(InputMode.SELECT)));
@@ -149,11 +163,11 @@ export function Maestro() {
       });
       incrementBabyDanceFrame();
     },
-    [heldPianoKeys, setHeldPianoKeys, userInstruments, userInstrumentIndex, audioContext.currentTime, incrementBabyDanceFrame, onToggleSubdivisionType, isCompositionMouseDown, selectedNotes, clickedNote, setIsCompositionMouseDown, removeCompositionNotes, setSelectedNotes, setClickedNote, setUserInstrumentIndex, trySetInputMode, setOnCompositionMouseUp, isPlaying, handleStopComposition, handlePlayComposition]
+    [heldPianoKeys, setHeldPianoKeys, userInstruments, userInstrumentIndex, audioContext.currentTime, incrementBabyDanceFrame, setSelectedNotes, compositionByInstructionIdRef, onToggleSubdivisionType, isCompositionMouseDown, selectedNotes, clickedNote, setIsCompositionMouseDown, removeCompositionNotes, setClickedNote, setUserInstrumentIndex, trySetInputMode, setOnCompositionMouseUp, isPlaying, handleStopComposition, handlePlayComposition]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
-    if (e.key === "Meta" || e.key === "Control") {
+    if (e.key === "Shift") {
       trySetInputMode(InputMode.DEFAULT);
       if (isCompositionMouseDown) {
         setOnCompositionMouseUp(() => (() => setInputMode(InputMode.DEFAULT)));
@@ -208,7 +222,7 @@ export function Maestro() {
           <li>Click a note again to delete it.</li>
           <li>Use asdfghjkl;wetyuop keys to practice!</li>
           <li>Use 1, 2, 3, etc. to quickly swap between instruments!</li>
-          <li>Use ctrl/cmd to quickly swap between note pencil and select mode!</li>
+          <li>Use shift to quickly swap between note pencil and select mode!</li>
           <li>Use Q to toggle triplet-mode! </li>
         </ul>
         </div>

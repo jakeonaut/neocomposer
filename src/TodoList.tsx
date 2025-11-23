@@ -5,11 +5,11 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>[ ] randomly, notes seem unable to be deleted. must be an issue with globalCompositionByInstructionId</li>
         <li>clicking and dragging notes in the wrong subdivision type is buggy</li>
-        <li>baby playhead is buggy with triplet mode</li>
+        <li>[ ] - dragging multiple notes doesn't move the other notes midiNote... it's all wrong </li>
         <li>
-          Pressing [NEW] often leads to and `variable.sf2InstrumentName` undefined error in UserInstrumentsHeader.tsx
+          Pressing [NEW] often leads to and `variable.sf2InstrumentName` undefined error in UserInstrumentsHeader.tsx.
+          <br/>-Easy to replicate when you create a new instrument and then reset.
         </li>
         <li>[ ] import with different sf2s then the default????</li>
         <li>[ ] add an eye icon u can press on an instrument to toggle opacity or visibility and pointer interaction for all notes</li>

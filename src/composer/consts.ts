@@ -85,8 +85,8 @@ export type InstrumentInstruction = {
 export type Offset = { x: number, y: number };
 export type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
 export type Composition = {
-  [id: MidiNoteNum]: {
-    [id: MidiBeat]: {
+  [id: MidiBeat]: {
+    [id: MidiNoteNum]: {
       [id: NoteId]: InstrumentInstruction;
     }
   };
@@ -103,11 +103,12 @@ export type SongJsonExport = {
 type Bounds = { left: number, right: number, top: number, bottom: number };
 export function getPlacedNotesFromComposition(composition: Composition, bounds?: Bounds) {
   const allPlacedNotes: InstrumentInstruction[] = [];
+  debugger;
   if (bounds) {
     for (let y = bounds.top; y < bounds.bottom + 1; y++) {
       for (let x = bounds.left; x < bounds.right + 1; x++) {
-        if (composition[y]?.[x]) {
-          allPlacedNotes.push(...Object.values(composition[y][x]));
+        if (composition[x]?.[y]) {
+          allPlacedNotes.push(...Object.values(composition[x][y]));
         }
       }
     }
