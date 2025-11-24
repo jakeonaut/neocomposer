@@ -43,7 +43,7 @@ const pianoRollKeys: MidiNote[] = [];
 pianoRollKeys.push(...["C5", "Db5", "D5", "Eb5", "E5", "F5"]);
 pianoRollKeys.reverse();
 const beatHeight = 15;
-const pianoRollBeats: number[] = new Array(70);
+const pianoRollBeats: number[] = new Array(80);
 pianoRollBeats.fill(0);
 
 const GridCell = styled.div<{
@@ -98,6 +98,17 @@ const BabyPlayheadImg = styled.img<{ $frame: number }>`
   top: -6px;
   left: 0;
   background-position: ${({ $frame }) => `${$frame * -20}px 0px`};
+`;
+
+const CompositionContainer = styled.div`
+  display: flex; 
+  flex-direction: column;
+  // max-width: 100%;
+  // overflow-x: auto;
+  // overflow-y: visible;
+  // border: 1px solid lightgrey;
+  // padding: 4px 0 16px;
+  // margin: 0 12px;
 `;
 
 function getMidiBeatFromGridBeat(gridBeat: MidiBeat, subdivisionType: SubdivisionType) {
@@ -193,29 +204,23 @@ export function CompositionAndPlayhead({
       e.preventDefault();
       e.stopPropagation();
       setOnCompositionMouseUp(undefined);
-      if (!clickedNoteRef.current && Object.entries(selectedNotesRef.current).length > 0 && inputMode !== InputMode.SELECT) {
-        setIsMouseDown(false);
-        setCursorPosition(undefined);
-        setStartingCursorPos(undefined);
-      } else {
-        setIsMouseDown(true);
-        setCursorPosition({ midiNote, midiBeat: midiBeat - cursorXOffsetRef.current });
-        setStartingCursorPos({ midiNote, midiBeat });
-        if (!clickedNoteRef.current && inputMode === InputMode.DEFAULT) {
-          if (audioContext.state === "suspended") {
-            audioContext.resume();
-          }
-          currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 });
+      setIsMouseDown(true);
+      setCursorPosition({ midiNote, midiBeat: midiBeat - cursorXOffsetRef.current });
+      setStartingCursorPos({ midiNote, midiBeat });
+      if (!clickedNoteRef.current && inputMode === InputMode.DEFAULT) {
+        if (audioContext.state === "suspended") {
+          audioContext.resume();
         }
+        currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 });
       }
       hasMouseMovedRef.current = false;
-      if (!clickedNoteRef.current || !isNoteSelected(clickedNoteRef.current)) {
+      if (inputMode === InputMode.DEFAULT && (!clickedNoteRef.current || !isNoteSelected(clickedNoteRef.current))) {
         setSelectedNotes({});
         selectedNotesRef.current = {};
       }
       return false;
     },
-    [setOnCompositionMouseUp, inputMode, isNoteSelected, setIsMouseDown, audioContext, currUserInstrument.sf2Sampler, setSelectedNotes]
+    [setOnCompositionMouseUp, setIsMouseDown, inputMode, isNoteSelected, audioContext, currUserInstrument.sf2Sampler, setSelectedNotes]
   );
   const handleMouseUp = useCallback(
     (
@@ -291,11 +296,23 @@ export function CompositionAndPlayhead({
             right: getMidiBeatFromGridBeat(Math.max(cursorPosition.midiBeat, startingCursorPos.midiBeat), subdivisionType),
             bottom: Math.max(toMidi(cursorPosition.midiNote)!, toMidi(startingCursorPos.midiNote)!),
           }
-          const notes = getPlacedNotesFromComposition(composition, bounds);
-          selectedNotesRef.current = notes.reduce((acc, note) => ({ ...acc, [note.noteId]: {
-            instrumentInstruction: note,
-            offset: { x: 0, y: 0 },
-          } as InstrumentInstructionWithOffset}), {});
+          const newlySelectedNotes = getPlacedNotesFromComposition(composition, bounds);
+          if (Object.keys(newlySelectedNotes).length === 0 && !hasMouseMovedRef.current) {
+            selectedNotesRef.current = {};
+          } else {
+            selectedNotesRef.current = {
+              ...selectedNotesRef.current,
+              ...(Object.values(newlySelectedNotes).reduce((acc, note) => (
+                {
+                  ...acc,
+                  [note.noteId]: {
+                    instrumentInstruction: note,
+                    offset: { x: 0, y: 0 },
+                  }
+                } as InstrumentInstructionWithOffset), {})
+              ),
+            };
+          }
           setSelectedNotes(selectedNotesRef.current);
         }
       }
@@ -393,7 +410,7 @@ export function CompositionAndPlayhead({
   console.log('rerender', selectedNotes);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
+    <CompositionContainer>
       <div style={{ marginLeft: 22, height: 15, content: ' ', position: 'relative' }}>
         {playheadNode}
       </div>
@@ -429,6 +446,10 @@ export function CompositionAndPlayhead({
             <div
               key={`row-${midiNote}`}
               style={{
+                // outline: "1px solid black",
+                // zIndex: 3,
+                // background: "white",
+                // position: "fixed",
                 width: pianoKeyWidth,
                 minWidth: pianoKeyWidth,
                 textAlign: "left",
@@ -492,19 +513,17 @@ export function CompositionAndPlayhead({
                       bgColor={userInstruments[noteWithOffset.instrumentInstruction.userInstrumentIndex].color}
                       instrumentInstruction={{
                         midiBeat: getMidiBeatFromGridBeat(cursorPosition.midiBeat + cursorXOffsetRef.current + noteWithOffset.offset.x, subdivisionType),
-                        midiNote: noteWithOffset.instrumentInstruction.midiNote,
+                        midiNote: cursorPosition.midiNote - noteWithOffset.offset.y,
                         noteWidth: noteWithOffset.instrumentInstruction.noteWidth,
                         subdivisionType,
                       }}
                       isNoteSelected
                       isClickedNote
-                      style={{
-                        top: (noteWithOffset.offset.y) * (beatHeight - 1),
-                      }}
                     />
                   ))}
                 </>
               )}
+            {/* <div style={{ width: pianoKeyWidth, minWidth: pianoKeyWidth }}></div> */}
             {pianoRollBeats.map((_, idx) => {
               const index = idx + 1;
               return (
@@ -540,6 +559,6 @@ export function CompositionAndPlayhead({
           </div>
         ))}
       </div>
-    </div>
+    </CompositionContainer>
   );
 }

@@ -36,7 +36,8 @@ export function CompositionContextProvider({
     userInstruments,
     setHowManyInstrumentsIEverMade,
     setUserInstruments,
-    getNewUserInstrument
+    getNewUserInstrument,
+    setUserInstrumentIndex,
   } = useContext(UserInstrumentContext)!;
   const [subdivisionType, setSubdivisionType] = useState(SubdivisionType.q);
   const [heldPianoKeys, setHeldPianoKeys] = useState<Record<string, boolean>>({});
@@ -209,6 +210,7 @@ export function CompositionContextProvider({
     setPlayheadPosX(0);
     setComposition({});
     setIsPlaying(false);
+    setUserInstrumentIndex(0);
     setUserInstruments([getNewUserInstrument(audioContext, 0)]);
     setHowManyInstrumentsIEverMade(1);
   }, [audioContext, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstruments, userInstruments]);

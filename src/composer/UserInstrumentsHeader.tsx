@@ -31,7 +31,7 @@ const FileInputLabel = styled.label`
 `;
 const UserInstrumentSelector = styled.div`
   display: flex;
-  margin: 0px 0px 16px 28px;
+  margin: 0px 0px 12px 28px;
 `;
 const UserInstrumentTab = styled.div`
   display: flex;
@@ -63,7 +63,7 @@ export function UserInstrumentsHeader({}: {}) {
     getNewUserInstrument,
   } = useContext(UserInstrumentContext)!;
   const currUserInstrument = useMemo(() => userInstruments[userInstrumentIndex], [userInstruments, userInstrumentIndex]);
-  const selectedSf2InstOption = useMemo(() => currUserInstrument.sf2InstrumentName, [currUserInstrument.sf2InstrumentName]);
+  const selectedSf2InstOption = useMemo(() => currUserInstrument.sf2InstrumentName, [currUserInstrument]);
 
   const onAddNewUserInstrument = useCallback(() => {
     const newInstrument = getNewUserInstrument(audioContext, howManyInstrumentsIEverMade);
@@ -71,7 +71,7 @@ export function UserInstrumentsHeader({}: {}) {
     setUserInstruments([...userInstruments, newInstrument]);
     setUserInstrumentIndex(userInstruments.length);
     newInstrument.sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
-  }, [userInstruments, howManyInstrumentsIEverMade]);
+  }, [getNewUserInstrument, audioContext, howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade, setUserInstruments, userInstruments, setUserInstrumentIndex]);
 
   const onSf2UploadSuccess = useCallback((sampler: Soundfont2Sampler, sf2InstrumentName: string) => {
     userInstruments[userInstrumentIndex]!.sf2Sampler = sampler;
@@ -88,7 +88,7 @@ export function UserInstrumentsHeader({}: {}) {
     });
     // weird. https://stackoverflow.com/questions/12030686/html-input-file-selection-event-not-firing-upon-selecting-the-same-file
     (document.getElementById(`sf-uploader-${userInstrumentIndex}`) as HTMLInputElement)!.value = null as unknown as string;
-  }, [userInstruments, userInstrumentIndex]);
+  }, [userInstruments, userInstrumentIndex, setUserInstruments, audioContext.currentTime, incrementBabyDanceFrame]);
   const onUploadSf2 = useUploadSf2({
     audioContext,
     onLoadSuccess: onSf2UploadSuccess,
@@ -105,7 +105,7 @@ export function UserInstrumentsHeader({}: {}) {
     userInstrument.sf2InstrumentName = instrumentName;
     userInstruments[userInstrumentIndex] = { ...userInstrument };
     setUserInstruments([...userInstruments]);
-  }, [userInstruments, userInstrumentIndex, audioContext]);
+  }, [userInstruments, userInstrumentIndex, setUserInstruments, audioContext]);
 
   const onUserInstrumentVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const userInstrument = userInstruments[userInstrumentIndex];
@@ -117,14 +117,14 @@ export function UserInstrumentsHeader({}: {}) {
     userInstrument.volume = volume;
     userInstruments[userInstrumentIndex] = { ...userInstrument };
     setUserInstruments([...userInstruments]);
-  }, [userInstruments, userInstrumentIndex]);
+  }, [userInstruments, userInstrumentIndex, setUserInstruments]);
 
   const onColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const userInstrument = userInstruments[userInstrumentIndex];
     userInstrument.color = e.target.value;
     userInstruments[userInstrumentIndex] = { ...userInstrument };
     setUserInstruments([...userInstruments]);
-  }, [userInstruments, userInstrumentIndex]);
+  }, [userInstruments, userInstrumentIndex, setUserInstruments]);
 
   const onTryDeleteInstrument = useCallback(() => {
     if (userInstruments.length <= 1) return;
@@ -136,7 +136,7 @@ export function UserInstrumentsHeader({}: {}) {
       setUserInstrumentIndex(userInstrumentIndex-1);
     }
     setUserInstruments(newInstruments);
-  }, [userInstruments, userInstrumentIndex]);
+  }, [userInstruments, userInstrumentIndex, setUserInstruments, setUserInstrumentIndex]);
 
   const sf2InstOptions = useMemo(() => currUserInstrument.sf2Sampler?.instrumentNames.map(
     (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>), 
@@ -156,7 +156,7 @@ export function UserInstrumentsHeader({}: {}) {
       }}>
         {userInstrument.name ?? index}
       </UserInstrumentTab>
-  )), [userInstruments, userInstrumentIndex]);
+  )), [userInstruments, userInstrumentIndex, setUserInstrumentIndex]);
   
   const currColor = currUserInstrument.color ?? 'white';
   return (

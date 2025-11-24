@@ -6,11 +6,6 @@ export function TodoList() {
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
         <li>clicking and dragging notes in the wrong subdivision type is buggy</li>
-        <li>[ ] - dragging multiple notes doesn't move the other notes midiNote... it's all wrong </li>
-        <li>
-          Pressing [NEW] often leads to and `variable.sf2InstrumentName` undefined error in UserInstrumentsHeader.tsx.
-          <br/>-Easy to replicate when you create a new instrument and then reset.
-        </li>
         <li>[ ] import with different sf2s then the default????</li>
         <li>[ ] add an eye icon u can press on an instrument to toggle opacity or visibility and pointer interaction for all notes</li>
         <li>[ ] also add a mute or Solo button for all notes too</li>
@@ -21,6 +16,7 @@ export function TodoList() {
           <br/>will have to have a max undo history though probably..</li></ul>
         <li>[ ] Should be allowed to start a click and drag select by clicking a note... if in select mode</li>
         <li>[ ] should we delete notes that were dragged off the left of the playhead? (when selected with an offset)</li>
+        <li>[ ] QOL - could remove notes from the selection that are reselected with shift (like a toggle... like Finder)</li>
         <br/>
         <li>[ ] C1 - C7 (?) Piano range</li>
         <li>[ ] Longer tracks</li>

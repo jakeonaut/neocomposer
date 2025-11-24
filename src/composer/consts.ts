@@ -102,22 +102,34 @@ export type SongJsonExport = {
 }
 type Bounds = { left: number, right: number, top: number, bottom: number };
 export function getPlacedNotesFromComposition(composition: Composition, bounds?: Bounds) {
-  const allPlacedNotes: InstrumentInstruction[] = [];
-  debugger;
+  const allPlacedNotes: { [id: NoteId]: InstrumentInstruction } = {};
+  const compositionByMidiNote = Object.values(composition).reduce((acc, column) => {
+    Object.entries(column).forEach(([midiNote, instrumentInstructions]) => {
+      const midiNoteNum = parseInt(midiNote);
+      if (!acc[midiNoteNum]) { acc[midiNoteNum] = {} }
+      acc[midiNoteNum] = {
+        ...instrumentInstructions,
+        ...acc[midiNoteNum],
+      };
+    });
+    return acc;
+  }, {} as { [id: MidiNoteNum]: { [id: NoteId]: InstrumentInstruction }});
+ 
   if (bounds) {
     for (let y = bounds.top; y < bounds.bottom + 1; y++) {
-      for (let x = bounds.left; x < bounds.right + 1; x++) {
-        if (composition[x]?.[y]) {
-          allPlacedNotes.push(...Object.values(composition[x][y]));
+      if (!compositionByMidiNote[y]) continue;
+      Object.values(compositionByMidiNote[y]).forEach((note) => {
+        if ((bounds.left <= note.midiBeat + note.noteWidth - 1 && bounds.left >= note.midiBeat)
+           || (bounds.right >= note.midiBeat && bounds.right <= note.midiBeat + note.noteWidth - 1)
+           || (bounds.left <= note.midiBeat && bounds.right >= note.midiBeat + note.noteWidth - 1)) {
+          allPlacedNotes[note.noteId] = note;
         }
-      }
+      });
     }
   } else {
-    Object.entries(composition).forEach(([_, row]) => {
-      Object.entries(row).forEach(([_, instructions]) => {
-        Object.values(instructions).forEach((placedNote) => {
-          allPlacedNotes.push(placedNote);
-        });
+    Object.values(compositionByMidiNote).forEach((instrumentInstructions) => {
+      Object.values(instrumentInstructions).forEach((note) => {
+        allPlacedNotes[note.noteId] = note;
       });
     });
   }
