@@ -179,7 +179,6 @@ export function Maestro() {
       : undefined;
     if (!playedNote) return;
     delete heldPianoKeys[playedNote];
-    console.log("keyup:",heldPianoKeys);
     setHeldPianoKeys({...heldPianoKeys});
   }, [heldPianoKeys, setHeldPianoKeys, trySetInputMode, isCompositionMouseDown, setOnCompositionMouseUp]);
 

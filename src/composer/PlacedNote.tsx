@@ -63,11 +63,12 @@ export function PlacedNote({
   const { midiBeat, midiNote, noteWidth, subdivisionType } = instrumentInstruction;
   const pianoKeyWidth = 15;
   const beatWidth = subdivisionType === SubdivisionType.q ? 15 : 20;
+  
   const topShift = (isClickedNote || isNoteSelected) ? -1 : 0
   const y = (topmostMidiNote - midiNote) * BEAT_HEIGHT;
   const top = y + 1 + topShift;
-  const leftShift = (isClickedNote || isNoteSelected) ? -1 : 0;
 
+  const leftShift = (isClickedNote || isNoteSelected) ? -1 : 0;
   const x = midiBeat * BEAT_WIDTH;
   const tripletLeftShift = subdivisionType === SubdivisionType.t ? 5 * ((midiBeat - 1) % 4) : 0;
   const left = x + pianoKeyWidth + 1 + leftShift + tripletLeftShift;

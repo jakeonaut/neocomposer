@@ -5,7 +5,6 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>clicking and dragging notes in the wrong subdivision type is buggy</li>
         <li>[ ] import with different sf2s then the default????</li>
         <li>[ ] add an eye icon u can press on an instrument to toggle opacity or visibility and pointer interaction for all notes</li>
         <li>[ ] also add a mute or Solo button for all notes too</li>
@@ -17,6 +16,12 @@ export function TodoList() {
         <li>[ ] Should be allowed to start a click and drag select by clicking a note... if in select mode</li>
         <li>[ ] should we delete notes that were dragged off the left of the playhead? (when selected with an offset)</li>
         <li>[ ] QOL - could remove notes from the selection that are reselected with shift (like a toggle... like Finder)</li>
+        <h3>[ ] - solution to the 2 problems below:</h3>
+        <li>hi</li>
+        <br/>
+        <li>clicking and dragging multiple triplet notes doesn't properly set their relative note offsets to each other</li>
+        <li>same with clicking and dragging quarter notes when triplets are ALSO selected</li>
+        <hr />
         <br/>
         <li>[ ] C1 - C7 (?) Piano range</li>
         <li>[ ] Longer tracks</li>

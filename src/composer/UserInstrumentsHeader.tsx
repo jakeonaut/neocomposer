@@ -5,6 +5,7 @@ import { Soundfont2Sampler } from '../smplr/soundfont2';
 import { AudioContextContext, getARandomNote } from './consts';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
+import { CompositionContext } from './contexts/CompositionContextProvider';
 
 const SoundfontHeader = styled.div<{ $color: string }>`
   height: 28px;
@@ -53,6 +54,7 @@ const UserInstrumentTab = styled.div`
 export function UserInstrumentsHeader({}: {}) {
   const audioContext = useContext(AudioContextContext)!;
   const { incrementBabyDanceFrame } = useContext(SongSettingsContext)!;
+  const { removeInstrumentFromComposition } = useContext(CompositionContext)!;
   const {
     userInstruments,
     setUserInstruments,
@@ -128,7 +130,7 @@ export function UserInstrumentsHeader({}: {}) {
 
   const onTryDeleteInstrument = useCallback(() => {
     if (userInstruments.length <= 1) return;
-    const confirmed = window.confirm('Really delete the instrument?');
+    const confirmed = window.confirm('Really delete ❌ the instrument? 🎷 All corresponding notes 🎶 will be deleted 🚯 too!!! 😱');
     if (!confirmed) return;
     const newInstruments = [...userInstruments];
     newInstruments.splice(userInstrumentIndex, 1);
@@ -136,7 +138,8 @@ export function UserInstrumentsHeader({}: {}) {
       setUserInstrumentIndex(userInstrumentIndex-1);
     }
     setUserInstruments(newInstruments);
-  }, [userInstruments, userInstrumentIndex, setUserInstruments, setUserInstrumentIndex]);
+    removeInstrumentFromComposition(userInstrumentIndex);
+  }, [userInstruments, userInstrumentIndex, setUserInstruments, removeInstrumentFromComposition, setUserInstrumentIndex]);
 
   const sf2InstOptions = useMemo(() => currUserInstrument.sf2Sampler?.instrumentNames.map(
     (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>), 

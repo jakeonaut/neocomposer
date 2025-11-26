@@ -52,6 +52,7 @@ export function CompositionContextProvider({
   const playerIdRef = useRef(undefined as number | undefined);
   const playheadBeatRef = useRef(1);
   const instructionIdRef = useRef(0);
+  const compositionRef = useRef({} as Composition);
   const compositionByInstructionIdRef = useRef({} as Record<string, InstrumentInstruction>);
 
   const setComposition = useCallback((newComposition: Composition) => {
@@ -63,6 +64,7 @@ export function CompositionContextProvider({
         });
       });
     });
+    compositionRef.current = newComposition;
     _setComposition(newComposition);
   }, []);
 
@@ -98,16 +100,41 @@ export function CompositionContextProvider({
       const instrumentInstruction = compositionByInstructionIdRef.current[id];
       if (!instrumentInstruction) return;
       const { midiBeat, midiNote, noteId } = instrumentInstruction;
-      delete composition[midiBeat][midiNote][noteId];
-      if (Object.keys(composition[midiBeat][midiNote]).length === 0) {
-        delete composition[midiBeat][midiNote];
+      delete newComposition[midiBeat][midiNote][noteId];
+      if (Object.keys(newComposition[midiBeat][midiNote]).length === 0) {
+        delete newComposition[midiBeat][midiNote];
       }
-      if (Object.keys(composition[midiBeat]).length === 0) {
-        delete composition[midiBeat];
+      if (Object.keys(newComposition[midiBeat]).length === 0) {
+        delete newComposition[midiBeat];
       }
       delete compositionByInstructionIdRef.current[noteId];
     })
+    compositionRef.current = newComposition;
     _setComposition(newComposition);
+  }, [composition]);
+  const removeInstrumentFromComposition = useCallback((userInstrumentIndexToDelete: number) => {
+    const newComposition = { ...composition };
+    Object.entries(newComposition).forEach(([midiBeatStr, column]) => {
+      Object.entries(column).forEach(([midiNoteStr, row]) => {
+        Object.entries(row).forEach(([noteIdStr, instrumentInstruction]) => {
+          const midiBeat = parseInt(midiBeatStr);
+          const midiNote = parseInt(midiNoteStr);
+          const noteId = parseInt(noteIdStr);
+          if (instrumentInstruction.userInstrumentIndex === userInstrumentIndexToDelete) {
+            delete newComposition[midiBeat][midiNote][noteId];
+            if (Object.keys(newComposition[midiBeat][midiNote]).length === 0) {
+              delete newComposition[midiBeat][midiNote];
+            }
+            if (Object.keys(newComposition[midiBeat]).length === 0) {
+              delete newComposition[midiBeat];
+            }
+          } else if (instrumentInstruction.userInstrumentIndex > userInstrumentIndexToDelete) {
+            newComposition[midiBeat][midiNote][noteId].userInstrumentIndex -= 1;
+          }
+        });
+      });
+    });
+    setComposition(newComposition);
   }, [composition]);
   const addCompositionNotes = useCallback(
     (notesToAdd: (Omit<InstrumentInstruction, 'noteId'> & { noteId?: number })[]) => {
@@ -124,6 +151,7 @@ export function CompositionContextProvider({
         newComposition[midiBeat][midiNote][noteId] = newInstrumentInstruction;
         compositionByInstructionIdRef.current[noteId] = newInstrumentInstruction;
       });
+      compositionRef.current = newComposition;
       _setComposition(newComposition);
     },
     [composition]
@@ -150,8 +178,8 @@ export function CompositionContextProvider({
       // }
       const midiBeat = playheadBeatRef.current;
       const now = audioContext.currentTime;
-      if (composition[midiBeat]) {
-        Object.values(composition[midiBeat]).forEach((midiNoteInstructions) => 
+      if (compositionRef.current[midiBeat]) {
+        Object.values(compositionRef.current[midiBeat]).forEach((midiNoteInstructions) => 
           Object.values(midiNoteInstructions).forEach((instrumentInstruction) => {
             const { midiNote } = instrumentInstruction;
             // TODO(jaketrower): in order to achieve ^^, will need playhead to instantiate sampler play at runtime,
@@ -176,7 +204,7 @@ export function CompositionContextProvider({
       playerIdRef.current = window.setTimeout(scheduler, beatLengthInMs);
     }
     window.setTimeout(scheduler, 0);
-  }, [audioContext, composition, setPlayheadPosX, tempo, userInstruments]);
+  }, [audioContext, setPlayheadPosX, tempo, userInstruments]);
 
   const handleStopComposition = useCallback(() => {
     if (playerIdRef.current) {
@@ -235,6 +263,7 @@ export function CompositionContextProvider({
       setSelectedNotes,
       addCompositionNotes,
       removeCompositionNotes,
+      removeInstrumentFromComposition,
       handlePlayComposition,
       handleStopComposition,
       handleClearComposition,
@@ -266,6 +295,7 @@ export const CompositionContext = createContext<{
       noteId?: number;
     })[]) => void,
   removeCompositionNotes: (noteIdsToRemove: string[]) => void,
+  removeInstrumentFromComposition: (userInstrumentIndex: number) => void,
   clickedNote: InstrumentInstruction | undefined,
   setClickedNote: (note: InstrumentInstruction | undefined) => void
   selectedNotes: Record<string, InstrumentInstructionWithOffset>,
