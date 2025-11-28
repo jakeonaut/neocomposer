@@ -15,6 +15,32 @@ export const sf2DefaultColours = [
   "#9b9b9b",
 ];
 
+const fullOctave: OctavelessMidiNote[] = [
+  "C",
+  "Db",
+  "D",
+  "Eb",
+  "E",
+  "F",
+  "Gb",
+  "G",
+  "Ab",
+  "A",
+  "Bb",
+  "B",
+];
+export const pianoRollKeys: MidiNote[] = [];
+[3, 4].forEach((octave) =>
+  fullOctave.forEach((note: OctavelessMidiNote) =>
+    pianoRollKeys.push(`${note}${octave}`)
+  )
+);
+pianoRollKeys.push(...["C5", "Db5", "D5", "Eb5", "E5", "F5"]);
+pianoRollKeys.reverse();
+export const beatHeight = 15;
+export const pianoRollBeats: number[] = new Array(80);
+pianoRollBeats.fill(0);
+
 export const keyboardPianoKeys = new Map(
   Object.entries({
     a: "C4",

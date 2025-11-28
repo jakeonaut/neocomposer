@@ -5,6 +5,7 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
+        <li>[ ] - https://react-window.vercel.app/ important to note make big grid SO SLOW@!!!!!</li>
         <li>[ ] import with different sf2s then the default????</li>
         <li>[ ] add an eye icon u can press on an instrument to toggle opacity or visibility and pointer interaction for all notes</li>
         <li>[ ] also add a mute or Solo button for all notes too</li>

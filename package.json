@@ -12,9 +12,11 @@
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
     "jszip": "^3.10.1",
+    "lodash": "^4.17.21",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-scripts": "5.0.1",
+    "react-window": "^2.2.3",
     "soundfont2": "^0.5.0",
     "styled-components": "^6.1.19",
     "tone": "^15.1.22",
@@ -46,6 +48,7 @@
     ]
   },
   "devDependencies": {
-    "@types/audioworklet": "^0.0.90"
+    "@types/audioworklet": "^0.0.90",
+    "@types/lodash": "^4.17.21"
   }
 }

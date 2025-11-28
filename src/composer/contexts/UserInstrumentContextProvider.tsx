@@ -1,12 +1,14 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { AudioContextContext, sf2DefaultColours, UserInstrument } from "../consts";
 import { Soundfont2Sampler } from "../../smplr/soundfont2";
 import { SoundFont2 } from 'soundfont2';
 
 export const UserInstrumentContext = createContext<{
   userInstruments: UserInstrument[],
+  userInstrumentsRef: React.RefObject<UserInstrument[]>,
   setUserInstruments: (userInstruments: UserInstrument[]) => void,
   userInstrumentIndex: number,
+  userInstrumentIndexRef: React.RefObject<number>,
   setUserInstrumentIndex: (userInstrumentIndex: number) => void,
   howManyInstrumentsIEverMade: number,
   setHowManyInstrumentsIEverMade: (num: number) => void,
@@ -38,10 +40,23 @@ export function createUserInstrument(audioContext: AudioContext, index: number, 
 
 export function UserInstrumentContextProvider({ children } : { children: React.ReactNode}) {
   const audioContext = useContext(AudioContextContext)!;
-  const [userInstruments, setUserInstruments] = useState<UserInstrument[]>([createUserInstrument(audioContext, 0)]);
-  const [userInstrumentIndex, setUserInstrumentIndex] = useState(0);
+  const [userInstruments, _setUserInstruments] = useState<UserInstrument[]>([createUserInstrument(audioContext, 0)]);
+  const [userInstrumentIndex, _setUserInstrumentIndex] = useState(0);
   const [howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade] = useState(1);
   const [defaultSoundfontBuffer, setDefaultSoundfontBuffer] = useState<Uint8Array | undefined>(undefined);
+  
+  const userInstrumentsRef = useRef<UserInstrument[]>(userInstruments);
+  const userInstrumentIndexRef = useRef(userInstrumentIndex);
+
+  const setUserInstruments = useCallback((newUserInstruments: UserInstrument[]) => {
+    userInstrumentsRef.current = newUserInstruments;
+    _setUserInstruments(newUserInstruments);
+  }, []);
+  const setUserInstrumentIndex = useCallback((newUserInstrumentIndex: number) => {
+    userInstrumentIndexRef.current = newUserInstrumentIndex;
+    _setUserInstrumentIndex(newUserInstrumentIndex);
+  }, []);
+
   useEffect(() => {
     const fetchAndSetDefaultSoundFontInstrument = async () => {
       const response = await fetch("microgm.sf2");
@@ -54,22 +69,24 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
       })
       const sampler = await soundfont2Sampler.load;
       sampler.loadInstrument(sampler.instrumentNames[0]);
-      setUserInstruments((userInstruments) => [{
-        ...userInstruments[0],
+      setUserInstruments([{
+        ...userInstrumentsRef.current[0],
         sf2Sampler: sampler,
         sf2InstrumentName: sampler.instrumentNames[0],
-      }]);
+      }])
     }
     fetchAndSetDefaultSoundFontInstrument();
-  }, [audioContext]);
+  }, [audioContext, setUserInstruments]);
   const getNewUserInstrument = useCallback((audioContext: AudioContext, index: number): UserInstrument => {
     return createUserInstrument(audioContext, index, defaultSoundfontBuffer);
   }, [defaultSoundfontBuffer]);
   return (
     <UserInstrumentContext value={{
       userInstruments,
+      userInstrumentsRef,
       setUserInstruments,
       userInstrumentIndex,
+      userInstrumentIndexRef,
       setUserInstrumentIndex,
       howManyInstrumentsIEverMade,
       setHowManyInstrumentsIEverMade,
