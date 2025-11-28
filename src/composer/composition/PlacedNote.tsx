@@ -1,6 +1,6 @@
 import React, { CSSProperties, ReactEventHandler } from "react";
 import styled from "styled-components";
-import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType, MidiBeat, InstrumentInstructionWithOffset } from "./consts";
+import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType, MidiBeat, InstrumentInstructionWithOffset } from "../consts";
 
 const StyledNote = styled.div<{
   $width: number,
@@ -61,7 +61,6 @@ export function PlacedNote({
   style?: CSSProperties
 }) {
   const { midiBeat, midiNote, noteWidth, subdivisionType } = instrumentInstruction;
-  const pianoKeyWidth = 15;
   const beatWidth = subdivisionType === SubdivisionType.q ? 15 : 20;
   
   const topShift = (isClickedNote || isNoteSelected) ? -1 : 0
@@ -69,9 +68,9 @@ export function PlacedNote({
   const top = y + 1 + topShift;
 
   const leftShift = (isClickedNote || isNoteSelected) ? -1 : 0;
-  const x = midiBeat * BEAT_WIDTH;
+  const x = (midiBeat - 1) * BEAT_WIDTH;
   const tripletLeftShift = subdivisionType === SubdivisionType.t ? 5 * ((midiBeat - 1) % 4) : 0;
-  const left = x + pianoKeyWidth + 1 + leftShift + tripletLeftShift;
+  const left = x + 1 + leftShift + tripletLeftShift;
   return (
     <StyledNote
       $bgColor={bgColor}

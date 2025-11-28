@@ -94,30 +94,36 @@ export function getBeatWidth(subdivisionType: SubdivisionType) {
 type MouseHandler = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: MidiBeat, midiNote: MidiNoteNum) => false;
 
 export function CompositionGrid({
+  children,
   handleMouseDown,
   handleMouseMove,
   handleMouseUp,
 }: {
+  children: React.ReactNode,
   handleMouseDown: MouseHandler,
   handleMouseUp: MouseHandler,
   handleMouseMove: MouseHandler,
 }) {
-  const { subdivisionType } = useContext(CompositionContext)!;
-  const beatWidth = useMemo(() => getBeatWidth(subdivisionType), [subdivisionType]);
-  return (<Grid
-    cellComponent={GridCell}
-    cellProps={{
-      beatWidth,
-      subdivisionType,
-      handleMouseDown,
-      handleMouseMove,
-      handleMouseUp,
-    }}
-    columnCount={pianoRollBeats.length}
-    columnWidth={beatWidth}
-    rowCount={pianoRollKeys.length}
-    rowHeight={beatHeight - 1}
-  />);
+  const { _subdivisionType } = useContext(CompositionContext)!;
+  const beatWidth = useMemo(() => getBeatWidth(_subdivisionType), [_subdivisionType]);
+  return (
+    <Grid
+      cellComponent={GridCell}
+      cellProps={{
+        beatWidth,
+        subdivisionType: _subdivisionType,
+        handleMouseDown,
+        handleMouseMove,
+        handleMouseUp,
+      }}
+      columnCount={pianoRollBeats.length}
+      columnWidth={beatWidth}
+      rowCount={pianoRollKeys.length}
+      rowHeight={beatHeight - 1}
+    >
+      {children}
+    </Grid>
+  );
 } 
 
 function GridCell({

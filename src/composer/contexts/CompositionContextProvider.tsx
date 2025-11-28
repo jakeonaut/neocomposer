@@ -34,40 +34,49 @@ export function CompositionContextProvider({
   const audioContext = useContext(AudioContextContext)!;
   const { tempo, setPlayheadPosX } = useContext(SongSettingsContext)!;
   const {
-    userInstruments,
+    userInstrumentsRef,
     setHowManyInstrumentsIEverMade,
     setUserInstruments,
     getNewUserInstrument,
     setUserInstrumentIndex,
   } = useContext(UserInstrumentContext)!;
-  const [subdivisionType, setSubdivisionType] = useState(SubdivisionType.q);
+  const [_subdivisionType, _setSubdivisionType] = useState(SubdivisionType.q);
   const [heldPianoKeys, setHeldPianoKeys] = useState<Record<string, boolean>>({});
-  const [composition, _setComposition] = useState<Composition>({});
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_composition, _setComposition] = useState<Composition>({});
+  const [_isCompositionMouseDown, _setIsCompositionMouseDown] = useState(false);
   const [_clickedNote, _setClickedNote] = useState<InstrumentInstruction | undefined>(undefined);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_selectedNotes, _setSelectedNotes] = useState<Record<string, InstrumentInstructionWithOffset>>({});
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLooping, setIsLooping] = useState<boolean>(false);
 
-  const subdivisionTypeRef = useRef(subdivisionType);
+  const subdivisionTypeRef = useRef(_subdivisionType);
   const clickedNoteRef = useRef(_clickedNote);
   const selectedNotesRef = useRef(_selectedNotes);
-  const isCompositionMouseDownRef = useRef(false);
+  const isCompositionMouseDownRef = useRef(_isCompositionMouseDown);
   const onCompositionMouseUpRef = useRef(undefined as ((() => void) | undefined));
   const playerIdRef = useRef(undefined as number | undefined);
   const playheadBeatRef = useRef(1);
   const instructionIdRef = useRef(0);
-  const compositionRef = useRef(composition);
+  const compositionRef = useRef(_composition);
   const compositionByInstructionIdRef = useRef<Record<string, InstrumentInstruction>>({});
 
+  const setSubdivisionType = useCallback((newSubdivisionType: SubdivisionType) => {
+    subdivisionTypeRef.current = newSubdivisionType;
+    _setSubdivisionType(newSubdivisionType);
+  }, []);
+  const setIsCompositionMouseDown = useCallback((newIsCompositionMouseDown:boolean) => {
+    isCompositionMouseDownRef.current = newIsCompositionMouseDown;
+    _setIsCompositionMouseDown(newIsCompositionMouseDown);
+  }, []);
   const setClickedNote = useCallback((newClickedNote: InstrumentInstruction | undefined) => {
+    clickedNoteRef.current = newClickedNote;
     _setClickedNote(newClickedNote);
   }, []);
   const setSelectedNotes = useCallback((newSelectedNotes: Record<string, InstrumentInstructionWithOffset>) => {
     if (_.isEqual(Object.keys(selectedNotesRef.current), Object.keys(newSelectedNotes))) {
       return;
     }
+    selectedNotesRef.current = newSelectedNotes;
     _setSelectedNotes(newSelectedNotes);
   }, []);
   const setComposition = useCallback((newComposition: Composition) => {
@@ -202,7 +211,7 @@ export function CompositionContextProvider({
             // TODO(jaketrower): in order to achieve ^^, will need playhead to instantiate sampler play at runtime,
             // rather than preprogram them all at PLAY button press...
             const userInstrumentToPlay =
-              userInstruments[instrumentInstruction.userInstrumentIndex];
+              userInstrumentsRef.current[instrumentInstruction.userInstrumentIndex];
             if (!userInstrumentToPlay?.sf2Sampler) return;
             const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
             const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
@@ -221,20 +230,20 @@ export function CompositionContextProvider({
       playerIdRef.current = window.setTimeout(scheduler, beatLengthInMs);
     }
     window.setTimeout(scheduler, 0);
-  }, [audioContext, setPlayheadPosX, tempo, userInstruments]);
+  }, [audioContext, setPlayheadPosX, tempo, userInstrumentsRef]);
 
   const handleStopComposition = useCallback(() => {
     if (playerIdRef.current) {
       window.clearTimeout(playerIdRef.current);
     }
     playerIdRef.current = undefined;
-    userInstruments.forEach((userInstrument) => {
+    userInstrumentsRef.current.forEach((userInstrument) => {
       userInstrument?.sf2Sampler?.stop();
     });
     playheadBeatRef.current = 1;
     setPlayheadPosX(0);
     setIsPlaying(false);
-  }, [setPlayheadPosX, userInstruments]);
+  }, [setPlayheadPosX, userInstrumentsRef]);
 
   const handleStartLoop = useCallback(() => {
     setIsLooping(true);
@@ -248,7 +257,7 @@ export function CompositionContextProvider({
       "Are you sure you want to destroy your creation?"
     );
     if (!shouldDelete) return;
-    userInstruments.forEach((userInstrument) => {
+    userInstrumentsRef.current.forEach((userInstrument) => {
       userInstrument?.sf2Sampler?.stop();
     });
     playheadBeatRef.current = 1;
@@ -258,26 +267,20 @@ export function CompositionContextProvider({
     setUserInstrumentIndex(0);
     setUserInstruments([getNewUserInstrument(audioContext, 0)]);
     setHowManyInstrumentsIEverMade(1);
-  }, [audioContext, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments, userInstruments]);
+  }, [audioContext, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments, userInstrumentsRef]);
 
   return (
     <CompositionContext value={{
       compositionByInstructionIdRef,
-      composition,
-      compositionRef,
-      setComposition,
+      _composition, compositionRef, setComposition,
       convertCompositionByInstrumentToComposition,
-      isCompositionMouseDownRef,
+      _isCompositionMouseDown, isCompositionMouseDownRef, setIsCompositionMouseDown,
       onCompositionMouseUpRef,
-      subdivisionType,
-      subdivisionTypeRef,
-      setSubdivisionType,
+      _subdivisionType, subdivisionTypeRef, setSubdivisionType,
       heldPianoKeys,
       setHeldPianoKeys,
-      clickedNoteRef,
-      setClickedNote,
-      selectedNotesRef,
-      setSelectedNotes,
+      _clickedNote, clickedNoteRef, setClickedNote,
+      _selectedNotes, selectedNotesRef, setSelectedNotes,
       addCompositionNotes,
       removeCompositionNotes,
       removeInstrumentFromComposition,
@@ -296,13 +299,15 @@ export function CompositionContextProvider({
 
 export const CompositionContext = createContext<{
   compositionByInstructionIdRef: React.RefObject<Record<string, InstrumentInstruction>>,
-  composition: Composition,
+  _composition: Composition,
   compositionRef: React.RefObject<Composition>,
   setComposition: (composition: Composition) => void,
   convertCompositionByInstrumentToComposition: (compositionByInstrument: CompositionByInstrument) => Composition,
+  _isCompositionMouseDown: boolean,
   isCompositionMouseDownRef: React.RefObject<boolean>,
+  setIsCompositionMouseDown: (newIsCompositionMouseDown: boolean) => void,
   onCompositionMouseUpRef: React.RefObject<(() => void) | undefined>,
-  subdivisionType: SubdivisionType,
+  _subdivisionType: SubdivisionType,
   subdivisionTypeRef: React.RefObject<SubdivisionType>,
   setSubdivisionType: (type: SubdivisionType) => void,
   heldPianoKeys: Record<string, boolean>,
@@ -313,8 +318,10 @@ export const CompositionContext = createContext<{
     })[]) => void,
   removeCompositionNotes: (noteIdsToRemove: string[]) => void,
   removeInstrumentFromComposition: (userInstrumentIndex: number) => void,
+  _clickedNote: InstrumentInstruction | undefined,
   clickedNoteRef: React.RefObject<InstrumentInstruction | undefined>,
-  setClickedNote: (note: InstrumentInstruction | undefined) => void
+  setClickedNote: (note: InstrumentInstruction | undefined) => void,
+  _selectedNotes: Record<string, InstrumentInstructionWithOffset>,
   selectedNotesRef: React.RefObject<Record<string, InstrumentInstructionWithOffset>>,
   setSelectedNotes: (notes: Record<string, InstrumentInstructionWithOffset>) => void,
   handlePlayComposition: ({ wasStartedFromLoop }: {

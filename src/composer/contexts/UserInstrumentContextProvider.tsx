@@ -4,15 +4,18 @@ import { Soundfont2Sampler } from "../../smplr/soundfont2";
 import { SoundFont2 } from 'soundfont2';
 
 export const UserInstrumentContext = createContext<{
-  userInstruments: UserInstrument[],
+  _userInstruments: UserInstrument[],
   userInstrumentsRef: React.RefObject<UserInstrument[]>,
   setUserInstruments: (userInstruments: UserInstrument[]) => void,
-  userInstrumentIndex: number,
+  _userInstrumentIndex: number,
   userInstrumentIndexRef: React.RefObject<number>,
   setUserInstrumentIndex: (userInstrumentIndex: number) => void,
   howManyInstrumentsIEverMade: number,
   setHowManyInstrumentsIEverMade: (num: number) => void,
   getNewUserInstrument: (audioContext: AudioContext, index: number) => UserInstrument,
+  userInstrumentColorInputRef: React.RefObject<HTMLInputElement | null>,
+  userInstrumentNameInputRef: React.RefObject<HTMLInputElement | null>,
+  userInstrumentVolumeInputRef: React.RefObject<HTMLInputElement | null>,
 } | undefined>(undefined);
 
 export function createUserInstrument(audioContext: AudioContext, index: number, arrayBuffer?: Uint8Array): UserInstrument {
@@ -40,22 +43,39 @@ export function createUserInstrument(audioContext: AudioContext, index: number, 
 
 export function UserInstrumentContextProvider({ children } : { children: React.ReactNode}) {
   const audioContext = useContext(AudioContextContext)!;
-  const [userInstruments, _setUserInstruments] = useState<UserInstrument[]>([createUserInstrument(audioContext, 0)]);
-  const [userInstrumentIndex, _setUserInstrumentIndex] = useState(0);
+  const [_userInstruments, _setUserInstruments] = useState<UserInstrument[]>([createUserInstrument(audioContext, 0)]);
+  const [_userInstrumentIndex, _setUserInstrumentIndex] = useState(0);
   const [howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade] = useState(1);
   const [defaultSoundfontBuffer, setDefaultSoundfontBuffer] = useState<Uint8Array | undefined>(undefined);
   
-  const userInstrumentsRef = useRef<UserInstrument[]>(userInstruments);
-  const userInstrumentIndexRef = useRef(userInstrumentIndex);
+  const userInstrumentColorInputRef = useRef<HTMLInputElement | null>(null);
+  const userInstrumentNameInputRef = useRef<HTMLInputElement | null>(null);
+  const userInstrumentVolumeInputRef = useRef<HTMLInputElement | null>(null);
+  const userInstrumentsRef = useRef<UserInstrument[]>(_userInstruments);
+  const userInstrumentIndexRef = useRef(_userInstrumentIndex);
 
+  const updateInputRefValues = useCallback(() => {
+    const currInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    if (userInstrumentColorInputRef.current) {
+      userInstrumentColorInputRef.current.value = currInstrument.color;
+    }
+    if (userInstrumentNameInputRef.current) {
+      userInstrumentNameInputRef.current.value = currInstrument.name;
+    }
+    if (userInstrumentVolumeInputRef.current) {
+      userInstrumentVolumeInputRef.current.value = currInstrument.volume.toString();
+    }
+  }, []);
   const setUserInstruments = useCallback((newUserInstruments: UserInstrument[]) => {
     userInstrumentsRef.current = newUserInstruments;
+    updateInputRefValues();
     _setUserInstruments(newUserInstruments);
-  }, []);
+  }, [updateInputRefValues]);
   const setUserInstrumentIndex = useCallback((newUserInstrumentIndex: number) => {
     userInstrumentIndexRef.current = newUserInstrumentIndex;
+    updateInputRefValues();
     _setUserInstrumentIndex(newUserInstrumentIndex);
-  }, []);
+  }, [updateInputRefValues]);
 
   useEffect(() => {
     const fetchAndSetDefaultSoundFontInstrument = async () => {
@@ -82,15 +102,18 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
   }, [defaultSoundfontBuffer]);
   return (
     <UserInstrumentContext value={{
-      userInstruments,
+      _userInstruments,
       userInstrumentsRef,
       setUserInstruments,
-      userInstrumentIndex,
+      _userInstrumentIndex,
       userInstrumentIndexRef,
       setUserInstrumentIndex,
       howManyInstrumentsIEverMade,
       setHowManyInstrumentsIEverMade,
       getNewUserInstrument,
+      userInstrumentColorInputRef,
+      userInstrumentNameInputRef,
+      userInstrumentVolumeInputRef,
     }}>
       {children}
     </UserInstrumentContext>

@@ -62,13 +62,13 @@ export function SongOptionsHeader({}: {}) {
     setPristine,
   } = useContext(SongSettingsContext)!;
   const { 
-    composition,
+    compositionRef,
     setComposition,
     convertCompositionByInstrumentToComposition,
     handleClearComposition,
   } = useContext(CompositionContext)!;
   const {
-    userInstruments,
+    userInstrumentsRef,
     setUserInstruments,
     getNewUserInstrument,
     setHowManyInstrumentsIEverMade,
@@ -109,7 +109,7 @@ export function SongOptionsHeader({}: {}) {
     a.href = URL.createObjectURL(new Blob([JSON.stringify({
       songName,
       tempo,
-      userInstruments: userInstruments.map((inst) => ({
+      userInstruments: userInstrumentsRef.current.map((inst) => ({
         color: inst.color,
         volume: inst.volume,
         name: inst.name,
@@ -118,7 +118,7 @@ export function SongOptionsHeader({}: {}) {
         // if we remind them what .sf2 file names were uploaded, and prompt them to upload them?
         // otherwise default to our default soundfont
       })),
-      composition: convertCompositionToCompositionByInstrument(composition),
+      composition: convertCompositionToCompositionByInstrument(compositionRef.current),
     } as SongJsonExport)], {
       type: "text/plain"
     }));
@@ -127,7 +127,7 @@ export function SongOptionsHeader({}: {}) {
     a.click();
     document.body.removeChild(a);
     setPristine(true);
-  }, [songName, tempo, userInstruments, composition, setPristine]);
+  }, [songName, tempo, userInstrumentsRef, compositionRef, setPristine]);
 
   const onLoadSongJson = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target?.files?.[0]; 
@@ -153,9 +153,7 @@ export function SongOptionsHeader({}: {}) {
         {/* <div><TinySpriteImg src="trans.png" $frame={tinySpriteFrame} onClick={() => {
           incrementTinySpriteFrame();
         }}/></div> */}
-        <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={() => {
-          incrementBabyDanceFrame();
-        }}/></div>
+        <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={incrementBabyDanceFrame}/></div>
         <div style={{ display: 'flex', flexDirection: 'column', }}>
           <div style={{ textAlign: 'left', }}>
             <b>Song Name:</b>&nbsp;

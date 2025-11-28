@@ -18,15 +18,16 @@ export const ActionButton = styled.div`
 `;
 
 export function ActionButtons({
-  inputMode,
+  _inputMode,
   setInputMode,
 }: {
-  inputMode: InputMode,
+  _inputMode: InputMode,
   setInputMode: (inputMode: InputMode) => void
 }) {
   const { tempo, setTempo } = useContext(SongSettingsContext)!;
   const {
-    subdivisionType,
+    _subdivisionType,
+    subdivisionTypeRef,
     setSubdivisionType,
     isPlaying,
     handleStopComposition,
@@ -36,12 +37,12 @@ export function ActionButtons({
     handleStartLoop
   } = useContext(CompositionContext)!;
   const onToggleSubdivisionType = useCallback(() => {
-    if (subdivisionType === SubdivisionType.q) {
+    if (subdivisionTypeRef.current === SubdivisionType.q) {
       setSubdivisionType(SubdivisionType.t);
-    } else if (subdivisionType === SubdivisionType.t) {
+    } else if (subdivisionTypeRef.current === SubdivisionType.t) {
       setSubdivisionType(SubdivisionType.q);
     }
-  }, [setSubdivisionType, subdivisionType]);
+  }, [setSubdivisionType, subdivisionTypeRef]);
   const onTempoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setTempo(parseInt(e.target.value));
   }, []);
@@ -72,7 +73,7 @@ export function ActionButtons({
           paddingTop: 1,
           paddingRight: 1,
           ...(
-            inputMode === InputMode.DEFAULT ? {
+            _inputMode === InputMode.DEFAULT ? {
               background: 'gray',
               cursor: 'unset',
             } : {}
@@ -80,7 +81,7 @@ export function ActionButtons({
         }}>
         <div style={{
           background: `url('./toolicons1x.png') repeat scroll ${
-            inputMode === InputMode.DEFAULT ? '-25px' : '0'
+            _inputMode === InputMode.DEFAULT ? '-25px' : '0'
           } -147px transparent`,
           width: 25,
           height: 21,
@@ -95,7 +96,7 @@ export function ActionButtons({
           paddingRight: 1,
           marginLeft: -6,
           ...(
-            inputMode === InputMode.SELECT ? {
+            _inputMode === InputMode.SELECT ? {
               background: 'gray',
               cursor: 'unset',
             } : {}
@@ -103,7 +104,7 @@ export function ActionButtons({
         }}>
         <div style={{
           background: `url('./toolicons1x.png') repeat scroll  ${
-            inputMode === InputMode.SELECT ? '-25px' : '0'
+            _inputMode === InputMode.SELECT ? '-25px' : '0'
           }  -21px transparent`,
           width: 25,
           height: 21,
@@ -120,7 +121,7 @@ export function ActionButtons({
         }}>
         <div style={{
           background: `url('./toolicons1x.png') repeat scroll ${
-            subdivisionType === SubdivisionType.t ? '-25px' : '0'
+            _subdivisionType === SubdivisionType.t ? '-25px' : '0'
           } -63px transparent`,
           width: 25,
           height: 21,
