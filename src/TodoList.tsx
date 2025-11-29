@@ -5,8 +5,6 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>[ ] - https://react-window.vercel.app/ important to note make big grid SO SLOW@!!!!!</li>
-        <li>[ ] - debounce volume changes and tempo changes ? </li>
         <li>[ ] import with different sf2s then the default????</li>
         <li>[ ] add an eye icon u can press on an instrument to toggle opacity or visibility and pointer interaction for all notes</li>
         <li>[ ] also add a mute or Solo button for all notes too</li>
@@ -15,7 +13,6 @@ export function TodoList() {
         <li>[ ] undo/redo. each action (placing a note(s)), should have an opposite action (deleting a note(s)).</li>
         <ul><li>this seems preferable than caching the entire state of the application multiple times into memory.
           <br/>will have to have a max undo history though probably..</li></ul>
-        <li>[ ] Should be allowed to start a click and drag select by clicking a note... if in select mode</li>
         <li>[ ] should we delete notes that were dragged off the left of the playhead? (when selected with an offset)</li>
         <li>[ ] QOL - could remove notes from the selection that are reselected with shift (like a toggle... like Finder)</li>
         <h3>[ ] - solution to the 2 problems below:</h3>

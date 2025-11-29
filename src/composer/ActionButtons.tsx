@@ -1,8 +1,9 @@
 import React, { useCallback, useContext } from 'react';
 import styled from "styled-components";
-import { CompositionContext } from './contexts/CompositionContextProvider';
+import { CompositionActionsContext, CompositionContext } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { InputMode, SubdivisionType } from './consts';
+import { SubdivisionTypeContext } from './contexts/SubdivisionTypeContextProvider';
 
 export const ActionButtonsContainer = styled.div`
   display: flex;
@@ -26,16 +27,20 @@ export function ActionButtons({
 }) {
   const { tempo, setTempo } = useContext(SongSettingsContext)!;
   const {
+    isPlaying,
+    isLooping,
+  } = useContext(CompositionContext)!;
+  const {
+    handleStopComposition,
+    handlePlayComposition,
+    handleStopLoop,
+    handleStartLoop
+  } = useContext(CompositionActionsContext)!;
+  const { 
     _subdivisionType,
     subdivisionTypeRef,
     setSubdivisionType,
-    isPlaying,
-    handleStopComposition,
-    handlePlayComposition,
-    isLooping,
-    handleStopLoop,
-    handleStartLoop
-  } = useContext(CompositionContext)!;
+  } = useContext(SubdivisionTypeContext)!;
   const onToggleSubdivisionType = useCallback(() => {
     if (subdivisionTypeRef.current === SubdivisionType.q) {
       setSubdivisionType(SubdivisionType.t);

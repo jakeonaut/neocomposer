@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
-import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, InstrumentInstructionWithOffset, SubdivisionType } from "../consts";
+import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
+import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, NoteId, NoteIdWithOffset, SubdivisionType } from "../consts";
 import { SongSettingsContext } from "./SongSettingsContextProvider";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import _ from "lodash";
+import { PlayheadContext } from "./PlayheadContextProvider";
 
 export function convertCompositionToCompositionByInstrument(composition: Composition) {
   const compositionByInstrument: CompositionByInstrument = {};
@@ -32,7 +33,8 @@ export function CompositionContextProvider({
   children: React.ReactNode
 }) {
   const audioContext = useContext(AudioContextContext)!;
-  const { tempo, setPlayheadPosX } = useContext(SongSettingsContext)!;
+  const { tempo } = useContext(SongSettingsContext)!;
+  const { setPlayheadPosX, incrementBabyDanceFrame } = useContext(PlayheadContext)!;
   const {
     userInstrumentsRef,
     setHowManyInstrumentsIEverMade,
@@ -40,16 +42,14 @@ export function CompositionContextProvider({
     getNewUserInstrument,
     setUserInstrumentIndex,
   } = useContext(UserInstrumentContext)!;
-  const [_subdivisionType, _setSubdivisionType] = useState(SubdivisionType.q);
   const [heldPianoKeys, setHeldPianoKeys] = useState<Record<string, boolean>>({});
   const [_composition, _setComposition] = useState<Composition>({});
   const [_isCompositionMouseDown, _setIsCompositionMouseDown] = useState(false);
-  const [_clickedNote, _setClickedNote] = useState<InstrumentInstruction | undefined>(undefined);
-  const [_selectedNotes, _setSelectedNotes] = useState<Record<string, InstrumentInstructionWithOffset>>({});
+  const [_clickedNote, _setClickedNote] = useState<NoteId | undefined>(undefined);
+  const [_selectedNotes, _setSelectedNotes] = useState<Record<string, NoteIdWithOffset>>({});
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isLooping, setIsLooping] = useState<boolean>(false);
 
-  const subdivisionTypeRef = useRef(_subdivisionType);
   const clickedNoteRef = useRef(_clickedNote);
   const selectedNotesRef = useRef(_selectedNotes);
   const isCompositionMouseDownRef = useRef(_isCompositionMouseDown);
@@ -60,19 +60,15 @@ export function CompositionContextProvider({
   const compositionRef = useRef(_composition);
   const compositionByInstructionIdRef = useRef<Record<string, InstrumentInstruction>>({});
 
-  const setSubdivisionType = useCallback((newSubdivisionType: SubdivisionType) => {
-    subdivisionTypeRef.current = newSubdivisionType;
-    _setSubdivisionType(newSubdivisionType);
-  }, []);
   const setIsCompositionMouseDown = useCallback((newIsCompositionMouseDown:boolean) => {
     isCompositionMouseDownRef.current = newIsCompositionMouseDown;
     _setIsCompositionMouseDown(newIsCompositionMouseDown);
   }, []);
-  const setClickedNote = useCallback((newClickedNote: InstrumentInstruction | undefined) => {
+  const setClickedNote = useCallback((newClickedNote: NoteId | undefined) => {
     clickedNoteRef.current = newClickedNote;
     _setClickedNote(newClickedNote);
   }, []);
-  const setSelectedNotes = useCallback((newSelectedNotes: Record<string, InstrumentInstructionWithOffset>) => {
+  const setSelectedNotes = useCallback((newSelectedNotes: Record<string, NoteIdWithOffset>) => {
     if (_.isEqual(Object.keys(selectedNotesRef.current), Object.keys(newSelectedNotes))) {
       return;
     }
@@ -123,11 +119,13 @@ export function CompositionContextProvider({
     return composition;
   }, []);
   const removeCompositionNotes = useCallback((idsToRemove: string[]) => {
+    const removedInstrumentInstructions: Record<NoteId, InstrumentInstruction> = {};
     const newComposition = { ...compositionRef.current };
     idsToRemove.forEach((id) => {
       const instrumentInstruction = compositionByInstructionIdRef.current[id];
       if (!instrumentInstruction) return;
       const { midiBeat, midiNote, noteId } = instrumentInstruction;
+      removedInstrumentInstructions[noteId] = instrumentInstruction;
       delete newComposition[midiBeat][midiNote][noteId];
       if (Object.keys(newComposition[midiBeat][midiNote]).length === 0) {
         delete newComposition[midiBeat][midiNote];
@@ -138,6 +136,7 @@ export function CompositionContextProvider({
       delete compositionByInstructionIdRef.current[noteId];
     })
     setComposition(newComposition);
+    return removedInstrumentInstructions;
   }, [setComposition]);
   const removeInstrumentFromComposition = useCallback((userInstrumentIndexToDelete: number) => {
     const newComposition = { ...compositionRef.current };
@@ -221,6 +220,7 @@ export function CompositionContextProvider({
               note: midiNote,
               time: now + tripletBeatOffsetInSeconds,
               duration: durationSec,
+              onStart: () => incrementBabyDanceFrame()
             });
           })
         );
@@ -229,8 +229,8 @@ export function CompositionContextProvider({
       playheadBeatRef.current++;
       playerIdRef.current = window.setTimeout(scheduler, beatLengthInMs);
     }
-    window.setTimeout(scheduler, 0);
-  }, [audioContext, setPlayheadPosX, tempo, userInstrumentsRef]);
+    playerIdRef.current = window.setTimeout(scheduler, 0);
+  }, [audioContext.currentTime, incrementBabyDanceFrame, setPlayheadPosX, tempo, userInstrumentsRef]);
 
   const handleStopComposition = useCallback(() => {
     if (playerIdRef.current) {
@@ -257,18 +257,26 @@ export function CompositionContextProvider({
       "Are you sure you want to destroy your creation?"
     );
     if (!shouldDelete) return;
-    userInstrumentsRef.current.forEach((userInstrument) => {
-      userInstrument?.sf2Sampler?.stop();
-    });
-    playheadBeatRef.current = 1;
-    setPlayheadPosX(0);
-    setComposition({});
-    setIsPlaying(false);
+    handleStopComposition();
     setUserInstrumentIndex(0);
     setUserInstruments([getNewUserInstrument(audioContext, 0)]);
     setHowManyInstrumentsIEverMade(1);
-  }, [audioContext, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments, userInstrumentsRef]);
+  }, [audioContext, getNewUserInstrument, handleStopComposition, setHowManyInstrumentsIEverMade, setUserInstrumentIndex, setUserInstruments]);
 
+  const compositionActionsContextProvider = useMemo(() => (
+    <CompositionActionsContext value={{
+      addCompositionNotes,
+      removeCompositionNotes,
+      removeInstrumentFromComposition,
+      handlePlayComposition,
+      handleStopComposition,
+      handleClearComposition,
+      handleStartLoop,
+      handleStopLoop,
+    }}>
+      {children}
+    </CompositionActionsContext>
+  ), [addCompositionNotes, children, handleClearComposition, handlePlayComposition, handleStartLoop, handleStopComposition, handleStopLoop, removeCompositionNotes, removeInstrumentFromComposition]);
   return (
     <CompositionContext value={{
       compositionByInstructionIdRef,
@@ -276,23 +284,14 @@ export function CompositionContextProvider({
       convertCompositionByInstrumentToComposition,
       _isCompositionMouseDown, isCompositionMouseDownRef, setIsCompositionMouseDown,
       onCompositionMouseUpRef,
-      _subdivisionType, subdivisionTypeRef, setSubdivisionType,
       heldPianoKeys,
       setHeldPianoKeys,
       _clickedNote, clickedNoteRef, setClickedNote,
       _selectedNotes, selectedNotesRef, setSelectedNotes,
-      addCompositionNotes,
-      removeCompositionNotes,
-      removeInstrumentFromComposition,
-      handlePlayComposition,
-      handleStopComposition,
-      handleClearComposition,
       isPlaying,
-      handleStartLoop,
-      handleStopLoop,
       isLooping,
     }}>
-      {children}
+      {compositionActionsContextProvider}
     </CompositionContext>
   );
 }
@@ -307,30 +306,30 @@ export const CompositionContext = createContext<{
   isCompositionMouseDownRef: React.RefObject<boolean>,
   setIsCompositionMouseDown: (newIsCompositionMouseDown: boolean) => void,
   onCompositionMouseUpRef: React.RefObject<(() => void) | undefined>,
-  _subdivisionType: SubdivisionType,
-  subdivisionTypeRef: React.RefObject<SubdivisionType>,
-  setSubdivisionType: (type: SubdivisionType) => void,
   heldPianoKeys: Record<string, boolean>,
   setHeldPianoKeys: (keys: Record<string, boolean>) => void,
+  _clickedNote: NoteId | undefined,
+  clickedNoteRef: React.RefObject<NoteId | undefined>,
+  setClickedNote: (noteId: NoteId | undefined) => void,
+  _selectedNotes: Record<string, NoteIdWithOffset>,
+  selectedNotesRef: React.RefObject<Record<string, NoteIdWithOffset>>,
+  setSelectedNotes: (notes: Record<string, NoteIdWithOffset>) => void,
+  isPlaying: boolean,
+  isLooping: boolean,
+} | undefined>(undefined);
+
+export const CompositionActionsContext = createContext<{
   addCompositionNotes: (notesToAdd: (
     Omit<InstrumentInstruction, "noteId"> & {
-      noteId?: number;
+      noteId?: NoteId;
     })[]) => void,
-  removeCompositionNotes: (noteIdsToRemove: string[]) => void,
+  removeCompositionNotes: (noteIdsToRemove: string[]) => Record<NoteId, InstrumentInstruction>,
   removeInstrumentFromComposition: (userInstrumentIndex: number) => void,
-  _clickedNote: InstrumentInstruction | undefined,
-  clickedNoteRef: React.RefObject<InstrumentInstruction | undefined>,
-  setClickedNote: (note: InstrumentInstruction | undefined) => void,
-  _selectedNotes: Record<string, InstrumentInstructionWithOffset>,
-  selectedNotesRef: React.RefObject<Record<string, InstrumentInstructionWithOffset>>,
-  setSelectedNotes: (notes: Record<string, InstrumentInstructionWithOffset>) => void,
   handlePlayComposition: ({ wasStartedFromLoop }: {
       wasStartedFromLoop?: boolean | undefined;
     }) => void,
   handleStopComposition: () => void,
   handleClearComposition: () => void,
-  isPlaying: boolean,
   handleStartLoop: () => void,
   handleStopLoop: () => void,
-  isLooping: boolean,
 } | undefined>(undefined);

@@ -1,14 +1,16 @@
 import React, { useCallback, useContext, useEffect, useRef, useState } from "react";
 import styled from "styled-components";
 import { TodoList } from "../TodoList";
-import { CompositionAndPlayhead } from "./composition/CompositionAndPlayhead";
+import { CompositionCanvas } from "./composition/CompositionCanvas";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
-import { AudioContextContext, getARandomNote, InputMode, InstrumentInstructionWithOffset, keyboardPianoKeys, SubdivisionType } from "./consts";
-import { CompositionContext } from "./contexts/CompositionContextProvider";
+import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType } from "./consts";
+import { CompositionActionsContext, CompositionContext } from "./contexts/CompositionContextProvider";
 import { SongOptionsHeader } from "./SongOptionsHeader";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
-import { SongSettingsContext } from "./contexts/SongSettingsContextProvider";
 import { ActionButtons } from "./ActionButtons";
+import { SubdivisionTypeContext } from "./contexts/SubdivisionTypeContextProvider";
+import { PristineContext } from "./contexts/PristineContextProvider";
+import { BabyDanceFrameContext, PlayheadContext, PlayheadPosXContext } from "./contexts/PlayheadContextProvider";
 
 const MaestroContainer = styled.div`
   display: flex;
@@ -22,45 +24,69 @@ const Header = styled.div`
   flex-direction: column;
 `;
 
+const BabyPlayheadImg = styled.img<{ $frame: number }>`
+  width: 20px;
+  height: 20px;
+  image-rendering: pixelated;
+  background-image: url("baby_dance_sheet.png");
+  position: absolute;
+  top: -6px;
+  left: 0;
+  background-position: ${({ $frame }) => `${$frame * -20}px 0px`};
+`;
+
 const Footer = styled.div`
   max-width: 960px;
   display: flex;
   flex-direction: column;
 `;
 
+function PlayheadNode() {
+  const { babyDanceFrame } = useContext(BabyDanceFrameContext)!;
+  const { playheadPosX } = useContext(PlayheadPosXContext)!;
+
+  return (
+    <div style={{ marginLeft: 22, height: 15, content: ' ', position: 'relative' }}>
+      <BabyPlayheadImg src="trans.png" $frame={babyDanceFrame} style={{
+        left: playheadPosX,
+        }}/>
+    </div>
+  );
+}
+
 export function Maestro() {
   const [_inputMode, _setInputMode] = useState(InputMode.DEFAULT);
   const audioContext = useContext(AudioContextContext)!;
+  const { incrementBabyDanceFrame } = useContext(PlayheadContext)!;
+  const { pristine } = useContext(PristineContext)!;
+
   const {
-    incrementBabyDanceFrame,
-    pristine,
-  } = useContext(SongSettingsContext)!;
-  const {
-    _userInstruments,
     userInstrumentsRef,
-    _userInstrumentIndex,
     userInstrumentIndexRef,
     setUserInstrumentIndex,
   } = useContext(UserInstrumentContext)!;
+  const { 
+    subdivisionTypeRef,
+    setSubdivisionType,
+  } = useContext(SubdivisionTypeContext)!;
   const {
     compositionByInstructionIdRef,
     isCompositionMouseDownRef,
     setIsCompositionMouseDown,
     onCompositionMouseUpRef,
-    subdivisionTypeRef,
-    _subdivisionType,
-    setSubdivisionType,
     clickedNoteRef,
     setClickedNote,
     selectedNotesRef,
     setSelectedNotes,
     heldPianoKeys,
     setHeldPianoKeys,
-    removeCompositionNotes,
     isPlaying,
+  } = useContext(CompositionContext)!;
+  const {
+    removeCompositionNotes,
     handleStopComposition,
     handlePlayComposition,
-  } = useContext(CompositionContext)!;
+  } = useContext(CompositionActionsContext)!;
 
   const inputModeRef = useRef(_inputMode);
   const setInputMode = useCallback((newInputMode: InputMode) => {
@@ -90,13 +116,13 @@ export function Maestro() {
       }
       if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
         setSelectedNotes({
-          ...(Object.entries(compositionByInstructionIdRef.current).reduce((acc, [noteId, instrumentInstruction]) => ({
+          ...(Object.entries(compositionByInstructionIdRef.current).reduce((acc, [noteId, _]) => ({
             ...acc,
             [noteId]: {
-              instrumentInstruction,
+              noteId: parseInt(noteId),
               offset: { x: 0, y: 0 },
             },
-          }), {} as Record<string, InstrumentInstructionWithOffset>)),
+          }), {} as Record<string, NoteIdWithOffset>)),
         });
         e.preventDefault();
         return false;
@@ -114,7 +140,7 @@ export function Maestro() {
           setSelectedNotes({});
           setClickedNote(undefined);
         } else if (clickedNoteRef.current) {
-          removeCompositionNotes([clickedNoteRef.current.noteId.toString()]);
+          removeCompositionNotes([clickedNoteRef.current.toString()]);
           setClickedNote(undefined);
         }
         return false;
@@ -147,7 +173,7 @@ export function Maestro() {
       if (e.key === "Shift") {
         trySetInputMode(InputMode.SELECT);
         if (isCompositionMouseDownRef.current) {
-          onCompositionMouseUpRef.current = () => (() => setInputMode(InputMode.SELECT));
+          onCompositionMouseUpRef.current = () => setInputMode(InputMode.SELECT);
         }
         return false;
       }
@@ -178,7 +204,7 @@ export function Maestro() {
     if (e.key === "Shift") {
       trySetInputMode(InputMode.DEFAULT);
       if (isCompositionMouseDownRef.current) {
-        onCompositionMouseUpRef.current = () => (() => setInputMode(InputMode.DEFAULT));
+        onCompositionMouseUpRef.current = () => setInputMode(InputMode.DEFAULT);
       }
       return false;
     }
@@ -215,9 +241,11 @@ export function Maestro() {
         <SongOptionsHeader />
         <UserInstrumentsHeader />
       </Header>
+      {/* TODO(jaketrower): Can I refactor this now after the ref refactors? */}
       {/* Pass setInputMode in directly since we are firing it at the end of a handleMouseUp callback and
         * isCompositionMouseDown won't update the state and the trySetInputMode function until after the event bubbling */}
-      <CompositionAndPlayhead _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode} />
+      <PlayheadNode />
+      <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode} />
       <Footer>
         <ActionButtons _inputMode={_inputMode} setInputMode={trySetInputMode} />
         <br />

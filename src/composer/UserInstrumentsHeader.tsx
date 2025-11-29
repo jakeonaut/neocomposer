@@ -5,8 +5,9 @@ import { Soundfont2Sampler } from '../smplr/soundfont2';
 import { AudioContextContext, getARandomNote } from './consts';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
-import { CompositionContext } from './contexts/CompositionContextProvider';
+import { CompositionActionsContext, CompositionContext } from './contexts/CompositionContextProvider';
 import { useDebouncedCallback, useThrottledCallback } from "use-debounce";
+import { PlayheadContext } from './contexts/PlayheadContextProvider';
 
 const SoundfontHeader = styled.div<{ $color: string }>`
   height: 28px;
@@ -54,8 +55,10 @@ const UserInstrumentTab = styled.div`
 
 export function UserInstrumentsHeader({}: {}) {
   const audioContext = useContext(AudioContextContext)!;
-  const { incrementBabyDanceFrame } = useContext(SongSettingsContext)!;
-  const { removeInstrumentFromComposition } = useContext(CompositionContext)!;
+  // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
+  const { incrementBabyDanceFrame } = useContext(PlayheadContext)!;
+  // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
+  const { removeInstrumentFromComposition } = useContext(CompositionActionsContext)!;
   const {
     _userInstruments,
     userInstrumentsRef,

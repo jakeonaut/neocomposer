@@ -1,6 +1,6 @@
-import React, { CSSProperties, ReactEventHandler } from "react";
+import React, { CSSProperties, useCallback, useMemo } from "react";
 import styled from "styled-components";
-import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType, MidiBeat, InstrumentInstructionWithOffset } from "../consts";
+import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType, NoteId } from "../consts";
 
 const StyledNote = styled.div<{
   $width: number,
@@ -46,18 +46,16 @@ export function PlacedNote({
   onMouseDown,
   isClickedNote,
   isNoteSelected,
-  selectedNotes,
   style,
 }: {
   children?: React.ReactNode
   topmostMidiNote: number;
   bgColor: string;
-  instrumentInstruction: Pick<InstrumentInstruction, 'midiBeat' | 'midiNote' | 'noteWidth' | 'subdivisionType'>,
+  instrumentInstruction: InstrumentInstruction,
   shouldMouseIgnoreMe?: boolean;
-  onMouseDown?: ReactEventHandler
+  onMouseDown?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, noteId: NoteId) => void
   isClickedNote?: boolean;
   isNoteSelected?: boolean;
-  selectedNotes?: Record<string, InstrumentInstructionWithOffset>,
   style?: CSSProperties
 }) {
   const { midiBeat, midiNote, noteWidth, subdivisionType } = instrumentInstruction;
@@ -71,6 +69,11 @@ export function PlacedNote({
   const x = (midiBeat - 1) * BEAT_WIDTH;
   const tripletLeftShift = subdivisionType === SubdivisionType.t ? 5 * ((midiBeat - 1) % 4) : 0;
   const left = x + 1 + leftShift + tripletLeftShift;
+  const noteId = useMemo(() => instrumentInstruction.noteId, [instrumentInstruction.noteId]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseDown?.(e, noteId),
+    [onMouseDown, noteId]
+  );
   return (
     <StyledNote
       $bgColor={bgColor}
@@ -80,7 +83,7 @@ export function PlacedNote({
       $width={noteWidth * beatWidth - 1}
       $shouldMouseIgnoreMe={shouldMouseIgnoreMe}
       $isClickedNote={isClickedNote}
-      onMouseDown={onMouseDown}
+      onMouseDown={handleMouseDown}
       style={style}>
       {children}
     </StyledNote>

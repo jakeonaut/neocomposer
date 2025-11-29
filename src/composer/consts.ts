@@ -38,7 +38,7 @@ export const pianoRollKeys: MidiNote[] = [];
 pianoRollKeys.push(...["C5", "Db5", "D5", "Eb5", "E5", "F5"]);
 pianoRollKeys.reverse();
 export const beatHeight = 15;
-export const pianoRollBeats: number[] = new Array(80);
+export const pianoRollBeats: number[] = new Array(160);
 pianoRollBeats.fill(0);
 
 export const keyboardPianoKeys = new Map(
@@ -109,7 +109,7 @@ export type InstrumentInstruction = {
   subdivisionType: SubdivisionType,
 };
 export type Offset = { x: number, y: number };
-export type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
+export type NoteIdWithOffset = { offset: Offset };
 export type Composition = {
   [id: MidiBeat]: {
     [id: MidiNoteNum]: {

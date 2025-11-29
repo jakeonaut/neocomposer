@@ -4,6 +4,7 @@ import styled from "styled-components";
 import { fromMidi, toMidi } from "../../smplr/player/midi";
 import { CellComponentProps, Grid } from "react-window";
 import { CompositionContext } from "../contexts/CompositionContextProvider";
+import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
 
 
 const GridCellDiv = styled.div<{
@@ -35,16 +36,6 @@ const GridCellDiv = styled.div<{
     ? '1px solid #b2bcc2'
     : 'unset'
   };
-`;
-
-const RectSelector = styled.div<{ $width: number, $height: number }>`
-  background: #76feff54;
-  outline: 1px dashed #004cff54;
-  position: absolute;
-  width: ${({ $width }) => `${$width}px`};
-  height: ${({ $height }) => `${$height}px`};
-  z-index: ${zIndex_rectSelect};
-  pointer-events: none;
 `;
 
 export function getMidiBeatFromGridBeat(gridBeat: MidiBeat, subdivisionType: SubdivisionType, noteSubdivisionType: SubdivisionType, roundUpInstead: boolean = false) {
@@ -93,6 +84,27 @@ export function getBeatWidth(subdivisionType: SubdivisionType) {
 
 type MouseHandler = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: MidiBeat, midiNote: MidiNoteNum) => false;
 
+const useCellProps = ({
+  handleMouseDown,
+  handleMouseMove,
+  handleMouseUp,
+}: {
+  handleMouseDown: MouseHandler,
+  handleMouseUp: MouseHandler,
+  handleMouseMove: MouseHandler,
+}) => {
+  const {  _subdivisionType } = useContext(SubdivisionTypeContext)!;
+  const beatWidth = useMemo(() => getBeatWidth(_subdivisionType), [_subdivisionType]);
+  const cellProps = useMemo(() => ({
+    beatWidth,
+    subdivisionType: _subdivisionType,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+  }), [_subdivisionType, beatWidth, handleMouseDown, handleMouseMove, handleMouseUp]);
+  return cellProps;
+};
+
 export function CompositionGrid({
   children,
   handleMouseDown,
@@ -104,22 +116,20 @@ export function CompositionGrid({
   handleMouseUp: MouseHandler,
   handleMouseMove: MouseHandler,
 }) {
-  const { _subdivisionType } = useContext(CompositionContext)!;
-  const beatWidth = useMemo(() => getBeatWidth(_subdivisionType), [_subdivisionType]);
+  const cellProps = useCellProps({ handleMouseDown, handleMouseMove, handleMouseUp });
+  
   return (
     <Grid
       cellComponent={GridCell}
-      cellProps={{
-        beatWidth,
-        subdivisionType: _subdivisionType,
-        handleMouseDown,
-        handleMouseMove,
-        handleMouseUp,
-      }}
+      cellProps={cellProps}
       columnCount={pianoRollBeats.length}
-      columnWidth={beatWidth}
+      columnWidth={cellProps.beatWidth}
       rowCount={pianoRollKeys.length}
       rowHeight={beatHeight - 1}
+      style={{
+        height: ((beatHeight - 1) * (pianoRollKeys.length)) + 1,
+        borderBottom: '1px dotted #b2bcc2',
+      }}
     >
       {children}
     </Grid>
@@ -154,19 +164,5 @@ function GridCell({
     $midiNote={fromMidi(rowIndex)}
     $subdivision={subdivisionType}
     $beatWidth={beatWidth}
-  >
-    {/* DRAGGING THE RECT SELECTOR TO SELECT PLACED NOTES */}
-    {/* {inputMode === InputMode.SELECT
-      && isMouseDown
-      && startingCursorPos
-      && cursorPosition
-      && Math.min(cursorPosition.midiBeat, startingCursorPos.midiBeat) === index
-      && Math.max(toMidi(cursorPosition.midiNote)!, toMidi(startingCursorPos.midiNote)!) === toMidi(midiNote)
-      && (
-        <RectSelector
-          $width={(Math.abs(startingCursorPos.midiBeat - cursorPosition.midiBeat) + 1) * beatWidth - 1}
-          $height={(Math.abs(toMidi(startingCursorPos.midiNote)! - toMidi(cursorPosition.midiNote)!) + 1) * (beatHeight - 1) - 1}
-        />
-      )} */}
-  </GridCellDiv>
+  />
 }

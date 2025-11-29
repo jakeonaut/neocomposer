@@ -1,10 +1,12 @@
 import React, { useCallback, useContext } from 'react';
 import styled from 'styled-components'
-import { CompositionContext, convertCompositionToCompositionByInstrument } from './contexts/CompositionContextProvider';
+import { CompositionActionsContext, CompositionContext, convertCompositionToCompositionByInstrument } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtons';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { AudioContextContext, SongJsonExport } from './consts';
+import { PristineContext } from './contexts/PristineContextProvider';
+import { BabyDanceFrameContext, PlayheadContext } from './contexts/PlayheadContextProvider';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -55,32 +57,28 @@ export function SongOptionsHeader({}: {}) {
     setSongName,
     // masterVolume,
     // setMasterVolume,
-    babyDanceFrame,
-    incrementBabyDanceFrame,
     tempo,
     setTempo,
-    setPristine,
   } = useContext(SongSettingsContext)!;
+  const { babyDanceFrame } = useContext(BabyDanceFrameContext)!;
+  const { incrementBabyDanceFrame } = useContext(PlayheadContext)!;
+  const { setPristine } = useContext(PristineContext)!;
+  // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const { 
     compositionRef,
     setComposition,
     convertCompositionByInstrumentToComposition,
-    handleClearComposition,
   } = useContext(CompositionContext)!;
+  const { 
+    handleClearComposition,
+  } = useContext(CompositionActionsContext)!;
+  // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const {
     userInstrumentsRef,
     setUserInstruments,
     getNewUserInstrument,
     setHowManyInstrumentsIEverMade,
   } = useContext(UserInstrumentContext)!;
-  // const [tinySpriteFrame, setTinySpriteFrame] = useState(0);
-  // const incrementTinySpriteFrame = useCallback(() => {
-  //   if (tinySpriteFrame >= 15) {
-  //     setTinySpriteFrame(0);
-  //   } else {
-  //     setTinySpriteFrame(tinySpriteFrame + 1);
-  //   }
-  // }, [tinySpriteFrame]);
 
   // const onMasterVolumeChange = useCallback(
   //   (e: React.ChangeEvent<HTMLInputElement>) => {
