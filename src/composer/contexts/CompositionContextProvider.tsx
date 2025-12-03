@@ -4,6 +4,7 @@ import { SongSettingsContext } from "./SongSettingsContextProvider";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import _ from "lodash";
 import { PlayheadContext } from "./PlayheadContextProvider";
+import { ClipboardContext } from "./ClipboardContextProvider";
 
 export function convertCompositionToCompositionByInstrument(composition: Composition) {
   const compositionByInstrument: CompositionByInstrument = {};
@@ -34,6 +35,7 @@ export function CompositionContextProvider({
 }) {
   const audioContext = useContext(AudioContextContext)!;
   const { tempo } = useContext(SongSettingsContext)!;
+  const { setCopiedNotes } = useContext(ClipboardContext)!;
   const { setPlayheadPosX, incrementBabyDanceFrame } = useContext(PlayheadContext)!;
   const {
     userInstrumentsRef,
@@ -163,9 +165,9 @@ export function CompositionContextProvider({
     setComposition(newComposition);
   }, [setComposition]);
   const addCompositionNotes = useCallback(
-    (notesToAdd: (Omit<InstrumentInstruction, 'noteId'> & { noteId?: number })[]) => {
+    (notesToAdd: (Omit<InstrumentInstruction, 'noteId'> & { noteId?: number })[]): InstrumentInstruction[] => {
       const newComposition = { ...compositionRef.current };
-      notesToAdd.forEach((noteToAdd) => {
+      const addedNotes = notesToAdd.map((noteToAdd) => {
         const { midiBeat, midiNote } = noteToAdd;
         if (!newComposition[midiBeat]) newComposition[midiBeat] = {};
         if (!newComposition[midiBeat][midiNote]) newComposition[midiBeat][midiNote] = {};
@@ -176,8 +178,10 @@ export function CompositionContextProvider({
         };
         newComposition[midiBeat][midiNote][noteId] = newInstrumentInstruction;
         compositionByInstructionIdRef.current[noteId] = newInstrumentInstruction;
+        return newInstrumentInstruction;
       });
       setComposition(newComposition);
+      return addedNotes;
     },
     [setComposition]
   );
@@ -261,7 +265,9 @@ export function CompositionContextProvider({
     setUserInstrumentIndex(0);
     setUserInstruments([getNewUserInstrument(audioContext, 0)]);
     setHowManyInstrumentsIEverMade(1);
-  }, [audioContext, getNewUserInstrument, handleStopComposition, setHowManyInstrumentsIEverMade, setUserInstrumentIndex, setUserInstruments]);
+    setComposition({});
+    setCopiedNotes([]);
+  }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setHowManyInstrumentsIEverMade, setUserInstrumentIndex, setUserInstruments]);
 
   const compositionActionsContextProvider = useMemo(() => (
     <CompositionActionsContext value={{
@@ -279,6 +285,7 @@ export function CompositionContextProvider({
   ), [addCompositionNotes, children, handleClearComposition, handlePlayComposition, handleStartLoop, handleStopComposition, handleStopLoop, removeCompositionNotes, removeInstrumentFromComposition]);
   return (
     <CompositionContext value={{
+      instructionIdRef,
       compositionByInstructionIdRef,
       _composition, compositionRef, setComposition,
       convertCompositionByInstrumentToComposition,
@@ -297,6 +304,7 @@ export function CompositionContextProvider({
 }
 
 export const CompositionContext = createContext<{
+  instructionIdRef: React.RefObject<number>,
   compositionByInstructionIdRef: React.RefObject<Record<string, InstrumentInstruction>>,
   _composition: Composition,
   compositionRef: React.RefObject<Composition>,
@@ -322,7 +330,7 @@ export const CompositionActionsContext = createContext<{
   addCompositionNotes: (notesToAdd: (
     Omit<InstrumentInstruction, "noteId"> & {
       noteId?: NoteId;
-    })[]) => void,
+    })[]) => InstrumentInstruction[],
   removeCompositionNotes: (noteIdsToRemove: string[]) => Record<NoteId, InstrumentInstruction>,
   removeInstrumentFromComposition: (userInstrumentIndex: number) => void,
   handlePlayComposition: ({ wasStartedFromLoop }: {

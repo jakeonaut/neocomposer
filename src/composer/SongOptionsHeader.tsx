@@ -2,7 +2,7 @@ import React, { useCallback, useContext } from 'react';
 import styled from 'styled-components'
 import { CompositionActionsContext, CompositionContext, convertCompositionToCompositionByInstrument } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
-import { ActionButtonsContainer } from './ActionButtons';
+import { ActionButtonsContainer } from './ActionButtonFooter';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { AudioContextContext, SongJsonExport } from './consts';
 import { PristineContext } from './contexts/PristineContextProvider';

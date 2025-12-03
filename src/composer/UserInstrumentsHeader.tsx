@@ -1,13 +1,13 @@
-import React, { useCallback, useContext, useMemo, useRef } from 'react';
+import React, { useCallback, useContext, useMemo } from 'react';
 import styled from 'styled-components'
 import { useUploadSf2 } from './hooks/useUploadSf2';
 import { Soundfont2Sampler } from '../smplr/soundfont2';
 import { AudioContextContext, getARandomNote } from './consts';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
-import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
-import { CompositionActionsContext, CompositionContext } from './contexts/CompositionContextProvider';
-import { useDebouncedCallback, useThrottledCallback } from "use-debounce";
+import { CompositionActionsContext } from './contexts/CompositionContextProvider';
+import { useThrottledCallback } from "use-debounce";
 import { PlayheadContext } from './contexts/PlayheadContextProvider';
+import { ClipboardContext } from './contexts/ClipboardContextProvider';
 
 const SoundfontHeader = styled.div<{ $color: string }>`
   height: 28px;
@@ -53,12 +53,13 @@ const UserInstrumentTab = styled.div`
   }
 `;
 
-export function UserInstrumentsHeader({}: {}) {
+export function UserInstrumentsHeader() {
   const audioContext = useContext(AudioContextContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const { incrementBabyDanceFrame } = useContext(PlayheadContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const { removeInstrumentFromComposition } = useContext(CompositionActionsContext)!;
+  const { removeInstrumentFromCopiedNotes } = useContext(ClipboardContext)!;
   const {
     _userInstruments,
     userInstrumentsRef,
@@ -154,14 +155,15 @@ export function UserInstrumentsHeader({}: {}) {
     if (userInstrumentsRef.current.length <= 1) return;
     const confirmed = window.confirm('Really delete ❌ the instrument? 🎷 All corresponding notes 🎶 will be deleted 🚯 too!!! 😱');
     if (!confirmed) return;
+    removeInstrumentFromComposition(userInstrumentIndexRef.current);
+    removeInstrumentFromCopiedNotes(userInstrumentIndexRef.current);
     const newUserInstruments = [...userInstrumentsRef.current];
     newUserInstruments.splice(userInstrumentIndexRef.current, 1);
     if (userInstrumentIndexRef.current >= newUserInstruments.length) {
       setUserInstrumentIndex(userInstrumentIndexRef.current - 1);
     }
     setUserInstruments(newUserInstruments);
-    removeInstrumentFromComposition(userInstrumentIndexRef.current);
-  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, removeInstrumentFromComposition, setUserInstrumentIndex]);
+  }, [userInstrumentsRef, removeInstrumentFromComposition, userInstrumentIndexRef, removeInstrumentFromCopiedNotes, setUserInstruments, setUserInstrumentIndex]);
 
   const sf2InstOptions = useMemo(() => _currUserInstrument.sf2Sampler?.instrumentNames.map(
     (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>), 
@@ -178,7 +180,8 @@ export function UserInstrumentsHeader({}: {}) {
       onClick={() => {
         setUserInstrumentIndex(index);
         _userInstruments[index].sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
-      }}>
+      }}
+    >
         {userInstrument.name ?? index}
       </UserInstrumentTab>
   )), [_userInstruments, _userInstrumentIndex, setUserInstrumentIndex]);

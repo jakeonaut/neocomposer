@@ -8,6 +8,7 @@ import { SongSettingsContextProvider } from './composer/contexts/SongSettingsCon
 import { SubdivisionTypeContextProvider } from './composer/contexts/SubdivisionTypeContextProvider';
 import { PristineContextProvider } from './composer/contexts/PristineContextProvider';
 import { PlayheadContextProvider } from './composer/contexts/PlayheadContextProvider';
+import { ClipboardContextProvider } from './composer/contexts/ClipboardContextProvider';
 
 function App() {
   const [audioContext] = useState(new AudioContext());
@@ -19,9 +20,11 @@ function App() {
             <SongSettingsContextProvider>
               <UserInstrumentContextProvider>
                 <SubdivisionTypeContextProvider>
-                  <CompositionContextProvider>
-                    <Maestro />
-                  </CompositionContextProvider>
+                  <ClipboardContextProvider>
+                    <CompositionContextProvider>
+                      <Maestro />
+                    </CompositionContextProvider>
+                  </ClipboardContextProvider>
                 </SubdivisionTypeContextProvider>
               </UserInstrumentContextProvider>
             </SongSettingsContextProvider>

@@ -110,6 +110,7 @@ export type InstrumentInstruction = {
 };
 export type Offset = { x: number, y: number };
 export type NoteIdWithOffset = { offset: Offset };
+export type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
 export type Composition = {
   [id: MidiBeat]: {
     [id: MidiNoteNum]: {
@@ -170,5 +171,6 @@ export enum InputMode {
   DEFAULT = "default",
   SELECT = "select"
 }
+export type CursorPosition = { midiNote: MidiNoteNum; midiBeat: MidiBeat; };
 
 export const AudioContextContext = createContext<AudioContext | undefined>(undefined);
