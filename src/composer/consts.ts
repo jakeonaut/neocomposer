@@ -100,6 +100,7 @@ export type MidiNoteNum = number;
 export type MidiBeat = number;
 export type NoteId = number;
 export enum SubdivisionType { q ='q', t = 't' };
+export enum TimeSignature { ts4_4 = '4_4', ts3_4 = '3_4' };
 export type InstrumentInstruction = {
   noteId: number;
   userInstrumentIndex: number;

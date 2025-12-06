@@ -68,6 +68,7 @@ export function SongOptionsHeader({}: {}) {
     compositionRef,
     setComposition,
     convertCompositionByInstrumentToComposition,
+    manuallyUpdateFartherRightNoteEnd,
   } = useContext(CompositionContext)!;
   const { 
     handleClearComposition,
@@ -102,6 +103,7 @@ export function SongOptionsHeader({}: {}) {
     setUserInstruments(newUserInstruments);
     setHowManyInstrumentsIEverMade(newUserInstruments.length);
     setComposition(convertCompositionByInstrumentToComposition(jsonObj.composition));
+    manuallyUpdateFartherRightNoteEnd();
     setPristine(true);
   }, [audioContext, convertCompositionByInstrumentToComposition, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPristine, setSongName, setTempo, setUserInstrumentIndex, setUserInstruments]);
   const handleSaveCompositionToFile = useCallback(() => {

@@ -1,10 +1,11 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, NoteId, NoteIdWithOffset, SubdivisionType } from "../consts";
+import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, NoteId, NoteIdWithOffset, SubdivisionType, TimeSignature } from "../consts";
 import { SongSettingsContext } from "./SongSettingsContextProvider";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import _ from "lodash";
 import { PlayheadContext } from "./PlayheadContextProvider";
 import { ClipboardContext } from "./ClipboardContextProvider";
+import { TimeSignatureContext } from "./TimeSignatureContextProvider";
 
 export function convertCompositionToCompositionByInstrument(composition: Composition) {
   const compositionByInstrument: CompositionByInstrument = {};
@@ -44,14 +45,19 @@ export function CompositionContextProvider({
     getNewUserInstrument,
     setUserInstrumentIndex,
   } = useContext(UserInstrumentContext)!;
+  const { timeSignatureRef } = useContext(TimeSignatureContext)!;
   const [heldPianoKeys, setHeldPianoKeys] = useState<Record<string, boolean>>({});
   const [_composition, _setComposition] = useState<Composition>({});
   const [_isCompositionMouseDown, _setIsCompositionMouseDown] = useState(false);
   const [_clickedNote, _setClickedNote] = useState<NoteId | undefined>(undefined);
   const [_selectedNotes, _setSelectedNotes] = useState<Record<string, NoteIdWithOffset>>({});
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [isLooping, setIsLooping] = useState<boolean>(false);
+  const [_isLooping, _setIsLooping] = useState<boolean>(true);
+  const [_hasUserSetStartLoopSpot, _setHasUserSetStartLoopSpot] = useState<boolean>(false);
 
+  const hasUserSetStartLoopSpotRef = useRef(_hasUserSetStartLoopSpot);
+  const farthestRightNoteEndRef = useRef(1);
+  const isLoopingRef = useRef(_isLooping);
   const clickedNoteRef = useRef(_clickedNote);
   const selectedNotesRef = useRef(_selectedNotes);
   const isCompositionMouseDownRef = useRef(_isCompositionMouseDown);
@@ -63,7 +69,20 @@ export function CompositionContextProvider({
   const compositionByInstructionIdRef = useRef<Record<string, InstrumentInstruction>>({});
   const whenWasMouseDownedRef = useRef<number>(0);
 
-  const setIsCompositionMouseDown = useCallback((newIsCompositionMouseDown:boolean) => {
+  const manuallyUpdateFartherRightNoteEnd = useCallback(() => {
+    farthestRightNoteEndRef.current = 1;
+    Object.values(compositionByInstructionIdRef.current).forEach((instrumentInstruction) => {
+      if (instrumentInstruction.midiBeat + instrumentInstruction.noteWidth > farthestRightNoteEndRef.current) {
+        farthestRightNoteEndRef.current = instrumentInstruction.midiBeat + instrumentInstruction.noteWidth;
+      }
+    });
+  }, []);
+
+  const setIsLooping = useCallback((newIsLooping: boolean) => {
+    isLoopingRef.current = newIsLooping;
+    _setIsLooping(newIsLooping);
+  }, []);
+  const setIsCompositionMouseDown = useCallback((newIsCompositionMouseDown: boolean) => {
     if (newIsCompositionMouseDown && !isCompositionMouseDownRef.current){
       whenWasMouseDownedRef.current = Date.now();
     }
@@ -140,10 +159,13 @@ export function CompositionContextProvider({
         delete newComposition[midiBeat];
       }
       delete compositionByInstructionIdRef.current[noteId];
+      if (farthestRightNoteEndRef.current <= instrumentInstruction.midiBeat + instrumentInstruction.noteWidth) {
+        manuallyUpdateFartherRightNoteEnd();
+      }
     })
     setComposition(newComposition);
     return removedInstrumentInstructions;
-  }, [setComposition]);
+  }, [manuallyUpdateFartherRightNoteEnd, setComposition]);
   const removeInstrumentFromComposition = useCallback((userInstrumentIndexToDelete: number) => {
     const newComposition = { ...compositionRef.current };
     Object.entries(newComposition).forEach(([midiBeatStr, column]) => {
@@ -160,6 +182,9 @@ export function CompositionContextProvider({
             if (Object.keys(newComposition[midiBeat]).length === 0) {
               delete newComposition[midiBeat];
             }
+            if (farthestRightNoteEndRef.current <= instrumentInstruction.midiBeat + instrumentInstruction.noteWidth) {
+              manuallyUpdateFartherRightNoteEnd();
+            }
           } else if (instrumentInstruction.userInstrumentIndex > userInstrumentIndexToDelete) {
             newComposition[midiBeat][midiNote][noteId].userInstrumentIndex -= 1;
           }
@@ -167,14 +192,17 @@ export function CompositionContextProvider({
       });
     });
     setComposition(newComposition);
-  }, [setComposition]);
+  }, [manuallyUpdateFartherRightNoteEnd, setComposition]);
   const addCompositionNotes = useCallback(
     (notesToAdd: (Omit<InstrumentInstruction, 'noteId'> & { noteId?: number })[]): InstrumentInstruction[] => {
       const newComposition = { ...compositionRef.current };
       const addedNotes = notesToAdd.map((noteToAdd) => {
-        const { midiBeat, midiNote } = noteToAdd;
+        const { midiBeat, midiNote, noteWidth } = noteToAdd;
         if (!newComposition[midiBeat]) newComposition[midiBeat] = {};
         if (!newComposition[midiBeat][midiNote]) newComposition[midiBeat][midiNote] = {};
+        if (midiBeat + noteWidth > farthestRightNoteEndRef.current) {
+          farthestRightNoteEndRef.current = midiBeat + noteWidth;
+        }
         const noteId = noteToAdd.noteId || ++instructionIdRef.current;
         const newInstrumentInstruction = {
           ...noteToAdd,
@@ -234,11 +262,23 @@ export function CompositionContextProvider({
         );
       }
       setPlayheadPosX(BEAT_WIDTH * playheadBeatRef.current);
-      playheadBeatRef.current++;
+      const timeSignature = timeSignatureRef.current === TimeSignature.ts4_4 ? 4 : 3;
+      const measureBeatMultiplier = 4 * timeSignature;
+      const endOfMeasureToLoopAtBeat = (
+        Math.ceil(
+          farthestRightNoteEndRef.current / measureBeatMultiplier
+        ) * measureBeatMultiplier
+      );
+      const shouldLoop = isLoopingRef.current && !hasUserSetStartLoopSpotRef.current && (playheadBeatRef.current >= endOfMeasureToLoopAtBeat);
+      if (shouldLoop) {
+        playheadBeatRef.current = 1;
+      } else {
+        playheadBeatRef.current++;
+      }
       playerIdRef.current = window.setTimeout(scheduler, beatLengthInMs);
     }
     playerIdRef.current = window.setTimeout(scheduler, 0);
-  }, [audioContext.currentTime, incrementBabyDanceFrame, setPlayheadPosX, tempo, userInstrumentsRef]);
+  }, [audioContext.currentTime, incrementBabyDanceFrame, setPlayheadPosX, tempo, timeSignatureRef, userInstrumentsRef]);
 
   const handleStopComposition = useCallback(() => {
     if (playerIdRef.current) {
@@ -255,10 +295,10 @@ export function CompositionContextProvider({
 
   const handleStartLoop = useCallback(() => {
     setIsLooping(true);
-  }, []);
+  }, [setIsLooping]);
   const handleStopLoop = useCallback(() => {
     setIsLooping(false);
-  }, []);
+  }, [setIsLooping]);
 
   const handleClearComposition = useCallback(() => {
     const shouldDelete = window.confirm(
@@ -269,6 +309,7 @@ export function CompositionContextProvider({
     setUserInstrumentIndex(0);
     setUserInstruments([getNewUserInstrument(audioContext, 0)]);
     setHowManyInstrumentsIEverMade(1);
+    farthestRightNoteEndRef.current = 1;
     setComposition({});
     setCopiedNotes([]);
   }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setHowManyInstrumentsIEverMade, setUserInstrumentIndex, setUserInstruments]);
@@ -294,6 +335,7 @@ export function CompositionContextProvider({
       _composition, compositionRef, setComposition,
       convertCompositionByInstrumentToComposition,
       _isCompositionMouseDown, isCompositionMouseDownRef, setIsCompositionMouseDown,
+      manuallyUpdateFartherRightNoteEnd,
       whenWasMouseDownedRef,
       onCompositionMouseUpRef,
       heldPianoKeys,
@@ -301,7 +343,7 @@ export function CompositionContextProvider({
       _clickedNote, clickedNoteRef, setClickedNote,
       _selectedNotes, selectedNotesRef, setSelectedNotes,
       isPlaying,
-      isLooping,
+      _isLooping,
     }}>
       {compositionActionsContextProvider}
     </CompositionContext>
@@ -318,6 +360,7 @@ export const CompositionContext = createContext<{
   _isCompositionMouseDown: boolean,
   isCompositionMouseDownRef: React.RefObject<boolean>,
   setIsCompositionMouseDown: (newIsCompositionMouseDown: boolean) => void,
+  manuallyUpdateFartherRightNoteEnd: () => void,
   whenWasMouseDownedRef: React.RefObject<number>,
   onCompositionMouseUpRef: React.RefObject<(() => void) | undefined>,
   heldPianoKeys: Record<string, boolean>,
@@ -329,7 +372,7 @@ export const CompositionContext = createContext<{
   selectedNotesRef: React.RefObject<Record<string, NoteIdWithOffset>>,
   setSelectedNotes: (notes: Record<string, NoteIdWithOffset>) => void,
   isPlaying: boolean,
-  isLooping: boolean,
+  _isLooping: boolean,
 } | undefined>(undefined);
 
 export const CompositionActionsContext = createContext<{

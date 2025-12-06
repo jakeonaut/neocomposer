@@ -10,8 +10,7 @@ export function TodoList() {
         <li>[ ] this sets the PLAYHEAD_START, and pressing STOP after will reset it to PLAYHEAD_START</li>
         <li>[ ] should have a &lt;&lt; button to snap PLAYHEAD_START back to 0 </li>
         <br/>
-        <li>[ ] allow looping, which loops back to PLAYHEAD_START from end of composition.</li>
-        <li>[ ] click & drag playhead row will set PLAYHEAD_START and PLAYHEAD_STOP</li>
+        <li>[ ] click & drag playhead row will set PLAYHEAD_START and PLAYHEAD_STOP (for looping/stopping)</li>
         <br/>
         <li>[ ] clicking and dragging the baby will play each note in a midibeat as you drag it</li>
         <hr/>

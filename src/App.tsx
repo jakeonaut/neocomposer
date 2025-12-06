@@ -9,6 +9,7 @@ import { SubdivisionTypeContextProvider } from './composer/contexts/SubdivisionT
 import { PristineContextProvider } from './composer/contexts/PristineContextProvider';
 import { PlayheadContextProvider } from './composer/contexts/PlayheadContextProvider';
 import { ClipboardContextProvider } from './composer/contexts/ClipboardContextProvider';
+import { TimeSignatureContextProvider } from './composer/contexts/TimeSignatureContextProvider';
 
 function App() {
   const [audioContext] = useState(new AudioContext());
@@ -19,13 +20,15 @@ function App() {
           <PlayheadContextProvider>
             <SongSettingsContextProvider>
               <UserInstrumentContextProvider>
-                <SubdivisionTypeContextProvider>
-                  <ClipboardContextProvider>
-                    <CompositionContextProvider>
-                      <Maestro />
-                    </CompositionContextProvider>
-                  </ClipboardContextProvider>
-                </SubdivisionTypeContextProvider>
+                <TimeSignatureContextProvider>
+                  <SubdivisionTypeContextProvider>
+                    <ClipboardContextProvider>
+                      <CompositionContextProvider>
+                        <Maestro />
+                      </CompositionContextProvider>
+                    </ClipboardContextProvider>
+                  </SubdivisionTypeContextProvider>
+                </TimeSignatureContextProvider>
               </UserInstrumentContextProvider>
             </SongSettingsContextProvider>
           </PlayheadContextProvider>

@@ -2,9 +2,10 @@ import React, { useCallback, useContext } from 'react';
 import styled from "styled-components";
 import { CompositionActionsContext, CompositionContext } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
-import { InputMode, SubdivisionType } from './consts';
+import { InputMode, SubdivisionType, TimeSignature } from './consts';
 import { SubdivisionTypeContext } from './contexts/SubdivisionTypeContextProvider';
 import { ClipboardContext } from './contexts/ClipboardContextProvider';
+import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
 
 export const ActionButtonsContainer = styled.div`
   display: flex;
@@ -36,7 +37,7 @@ const PixelButton = styled.div<{ $y: number, $inverted: boolean }>`
 function PlayStopButton() {
   const {
     isPlaying,
-    isLooping,
+    _isLooping,
   } = useContext(CompositionContext)!;
   const {
     handleStopComposition,
@@ -46,9 +47,14 @@ function PlayStopButton() {
   } = useContext(CompositionActionsContext)!;
 
   return (
-    <ActionButton onClick={isPlaying ? handleStopComposition : () => handlePlayComposition({})} title="Play/Stop: Space">
-      {isPlaying ? '⏹️' : '▶️'}
-    </ActionButton>
+    <>
+      <ActionButton onClick={isPlaying ? handleStopComposition : () => handlePlayComposition({})} title="Play/Stop: Space">
+        {isPlaying ? '⏹️' : '▶️'}
+      </ActionButton>
+      <ActionButton onClick={_isLooping ? handleStopLoop : handleStartLoop}>
+        {!_isLooping ? '📴' : '🔁'}
+      </ActionButton>
+    </>
   );
 }
 
@@ -157,6 +163,30 @@ function InputSubdivisionTypeButton() {
   );
 }
 
+function InputTimeSignatureButton() {
+  const { 
+    _timeSignature,
+    timeSignatureRef,
+    setTimeSignature,
+  } = useContext(TimeSignatureContext)!;
+  const onToggleTimeSignature = useCallback(() => {
+    if (timeSignatureRef.current === TimeSignature.ts4_4) {
+      setTimeSignature(TimeSignature.ts3_4);
+    } else if (timeSignatureRef.current === TimeSignature.ts3_4) {
+      setTimeSignature(TimeSignature.ts4_4);
+    }
+  }, [setTimeSignature, timeSignatureRef]);
+
+  return (
+    <PixelActionButton
+      onClick={onToggleTimeSignature}
+      style={{ paddingBottom: 4, paddingTop: 1, position: 'absolute', left: 3, paddingRight: 0 }}>
+      <PixelButton $y={-84} $inverted={_timeSignature === TimeSignature.ts3_4} 
+        title="Time Signature: R" />
+    </PixelActionButton>
+  );
+}
+
 function TempoInput() {
   const { tempo, setTempo } = useContext(SongSettingsContext)!;
   const onTempoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,11 +225,9 @@ export function ActionButtonFooter({
 }) {
   return (
     <ActionButtonsContainer style={{ marginTop: 8, justifyContent: 'center' }}>
+      <InputTimeSignatureButton />
       <InputSubdivisionTypeButton />
       <PlayStopButton />
-      {/* <ActionButton onClick={isLooping ? handleStopLoop : handleStartLoop}>
-        {isLooping ? '📴' : '🔁'}
-      </ActionButton> */}
       <TempoInput />
       <InputDefaultButton _inputMode={_inputMode} setInputMode={setInputMode} />
       <InputSelectionButton _inputMode={_inputMode} setInputMode={setInputMode} />

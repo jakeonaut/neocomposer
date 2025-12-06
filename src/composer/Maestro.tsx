@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { TodoList } from "../TodoList";
 import { CompositionCanvas } from "./composition/CompositionCanvas";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
-import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType } from "./consts";
+import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType, TimeSignature } from "./consts";
 import { CompositionActionsContext, CompositionContext } from "./contexts/CompositionContextProvider";
 import { SongOptionsHeader } from "./SongOptionsHeader";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
@@ -12,6 +12,7 @@ import { SubdivisionTypeContext } from "./contexts/SubdivisionTypeContextProvide
 import { PristineContext } from "./contexts/PristineContextProvider";
 import { BabyDanceFrameContext, PlayheadContext, PlayheadPosXContext } from "./contexts/PlayheadContextProvider";
 import { ClipboardContext } from "./contexts/ClipboardContextProvider";
+import { TimeSignatureContext } from "./contexts/TimeSignatureContextProvider";
 
 const MaestroContainer = styled.div`
   display: flex;
@@ -71,7 +72,10 @@ export function Maestro() {
     setSubdivisionType,
   } = useContext(SubdivisionTypeContext)!;
   const {
-    instructionIdRef,
+    timeSignatureRef,
+    setTimeSignature,
+  } = useContext(TimeSignatureContext)!;
+  const {
     compositionByInstructionIdRef,
     isCompositionMouseDownRef,
     setIsCompositionMouseDown,
@@ -109,6 +113,14 @@ export function Maestro() {
         setSubdivisionType(SubdivisionType.q);
       }
     }, [setSubdivisionType, subdivisionTypeRef]);
+
+  const onToggleTimeSignature = useCallback(() => {
+    if (timeSignatureRef.current === TimeSignature.ts4_4) {
+      setTimeSignature(TimeSignature.ts3_4);
+    } else if (timeSignatureRef.current === TimeSignature.ts3_4) {
+      setTimeSignature(TimeSignature.ts4_4);
+    }
+  }, [setTimeSignature, timeSignatureRef]);
 
   const tryCopySelectedNotes = useCallback(() => {
     copiedNotesOffsetRef.current = 0;
@@ -184,7 +196,7 @@ export function Maestro() {
         [note.noteId]: { offset: { x: 0, y: 0 } }
       };
     }, {} as Record<string, NoteIdWithOffset>));
-  }, [addCompositionNotes, copiedNotesOffsetRef, copiedNotesRef, setSelectedNotes]);
+  }, [addCompositionNotes, copiedNotesOffsetRef, copiedNotesRef, setSelectedNotes, userInstrumentIndexRef]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -256,6 +268,10 @@ export function Maestro() {
         onToggleSubdivisionType();
         return false;
       }
+      if (e.key === "r") {
+        onToggleTimeSignature();
+        return false;
+      }
       if (e.key === "Backspace") {
         tryDeleteSelectedNotes();
         return false;
@@ -313,7 +329,7 @@ export function Maestro() {
       });
       incrementBabyDanceFrame();
     },
-    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, clickedNoteRef, selectedNotesRef, removeCompositionNotes, addCompositionNotes, setSelectedNotes, compositionByInstructionIdRef, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, trySetInputMode, onCompositionMouseUpRef, setInputMode, isPlaying, handleStopComposition, handlePlayComposition]
+    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, clickedNoteRef, selectedNotesRef, removeCompositionNotes, addCompositionNotes, setSelectedNotes, compositionByInstructionIdRef, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, trySetInputMode, onCompositionMouseUpRef, setInputMode, isPlaying, handleStopComposition, handlePlayComposition]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {

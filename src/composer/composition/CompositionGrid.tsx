@@ -1,39 +1,43 @@
 import React, { useContext, useMemo } from "react";
-import { beatHeight, MidiBeat, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, zIndex_rectSelect } from "../consts";
+import { beatHeight, MidiBeat, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature } from "../consts";
 import styled from "styled-components";
 import { fromMidi, toMidi } from "../../smplr/player/midi";
 import { CellComponentProps, Grid } from "react-window";
-import { CompositionContext } from "../contexts/CompositionContextProvider";
 import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
+import { TimeSignatureContext } from "../contexts/TimeSignatureContextProvider";
 
+const lightColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.25)';
+const mediumColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.5)'
+const veryLightColor = '#ced8e0ff'; //"rgba(17, 156, 238, 0.12)";
 
 const GridCellDiv = styled.div<{
   $idx: number,
-  $subdivision: SubdivisionType,
+  $subdivision: number,
+  $timeSignature: number,
   $midiNote: string,
   $beatWidth: number,
 }>`
   position: relative;
   cursor: pointer;
   border-top: 1px ${({ $midiNote }) => $midiNote === pianoRollKeys[0] || ($midiNote[0] === "B" && $midiNote[1] !== 'b')
-    ? 'solid #b2bcc2'
-    : 'dotted #b2bcc2'};
+    ? `solid ${mediumColor}`
+    : `dotted ${lightColor}`};
   width: ${({ $beatWidth }) => `${$beatWidth - 1}px`};
   min-width: ${({ $beatWidth }) => `${$beatWidth - 1}px`};
-  border-left: ${({ $idx, $subdivision }) => `1px ${
-    $idx % ($subdivision === SubdivisionType.q ? 4 : 3) === 0 ? "solid" : "dashed"
+  border-left: ${({ $idx, $subdivision, $timeSignature }) => `1px ${
+    $idx % $subdivision === 0 ? "solid" : "dashed"
   } ${
-    $idx % ($subdivision === SubdivisionType.q ? 16 : 12) === 0
+    $idx % ($subdivision * $timeSignature) === 0
       ? "black"
-      : $idx % ($subdivision === SubdivisionType.q ? 4 : 3) === 0
-        ? "#b2bcc2"
-        : "#ced8e0ff"
+      : $idx % $subdivision === 0
+        ? mediumColor
+        : veryLightColor
   }`};
   border-bottom: ${({ $midiNote }) => $midiNote === pianoRollKeys[pianoRollKeys.length - 1]
-      ? '1px solid #b2bcc2'
+      ? `1px solid ${lightColor}`
       : 'unset' };
   border-right: ${({ $idx }) => $idx === pianoRollBeats.length - 1
-    ? '1px solid #b2bcc2'
+    ? `1px solid ${lightColor}`
     : 'unset'
   };
 `;
@@ -94,14 +98,16 @@ const useCellProps = ({
   handleMouseMove: MouseHandler,
 }) => {
   const {  _subdivisionType } = useContext(SubdivisionTypeContext)!;
+  const { _timeSignature } = useContext(TimeSignatureContext)!;
   const beatWidth = useMemo(() => getBeatWidth(_subdivisionType), [_subdivisionType]);
   const cellProps = useMemo(() => ({
     beatWidth,
     subdivisionType: _subdivisionType,
+    timeSignature: _timeSignature,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-  }), [_subdivisionType, beatWidth, handleMouseDown, handleMouseMove, handleMouseUp]);
+  }), [_subdivisionType, _timeSignature, beatWidth, handleMouseDown, handleMouseMove, handleMouseUp]);
   return cellProps;
 };
 
@@ -128,7 +134,7 @@ export function CompositionGrid({
       rowHeight={beatHeight - 1}
       style={{
         height: ((beatHeight - 1) * (pianoRollKeys.length)) + 1,
-        borderBottom: '1px dotted #b2bcc2',
+        borderBottom: `1px dotted ${lightColor}`,
       }}
     >
       {children}
@@ -142,12 +148,14 @@ function GridCell({
   style,
   beatWidth,
   subdivisionType,
+  timeSignature,
   handleMouseDown,
   handleMouseMove,
   handleMouseUp,
 }: CellComponentProps<{
   beatWidth: number,
   subdivisionType: SubdivisionType,
+  timeSignature: TimeSignature
   handleMouseDown: MouseHandler,
   handleMouseMove: MouseHandler
   handleMouseUp: MouseHandler
@@ -162,7 +170,8 @@ function GridCell({
     style={style}
     $idx={columnIndex}
     $midiNote={fromMidi(rowIndex)}
-    $subdivision={subdivisionType}
+    $subdivision={subdivisionType === SubdivisionType.q ? 4 : 3}
+    $timeSignature={timeSignature === TimeSignature.ts4_4 ? 4 : 3}
     $beatWidth={beatWidth}
   />
 }

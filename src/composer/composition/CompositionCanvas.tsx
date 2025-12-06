@@ -263,7 +263,7 @@ export function CompositionCanvas({
       // TODO(jaketrower): do this with the window documnet too like handleKeyDown
       return false;
     },
-    [isMouseDownRef, setClickedNote, setIsMouseDown, setCursorPosition, setStartingCursorPos, onCompositionMouseUpRef, setCursorXOffset, inputModeRef, clickedNoteRef, setPristine, subdivisionTypeRef, addCompositionNotes, userInstrumentIndexRef, removeCompositionNotes, selectedNotesRef, compositionByInstructionIdRef, setSelectedNotes, compositionRef, setInputMode]
+    [isMouseDownRef, setClickedNote, setIsMouseDown, setCursorPosition, setStartingCursorPos, onCompositionMouseUpRef, setCursorXOffset, inputModeRef, clickedNoteRef, setPristine, subdivisionTypeRef, addCompositionNotes, userInstrumentIndexRef, compositionByInstructionIdRef, removeCompositionNotes, selectedNotesRef, setSelectedNotes, whenWasMouseDownedRef, compositionRef, setUserInstrumentIndex, setInputMode]
   );
   const handleMouseMove = useCallback(
     (
