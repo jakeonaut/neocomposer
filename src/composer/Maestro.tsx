@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { TodoList } from "../TodoList";
 import { CompositionCanvas } from "./composition/CompositionCanvas";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
-import { AudioContextContext, getARandomNote, InputMode, InstrumentInstructionWithOffset, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType } from "./consts";
+import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType } from "./consts";
 import { CompositionActionsContext, CompositionContext } from "./contexts/CompositionContextProvider";
 import { SongOptionsHeader } from "./SongOptionsHeader";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
@@ -161,11 +161,18 @@ export function Maestro() {
     console.log("TODO: test this while dragging other selected notes...");
     console.log("TODO: need to test the midiBeat increase with different copied subdivision types?")
     const copiedNotes = Object.values(copiedNotesRef.current);
+    if (copiedNotes.length === 0) return;
+    const possibleOldUserInstrumentIndex = copiedNotes[0].userInstrumentIndex;
+    let newUserInstrumentIndex = -1;
+    if (copiedNotes.every((note) => note.userInstrumentIndex === possibleOldUserInstrumentIndex)) {
+      newUserInstrumentIndex = userInstrumentIndexRef.current;
+    }
     const notesToPaste = copiedNotes.map((copiedNote) => {
       return {
         ...copiedNote,
         noteId: undefined,
         midiBeat: copiedNote.midiBeat + copiedNotesOffsetRef.current,
+        ...(newUserInstrumentIndex >= 0 ? { userInstrumentIndex: newUserInstrumentIndex } : {}),
       }
     });
     const pastedNotes = addCompositionNotes(notesToPaste);
@@ -184,8 +191,41 @@ export function Maestro() {
       if (e.repeat) {
         return;
       }
-      if (document.activeElement?.tagName === "INPUT") {
+      if (document.activeElement?.tagName === "INPUT" && (document.activeElement as HTMLInputElement).type !== "range") {
         return;
+      }
+      if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
+        if (clickedNoteRef.current) {
+          // Need to update cursorOffset ??? (not just X but Y too...)
+          if (Object.entries(selectedNotesRef.current).length > 0) {
+            // Move any other selected notes too (offset)
+          }
+          e.preventDefault();
+          return false;
+        } else if (Object.entries(selectedNotesRef.current).length > 0) {
+          const selectedNoteIds = Object.keys(selectedNotesRef.current);
+          const removedNoteToShift = Object.values(removeCompositionNotes(selectedNoteIds));
+          addCompositionNotes([
+            ...removedNoteToShift.map((noteToShift) => {
+              if (e.key === "ArrowDown") {
+                noteToShift.midiNote -= 1;
+              }
+              if (e.key === "ArrowUp") {
+                noteToShift.midiNote += 1;
+              }
+              if (e.key === "ArrowLeft") {
+                // TODO(jaketrower): should take into account subdivision type?
+                noteToShift.midiBeat -= 1;
+              }
+              if (e.key === "ArrowRight") {
+                noteToShift.midiBeat += 1;
+              }
+              return { ...noteToShift };
+            })
+          ])
+          e.preventDefault();
+          return false;
+        }
       }
       if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
         setSelectedNotes({
@@ -255,6 +295,7 @@ export function Maestro() {
       if (e.code === "Space") {
         isPlaying ? handleStopComposition() : handlePlayComposition({});
         e.preventDefault();
+        e.stopPropagation();
         return false;
       }
       const playedNote = keyboardPianoKeys.has(e.key)
@@ -272,7 +313,7 @@ export function Maestro() {
       });
       incrementBabyDanceFrame();
     },
-    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, setSelectedNotes, compositionByInstructionIdRef, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, tryDeleteSelectedNotes, isCompositionMouseDownRef, clickedNoteRef, selectedNotesRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, trySetInputMode, onCompositionMouseUpRef, setInputMode, isPlaying, handleStopComposition, handlePlayComposition]
+    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, clickedNoteRef, selectedNotesRef, removeCompositionNotes, addCompositionNotes, setSelectedNotes, compositionByInstructionIdRef, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, trySetInputMode, onCompositionMouseUpRef, setInputMode, isPlaying, handleStopComposition, handlePlayComposition]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {

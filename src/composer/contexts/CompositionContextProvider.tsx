@@ -61,8 +61,12 @@ export function CompositionContextProvider({
   const instructionIdRef = useRef(0);
   const compositionRef = useRef(_composition);
   const compositionByInstructionIdRef = useRef<Record<string, InstrumentInstruction>>({});
+  const whenWasMouseDownedRef = useRef<number>(0);
 
   const setIsCompositionMouseDown = useCallback((newIsCompositionMouseDown:boolean) => {
+    if (newIsCompositionMouseDown && !isCompositionMouseDownRef.current){
+      whenWasMouseDownedRef.current = Date.now();
+    }
     isCompositionMouseDownRef.current = newIsCompositionMouseDown;
     _setIsCompositionMouseDown(newIsCompositionMouseDown);
   }, []);
@@ -290,6 +294,7 @@ export function CompositionContextProvider({
       _composition, compositionRef, setComposition,
       convertCompositionByInstrumentToComposition,
       _isCompositionMouseDown, isCompositionMouseDownRef, setIsCompositionMouseDown,
+      whenWasMouseDownedRef,
       onCompositionMouseUpRef,
       heldPianoKeys,
       setHeldPianoKeys,
@@ -313,6 +318,7 @@ export const CompositionContext = createContext<{
   _isCompositionMouseDown: boolean,
   isCompositionMouseDownRef: React.RefObject<boolean>,
   setIsCompositionMouseDown: (newIsCompositionMouseDown: boolean) => void,
+  whenWasMouseDownedRef: React.RefObject<number>,
   onCompositionMouseUpRef: React.RefObject<(() => void) | undefined>,
   heldPianoKeys: Record<string, boolean>,
   setHeldPianoKeys: (keys: Record<string, boolean>) => void,

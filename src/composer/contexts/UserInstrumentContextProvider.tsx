@@ -19,24 +19,25 @@ export const UserInstrumentContext = createContext<{
 } | undefined>(undefined);
 
 export function createUserInstrument(audioContext: AudioContext, index: number, arrayBuffer?: Uint8Array): UserInstrument {
-  const sf2Sampler = (() => {
+  const { sampler: sf2Sampler, randomInstrumentIdx } = (() => {
     if (arrayBuffer) {
       const soundfont2Sampler = new Soundfont2Sampler(audioContext, {
         data: arrayBuffer,
         createSoundfont: (data) => new SoundFont2(data),
       })
       const sampler = soundfont2Sampler.load;
-      sampler.loadInstrument(sampler.instrumentNames[0]);
-      return sampler;
+      const randomInstrumentIdx = Math.floor(Math.random() * sampler.instrumentNames.length);
+      sampler.loadInstrument(sampler.instrumentNames[randomInstrumentIdx]);
+      return { sampler, randomInstrumentIdx };
     } else {
-      return undefined;
+      return { sampler: undefined, randomInstrumentIdx: undefined };
     }
   })();
   return {
     name: `ins${index+1}`,
-    color: sf2DefaultColours[index % sf2DefaultColours.length],
+    color: index < sf2DefaultColours.length ? sf2DefaultColours[index] : 'hsl(' + 360 * Math.random() + ', 60%, 70%)',
     sf2Sampler: sf2Sampler,
-    sf2InstrumentName: sf2Sampler?.instrumentNames[0],
+    sf2InstrumentName: sf2Sampler?.instrumentNames[randomInstrumentIdx],
     volume: 100,
   };
 }
@@ -88,11 +89,12 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
         createSoundfont: (data) => new SoundFont2(data),
       })
       const sampler = await soundfont2Sampler.load;
-      sampler.loadInstrument(sampler.instrumentNames[0]);
+      const randomInstrumentIdx = Math.floor(Math.random() * sampler.instrumentNames.length);
+      sampler.loadInstrument(sampler.instrumentNames[randomInstrumentIdx]);
       setUserInstruments([{
         ...userInstrumentsRef.current[0],
         sf2Sampler: sampler,
-        sf2InstrumentName: sampler.instrumentNames[0],
+        sf2InstrumentName: sampler.instrumentNames[randomInstrumentIdx],
       }])
     }
     fetchAndSetDefaultSoundFontInstrument();

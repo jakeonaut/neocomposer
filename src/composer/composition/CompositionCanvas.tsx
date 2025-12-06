@@ -44,6 +44,7 @@ export function CompositionCanvas({
   const {
     userInstrumentsRef,
     userInstrumentIndexRef,
+    setUserInstrumentIndex,
   } = useContext(UserInstrumentContext)!;
   const { setPristine } = useContext(PristineContext)!;
   const {
@@ -51,6 +52,7 @@ export function CompositionCanvas({
     compositionByInstructionIdRef,
     isCompositionMouseDownRef: isMouseDownRef,
     setIsCompositionMouseDown: setIsMouseDown,
+    whenWasMouseDownedRef,
     onCompositionMouseUpRef,
     clickedNoteRef, setClickedNote,
     selectedNotesRef, setSelectedNotes,
@@ -196,9 +198,21 @@ export function CompositionCanvas({
               setSelectedNotes({});
             }
           } else if (clickedNoteRef.current && !hasMouseMovedRef.current) {
-            removeCompositionNotes([clickedNoteRef.current.toString()]);
-            removeCompositionNotes(Object.keys(selectedNotesRef.current));
-            setSelectedNotes({});
+            const secondsSince = (Date.now() - whenWasMouseDownedRef.current) / 1000.0;
+            if (secondsSince < 0.2) {
+              removeCompositionNotes([clickedNoteRef.current.toString()]);
+              removeCompositionNotes(Object.keys(selectedNotesRef.current));
+              setSelectedNotes({});
+            }
+            // const clickedNote = compositionByInstructionIdRef.current[clickedNoteRef.current.toString()];
+            // const newSelectedNotes = {
+            //   ...selectedNotesRef.current,
+            //   [clickedNote.noteId]: {
+            //     instrumentInstruction: clickedNote,
+            //     offset: { x: 0, y: 0 },
+            //   }
+            // };
+            // setSelectedNotes(newSelectedNotes);
           }
         } else if (inputModeRef.current === InputMode.SELECT) {
           const bounds = {
@@ -211,7 +225,7 @@ export function CompositionCanvas({
           let newSelectedNotes = selectedNotesRef.current;
           if (Object.keys(newlySelectedNotes).length === 0 && !hasMouseMovedRef.current) {
             newSelectedNotes = {};
-          } else {
+          } else if (Object.keys(newlySelectedNotes).length > 0) {
             newSelectedNotes = {
               ...newSelectedNotes,
               ...(Object.values(newlySelectedNotes).reduce((acc, note) => (
@@ -224,6 +238,12 @@ export function CompositionCanvas({
                 } as NoteIdWithOffset), {})
               ),
             };
+
+            let possibleUserInstrumentIndex = compositionByInstructionIdRef.current[Object.keys(newSelectedNotes)[0]].userInstrumentIndex;
+            if (Object.keys(newSelectedNotes).every(
+              (noteId) => compositionByInstructionIdRef.current[noteId].userInstrumentIndex === possibleUserInstrumentIndex)) {
+              setUserInstrumentIndex(possibleUserInstrumentIndex);
+            }
           }
           setSelectedNotes(newSelectedNotes);
         }

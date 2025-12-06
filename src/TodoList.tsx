@@ -5,6 +5,7 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
+        <hr/>
         <li>[ ] Click on playhead row to set play position of playhead</li>
         <li>[ ] this sets the PLAYHEAD_START, and pressing STOP after will reset it to PLAYHEAD_START</li>
         <li>[ ] should have a &lt;&lt; button to snap PLAYHEAD_START back to 0 </li>
@@ -30,13 +31,8 @@ export function TodoList() {
         <br/>
         <li>[ ] C1 - C7 (?) Piano range</li>
         <li>[ ] Longer tracks</li>
-        <li>[ ] note length divisions??? (quarter note, eighth note, sixteenth note, triplet? (8th note / quarter note triplet), 32nd note?)</li>
-        <ul>
-        <li>[ ] Investigate how midi instructions do this today, maybe they just have a time (can round to nearest 2-3 decimal points???)</li>
-        <li>[ ] if it's just time based, how do we represent this graphically and user input wise</li>
         <li>[ ] is there a way to change tempo dynamically in midi?</li>
         <li>[ ] Record samples as instruments: <a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaStream_Recording_API">https://developer.mozilla.org/en-US/docs/Web/API/MediaStream_Recording_API</a></li>
-        </ul>
       </ul>
     </div>
   );

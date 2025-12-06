@@ -76,6 +76,7 @@ export function SongOptionsHeader({}: {}) {
   const {
     userInstrumentsRef,
     setUserInstruments,
+    setUserInstrumentIndex,
     getNewUserInstrument,
     setHowManyInstrumentsIEverMade,
   } = useContext(UserInstrumentContext)!;
@@ -97,11 +98,12 @@ export function SongOptionsHeader({}: {}) {
         sf2Sampler,
       }
     })];
+    setUserInstrumentIndex(0);
     setUserInstruments(newUserInstruments);
     setHowManyInstrumentsIEverMade(newUserInstruments.length);
     setComposition(convertCompositionByInstrumentToComposition(jsonObj.composition));
     setPristine(true);
-  }, [audioContext, convertCompositionByInstrumentToComposition, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPristine, setSongName, setTempo, setUserInstruments]);
+  }, [audioContext, convertCompositionByInstrumentToComposition, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPristine, setSongName, setTempo, setUserInstrumentIndex, setUserInstruments]);
   const handleSaveCompositionToFile = useCallback(() => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify({

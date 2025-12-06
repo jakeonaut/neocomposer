@@ -53,6 +53,15 @@ const UserInstrumentTab = styled.div`
   }
 `;
 
+const ShuffleButton = styled.div`
+  background: white;
+  padding: 1px 2px;
+  border: 1px solid black;
+  cursor: pointer;
+  margin-left: 2px;
+  margin-right: 4px;
+`;
+
 export function UserInstrumentsHeader() {
   const audioContext = useContext(AudioContextContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
@@ -74,8 +83,7 @@ export function UserInstrumentsHeader() {
     userInstrumentNameInputRef,
     userInstrumentVolumeInputRef,
   } = useContext(UserInstrumentContext)!;
-  const _currUserInstrument = useMemo(() => _userInstruments[_userInstrumentIndex], [_userInstruments, _userInstrumentIndex]);
-  const _selectedSf2InstOption = useMemo(() => _currUserInstrument.sf2InstrumentName, [_currUserInstrument]);
+  const _selectedSf2InstOption = useMemo(() => _userInstruments[_userInstrumentIndex].sf2InstrumentName, [_userInstruments, _userInstrumentIndex]);
 
   const onAddNewUserInstrument = useCallback(() => {
     const newInstrument = getNewUserInstrument(audioContext, howManyInstrumentsIEverMade);
@@ -89,7 +97,7 @@ export function UserInstrumentsHeader() {
     const newUserInstruments = [ ...userInstrumentsRef.current ];
     newUserInstruments[userInstrumentIndexRef.current]!.sf2Sampler = sampler;
     newUserInstruments[userInstrumentIndexRef.current]!.sf2InstrumentName = sf2InstrumentName;
-    setUserInstruments(newUserInstruments);
+    setUserInstruments([...newUserInstruments]);
     const now = audioContext.currentTime;
     ["C4", "G4"].forEach((note, i) => {
       sampler.start({
@@ -120,6 +128,21 @@ export function UserInstrumentsHeader() {
     newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
     setUserInstruments(newUserInstruments);
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, audioContext]);
+
+  const randomizeSf2Instrument = useCallback(() => {
+    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    if (userInstrument.sf2Sampler) {
+      if (audioContext.state === "suspended") { audioContext.resume(); }
+      const randomInstrumentIdx = Math.floor(Math.random() * userInstrument.sf2Sampler.instrumentNames.length);
+      const instrumentName = userInstrument.sf2Sampler.instrumentNames[randomInstrumentIdx];
+      userInstrument.sf2Sampler.loadInstrument(instrumentName);
+      userInstrument.sf2Sampler.start({ note: getARandomNote(), duration: 0.25 });
+      userInstrument.sf2InstrumentName = instrumentName;
+      const newUserInstruments = [ ...userInstrumentsRef.current];
+      newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+      setUserInstruments(newUserInstruments);
+    }
+  }, [audioContext, setUserInstruments, userInstrumentIndexRef, userInstrumentsRef]);
 
   const _onUserInstrumentVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
@@ -165,9 +188,10 @@ export function UserInstrumentsHeader() {
     setUserInstruments(newUserInstruments);
   }, [userInstrumentsRef, removeInstrumentFromComposition, userInstrumentIndexRef, removeInstrumentFromCopiedNotes, setUserInstruments, setUserInstrumentIndex]);
 
-  const sf2InstOptions = useMemo(() => _currUserInstrument.sf2Sampler?.instrumentNames.map(
-    (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>), 
-    [_currUserInstrument]
+  const sf2InstOptions = useMemo(() => {
+    return _userInstruments[_userInstrumentIndex].sf2Sampler?.instrumentNames.map(
+    (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>); }, 
+    [_userInstrumentIndex, _userInstruments]
   );
 
   const userInstrumentTabs = useMemo(() => _userInstruments.map((userInstrument, index) => (
@@ -186,7 +210,7 @@ export function UserInstrumentsHeader() {
       </UserInstrumentTab>
   )), [_userInstruments, _userInstrumentIndex, setUserInstrumentIndex]);
   
-  const currColor = _currUserInstrument.color ?? 'white';
+  const currColor = _userInstruments[_userInstrumentIndex].color ?? 'white';
   return (
     <>
       <SoundfontHeader $color={currColor}>
@@ -213,21 +237,24 @@ export function UserInstrumentsHeader() {
               onChange={onColorChange}
             />
           </ColorPicker>
-          <div style={{ textAlign: 'left', }}>
+          <div style={{ textAlign: 'left', display: 'flex', alignItems: 'center' }}>
             <b>Name:</b>
             <input
               ref={userInstrumentNameInputRef}
               type="text"
-              defaultValue={_currUserInstrument.name}
+              defaultValue={_userInstruments[_userInstrumentIndex].name}
               onChange={onNameChange} />
-            {_currUserInstrument.sf2Sampler && (<>
-              {/* <label htmlFor="sf2-instrument-select">Select instrument: </label> */}
-              <select id="sf2-instrument-select"
-                value={_selectedSf2InstOption}
-                style={{ marginLeft: 8}}
-                onChange={onSf2InstrumentSelect}>
-                {sf2InstOptions}
-              </select>
+            {_userInstruments[_userInstrumentIndex].sf2Sampler && (<>
+              <div style={{ display: 'flex' }}>
+                {/* <label htmlFor="sf2-instrument-select">Select instrument: </label> */}
+                <select id="sf2-instrument-select"
+                  value={_selectedSf2InstOption}
+                  style={{ marginLeft: 8}}
+                  onChange={onSf2InstrumentSelect}>
+                  {sf2InstOptions}
+                </select>
+                <ShuffleButton onClick={randomizeSf2Instrument}>🎲</ShuffleButton>
+              </div>
             </>)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', flexGrow: 1, }}>
@@ -239,7 +266,7 @@ export function UserInstrumentsHeader() {
               ref={userInstrumentVolumeInputRef}
               style={{ width: 100 }}
               id="user-instrument-volume"
-              defaultValue={_currUserInstrument.volume}
+              defaultValue={_userInstruments[_userInstrumentIndex].volume}
               onChange={onUserInstrumentVolumeChange} />
           </div>
           <div onClick={onTryDeleteInstrument}
