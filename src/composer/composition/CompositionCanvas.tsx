@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   AudioContextContext,
   beatHeight,
@@ -32,10 +32,12 @@ const PianoRollKeysContainer = styled.div`
 `;
 
 export function CompositionCanvas({
+  children,
   _inputMode,
   inputModeRef,
   setInputMode,
 }: {
+  children: React.ReactNode,
   _inputMode: InputMode,
   inputModeRef: React.RefObject<InputMode>;
   setInputMode: (inputMode: InputMode) => void;
@@ -132,12 +134,9 @@ export function CompositionCanvas({
     [onCompositionMouseUpRef, setIsMouseDown, setCursorPosition, setStartingCursorPos, clickedNoteRef, inputModeRef, isNoteSelected, audioContext, userInstrumentsRef, userInstrumentIndexRef, setSelectedNotes]
   );
   const handleMouseUp = useCallback(
-    (
-      e: React.MouseEvent<HTMLDivElement, MouseEvent>,
-      index: number,
-      midiNote: MidiNoteNum
-    ) => {
+    (e: MouseEvent) => {
       if (isMouseDownRef.current && cursorPositionRef.current && startingCursorPosRef.current) {
+        const midiNote = cursorPositionRef.current.midiNote;
         if (inputModeRef.current === InputMode.DEFAULT) {
           if ((!clickedNoteRef.current || hasMouseMovedRef.current)) {
             setPristine(false);
@@ -338,6 +337,13 @@ export function CompositionCanvas({
     [inputModeRef, setCursorXOffset, beatWidth, compositionByInstructionIdRef, isNoteSelected, userInstrumentsRef, setSubdivisionType, handleMouseDown, setClickedNote, selectedNotesRef, setSelectedNotes]
   );
 
+  useEffect(() => {
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mouseup", handleMouseUp)
+    };
+  }, [handleMouseUp]);
+
   const renderedPianoRollKeys = useMemo(() => (<PianoRollKeysContainer>{pianoRollKeys.map((midiNote, _) => (
       <div
         key={`row-${midiNote}`}
@@ -386,15 +392,15 @@ export function CompositionCanvas({
   const renderedCompositionGrid = useMemo(() => (
     <CompositionGrid
       handleMouseDown={handleMouseDown}
-      handleMouseMove={handleMouseMove}
-      handleMouseUp={handleMouseUp}>
+      handleMouseMove={handleMouseMove}>
+      {children}
       {allRenderedNotes}
     </CompositionGrid>
-  ), [allRenderedNotes, handleMouseDown, handleMouseMove, handleMouseUp]);
+  ), [children, allRenderedNotes, handleMouseDown, handleMouseMove]);
 
   return (
     <CompositionContainer>
-      <div style={{ position: 'relative', display: 'flex' }}>
+      <div style={{ position: 'relative', display: 'flex', marginTop: 16 }}>
         {renderedPianoRollKeys}
         {renderedCompositionGrid}
       </div>

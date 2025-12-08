@@ -57,7 +57,7 @@ export function SongOptionsHeader({}: {}) {
     setSongName,
     // masterVolume,
     // setMasterVolume,
-    tempo,
+    tempoRef,
     setTempo,
   } = useContext(SongSettingsContext)!;
   const { babyDanceFrame } = useContext(BabyDanceFrameContext)!;
@@ -105,12 +105,12 @@ export function SongOptionsHeader({}: {}) {
     setComposition(convertCompositionByInstrumentToComposition(jsonObj.composition));
     manuallyUpdateFartherRightNoteEnd();
     setPristine(true);
-  }, [audioContext, convertCompositionByInstrumentToComposition, getNewUserInstrument, setComposition, setHowManyInstrumentsIEverMade, setPristine, setSongName, setTempo, setUserInstrumentIndex, setUserInstruments]);
+  }, [audioContext, convertCompositionByInstrumentToComposition, getNewUserInstrument, manuallyUpdateFartherRightNoteEnd, setComposition, setHowManyInstrumentsIEverMade, setPristine, setSongName, setTempo, setUserInstrumentIndex, setUserInstruments]);
   const handleSaveCompositionToFile = useCallback(() => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify({
       songName,
-      tempo,
+      tempo: tempoRef.current,
       userInstruments: userInstrumentsRef.current.map((inst) => ({
         color: inst.color,
         volume: inst.volume,
@@ -129,7 +129,7 @@ export function SongOptionsHeader({}: {}) {
     a.click();
     document.body.removeChild(a);
     setPristine(true);
-  }, [songName, tempo, userInstrumentsRef, compositionRef, setPristine]);
+  }, [songName, tempoRef, userInstrumentsRef, compositionRef, setPristine]);
 
   const onLoadSongJson = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target?.files?.[0]; 

@@ -10,9 +10,10 @@ import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider"
 import { ActionButtonFooter } from "./ActionButtonFooter";
 import { SubdivisionTypeContext } from "./contexts/SubdivisionTypeContextProvider";
 import { PristineContext } from "./contexts/PristineContextProvider";
-import { BabyDanceFrameContext, PlayheadContext, PlayheadPosXContext } from "./contexts/PlayheadContextProvider";
+import { PlayheadContext } from "./contexts/PlayheadContextProvider";
 import { ClipboardContext } from "./contexts/ClipboardContextProvider";
 import { TimeSignatureContext } from "./contexts/TimeSignatureContextProvider";
+import { PlayheadNode } from "./PlayheadNode";
 
 const MaestroContainer = styled.div`
   display: flex;
@@ -26,40 +27,20 @@ const Header = styled.div`
   flex-direction: column;
 `;
 
-const BabyPlayheadImg = styled.img<{ $frame: number }>`
-  width: 20px;
-  height: 20px;
-  image-rendering: pixelated;
-  background-image: url("baby_dance_sheet.png");
-  position: absolute;
-  top: -6px;
-  left: 0;
-  background-position: ${({ $frame }) => `${$frame * -20}px 0px`};
-`;
-
 const Footer = styled.div`
   max-width: 960px;
   display: flex;
   flex-direction: column;
 `;
 
-function PlayheadNode() {
-  const { babyDanceFrame } = useContext(BabyDanceFrameContext)!;
-  const { playheadPosX } = useContext(PlayheadPosXContext)!;
-
-  return (
-    <div style={{ marginLeft: 22, height: 15, content: ' ', position: 'relative' }}>
-      <BabyPlayheadImg src="trans.png" $frame={babyDanceFrame} style={{
-        left: playheadPosX,
-        }}/>
-    </div>
-  );
-}
-
 export function Maestro() {
   const [_inputMode, _setInputMode] = useState(InputMode.DEFAULT);
   const audioContext = useContext(AudioContextContext)!;
-  const { incrementBabyDanceFrame } = useContext(PlayheadContext)!;
+  const {
+    incrementBabyDanceFrame,
+    isLoopingRef,
+    _isPlaying,
+  } = useContext(PlayheadContext)!;
   const { pristine } = useContext(PristineContext)!;
 
   const {
@@ -86,7 +67,6 @@ export function Maestro() {
     setSelectedNotes,
     heldPianoKeys,
     setHeldPianoKeys,
-    isPlaying,
   } = useContext(CompositionContext)!;
   const { copiedNotesRef, setCopiedNotes, copiedNotesOffsetRef } = useContext(ClipboardContext)!;
   const {
@@ -309,7 +289,9 @@ export function Maestro() {
         return false;
       }
       if (e.code === "Space") {
-        isPlaying ? handleStopComposition() : handlePlayComposition({});
+        _isPlaying && !e.shiftKey ? handleStopComposition() : handlePlayComposition({
+          shouldLoop: !e.shiftKey ? isLoopingRef.current : !isLoopingRef.current,
+        });
         e.preventDefault();
         e.stopPropagation();
         return false;
@@ -329,7 +311,7 @@ export function Maestro() {
       });
       incrementBabyDanceFrame();
     },
-    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, clickedNoteRef, selectedNotesRef, removeCompositionNotes, addCompositionNotes, setSelectedNotes, compositionByInstructionIdRef, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, trySetInputMode, onCompositionMouseUpRef, setInputMode, isPlaying, handleStopComposition, handlePlayComposition]
+    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, clickedNoteRef, selectedNotesRef, removeCompositionNotes, addCompositionNotes, setSelectedNotes, compositionByInstructionIdRef, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, trySetInputMode, onCompositionMouseUpRef, setInputMode, _isPlaying, handleStopComposition, handlePlayComposition, isLoopingRef]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
@@ -376,8 +358,9 @@ export function Maestro() {
       {/* TODO(jaketrower): Can I refactor this now after the ref refactors? */}
       {/* Pass setInputMode in directly since we are firing it at the end of a handleMouseUp callback and
         * isCompositionMouseDown won't update the state and the trySetInputMode function until after the event bubbling */}
-      <PlayheadNode />
-      <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode} />
+      <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode}>
+        <PlayheadNode />
+      </CompositionCanvas>
       <Footer>
         <ActionButtonFooter
           _inputMode={_inputMode}

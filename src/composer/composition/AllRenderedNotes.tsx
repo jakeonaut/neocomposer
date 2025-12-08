@@ -10,7 +10,8 @@ import styled from "styled-components";
 
 
 const PlacedNotesOverlay = styled.div`
-
+  position: absolute;
+  top: 16px;
 `;
 
 const RectSelector = styled.div<{ $left: number, $top: number, $width: number, $height: number }>`

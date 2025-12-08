@@ -1,9 +1,9 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, NoteId, NoteIdWithOffset, SubdivisionType, TimeSignature } from "../consts";
+import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, NoteId, NoteIdWithOffset, SubdivisionType, TimeSignature, UserInstrument } from "../consts";
 import { SongSettingsContext } from "./SongSettingsContextProvider";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import _ from "lodash";
-import { PlayheadContext } from "./PlayheadContextProvider";
+import { PlayheadContext, PlayheadPosXContext } from "./PlayheadContextProvider";
 import { ClipboardContext } from "./ClipboardContextProvider";
 import { TimeSignatureContext } from "./TimeSignatureContextProvider";
 
@@ -29,15 +29,84 @@ export function convertCompositionToCompositionByInstrument(composition: Composi
 
 const BEAT_WIDTH = 15;
 
+export function getEndOfMeasureToLoopAtBeat(farthestRightNoteEnd: number, timeSignature: TimeSignature) {
+  const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
+  const measureBeatMultiplier = 4 * timeSignatureVal;
+  return (
+    Math.max(Math.ceil(
+      (farthestRightNoteEnd - 1) / measureBeatMultiplier
+    ), 1) * measureBeatMultiplier
+  );
+}
+
+function getBeatLengthInMs(tempo: number) {
+  const bpm = tempo;
+  const bps = bpm / 60.0;
+  const nthNoteDivision = 4.0;
+  const nthNotesPerSec = bps * nthNoteDivision;
+  const beatLengthInSeconds = 1 / nthNotesPerSec;
+  return beatLengthInSeconds * 1000;
+}
+
+export function playCompositionNotesAtBeat({
+    composition,
+    tempo,
+    midiBeat,
+    userInstruments,
+    audioContext,
+    incrementBabyDanceFrame,
+  } : {
+    composition: Composition,
+    tempo: number
+    midiBeat: number
+    userInstruments: UserInstrument[],
+    audioContext: AudioContext,
+    incrementBabyDanceFrame: () => void,
+  }) {
+  const beatLengthInSeconds = getBeatLengthInMs(tempo) / 1000;
+  const now = audioContext.currentTime;
+  if (composition[midiBeat]) {
+    Object.values(composition[midiBeat]).forEach((midiNoteInstructions) => 
+      Object.values(midiNoteInstructions).forEach((instrumentInstruction) => {
+        const { midiNote } = instrumentInstruction;
+        // TODO(jaketrower): in order to achieve ^^, will need playhead to instantiate sampler play at runtime,
+        // rather than preprogram them all at PLAY button press...
+        const userInstrumentToPlay =
+          userInstruments[instrumentInstruction.userInstrumentIndex];
+        if (!userInstrumentToPlay?.sf2Sampler) return;
+        const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
+        const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
+          ? 0
+          : ((midiBeat - 1) % 4) * beatLengthInSeconds * ((beatLengthInSeconds * 4.0) / 3.0);
+        userInstrumentToPlay.sf2Sampler.start({
+          note: midiNote,
+          time: now + tripletBeatOffsetInSeconds,
+          duration: durationSec,
+          onStart: () => incrementBabyDanceFrame()
+        });
+      })
+    );
+  }
+}
+
 export function CompositionContextProvider({
   children,
 }: {
   children: React.ReactNode
 }) {
   const audioContext = useContext(AudioContextContext)!;
-  const { tempo } = useContext(SongSettingsContext)!;
+  const { tempoRef } = useContext(SongSettingsContext)!;
   const { setCopiedNotes } = useContext(ClipboardContext)!;
-  const { setPlayheadPosX, incrementBabyDanceFrame } = useContext(PlayheadContext)!;
+  const { playheadPosXRef } = useContext(PlayheadPosXContext)!;
+  const {
+    _setIsPlaying,
+    isPlayingRef,
+    _setIsLooping,
+    isLoopingRef,
+    userPlayheadBoundsRef,
+    setPlayheadPosX,
+    incrementBabyDanceFrame
+  } = useContext(PlayheadContext)!;
   const {
     userInstrumentsRef,
     setHowManyInstrumentsIEverMade,
@@ -51,13 +120,9 @@ export function CompositionContextProvider({
   const [_isCompositionMouseDown, _setIsCompositionMouseDown] = useState(false);
   const [_clickedNote, _setClickedNote] = useState<NoteId | undefined>(undefined);
   const [_selectedNotes, _setSelectedNotes] = useState<Record<string, NoteIdWithOffset>>({});
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  const [_isLooping, _setIsLooping] = useState<boolean>(true);
-  const [_hasUserSetStartLoopSpot, _setHasUserSetStartLoopSpot] = useState<boolean>(false);
-
-  const hasUserSetStartLoopSpotRef = useRef(_hasUserSetStartLoopSpot);
-  const farthestRightNoteEndRef = useRef(1);
-  const isLoopingRef = useRef(_isLooping);
+  const [_farthestRightNoteEnd, _setFarthestRightNoteEnd] = useState(1);
+  
+  const farthestRightNoteEndRef = useRef(_farthestRightNoteEnd);
   const clickedNoteRef = useRef(_clickedNote);
   const selectedNotesRef = useRef(_selectedNotes);
   const isCompositionMouseDownRef = useRef(_isCompositionMouseDown);
@@ -69,19 +134,28 @@ export function CompositionContextProvider({
   const compositionByInstructionIdRef = useRef<Record<string, InstrumentInstruction>>({});
   const whenWasMouseDownedRef = useRef<number>(0);
 
+  const setFarthestRightNoteEnd = useCallback((newFarthestRightNoteEnd: number) => {
+    farthestRightNoteEndRef.current = newFarthestRightNoteEnd;
+    _setFarthestRightNoteEnd(newFarthestRightNoteEnd);
+  }, []);
   const manuallyUpdateFartherRightNoteEnd = useCallback(() => {
-    farthestRightNoteEndRef.current = 1;
+    let newFarthestRightNoteEnd = 1;
     Object.values(compositionByInstructionIdRef.current).forEach((instrumentInstruction) => {
-      if (instrumentInstruction.midiBeat + instrumentInstruction.noteWidth > farthestRightNoteEndRef.current) {
-        farthestRightNoteEndRef.current = instrumentInstruction.midiBeat + instrumentInstruction.noteWidth;
+      if (instrumentInstruction.midiBeat + instrumentInstruction.noteWidth > newFarthestRightNoteEnd) {
+        newFarthestRightNoteEnd = instrumentInstruction.midiBeat + instrumentInstruction.noteWidth;
       }
     });
-  }, []);
+    setFarthestRightNoteEnd(newFarthestRightNoteEnd);
+  }, [setFarthestRightNoteEnd]);
 
+  const setIsPlaying = useCallback((newIsPlaying: boolean) => {
+    isPlayingRef.current = newIsPlaying;
+    _setIsPlaying(newIsPlaying);
+  }, [_setIsPlaying, isPlayingRef])
   const setIsLooping = useCallback((newIsLooping: boolean) => {
     isLoopingRef.current = newIsLooping;
     _setIsLooping(newIsLooping);
-  }, []);
+  }, [_setIsLooping, isLoopingRef]);
   const setIsCompositionMouseDown = useCallback((newIsCompositionMouseDown: boolean) => {
     if (newIsCompositionMouseDown && !isCompositionMouseDownRef.current){
       whenWasMouseDownedRef.current = Date.now();
@@ -201,7 +275,7 @@ export function CompositionContextProvider({
         if (!newComposition[midiBeat]) newComposition[midiBeat] = {};
         if (!newComposition[midiBeat][midiNote]) newComposition[midiBeat][midiNote] = {};
         if (midiBeat + noteWidth > farthestRightNoteEndRef.current) {
-          farthestRightNoteEndRef.current = midiBeat + noteWidth;
+          setFarthestRightNoteEnd(midiBeat + noteWidth);
         }
         const noteId = noteToAdd.noteId || ++instructionIdRef.current;
         const newInstrumentInstruction = {
@@ -215,19 +289,30 @@ export function CompositionContextProvider({
       setComposition(newComposition);
       return addedNotes;
     },
-    [setComposition]
+    [setComposition, setFarthestRightNoteEnd]
   );
 
-  const handlePlayComposition = useCallback(() => {
-    setPlayheadPosX(0);
+  const handleStopComposition = useCallback(() => {
+    if (playerIdRef.current) {
+      window.clearTimeout(playerIdRef.current);
+    }
+    playerIdRef.current = undefined;
+    userInstrumentsRef.current.forEach((userInstrument) => {
+      userInstrument?.sf2Sampler?.stop();
+    });
+    playheadBeatRef.current = userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 0;
+    setPlayheadPosX(BEAT_WIDTH * playheadBeatRef.current);
+    setIsPlaying(false);
+  }, [setIsPlaying, setPlayheadPosX, userInstrumentsRef, userPlayheadBoundsRef]);
+
+  const handlePlayComposition = useCallback(({ shouldLoop }: { shouldLoop?: boolean}) => {
+    if (shouldLoop !== undefined) setIsLooping(shouldLoop);
+    if (isPlayingRef.current) {
+      return
+    }
     setIsPlaying(true);
-    playheadBeatRef.current = 1;
-    const bpm = tempo;
-    const bps = bpm / 60.0;
-    const nthNoteDivision = 4.0;
-    const nthNotesPerSec = bps * nthNoteDivision;
-    const beatLengthInSeconds = 1 / nthNotesPerSec;
-    const beatLengthInMs = beatLengthInSeconds * 1000;
+    playheadBeatRef.current = playheadPosXRef.current / BEAT_WIDTH; // userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 0;
+    // setPlayheadPosX(BEAT_WIDTH * playheadBeatRef.current);
     // TODO(jaketrower): totally based on bpm... 120 beats per minute = 2 beats per second, 32 noteBlocks per second = duration of 0.03125
     // so beatLengthInSeconds = tempo / 2
     function scheduler() {
@@ -238,60 +323,37 @@ export function CompositionContextProvider({
       //   nextNote();
       // }
       const midiBeat = playheadBeatRef.current;
-      const now = audioContext.currentTime;
-      if (compositionRef.current[midiBeat]) {
-        Object.values(compositionRef.current[midiBeat]).forEach((midiNoteInstructions) => 
-          Object.values(midiNoteInstructions).forEach((instrumentInstruction) => {
-            const { midiNote } = instrumentInstruction;
-            // TODO(jaketrower): in order to achieve ^^, will need playhead to instantiate sampler play at runtime,
-            // rather than preprogram them all at PLAY button press...
-            const userInstrumentToPlay =
-              userInstrumentsRef.current[instrumentInstruction.userInstrumentIndex];
-            if (!userInstrumentToPlay?.sf2Sampler) return;
-            const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
-            const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
-              ? 0
-              : ((midiBeat - 1) % 4) * beatLengthInSeconds * ((beatLengthInSeconds * 4.0) / 3.0);
-            userInstrumentToPlay.sf2Sampler.start({
-              note: midiNote,
-              time: now + tripletBeatOffsetInSeconds,
-              duration: durationSec,
-              onStart: () => incrementBabyDanceFrame()
-            });
-          })
-        );
-      }
+      playCompositionNotesAtBeat({
+        audioContext,
+        composition: compositionRef.current,
+        midiBeat,
+        tempo: tempoRef.current,
+        userInstruments: userInstrumentsRef.current,
+        incrementBabyDanceFrame,
+      });
       setPlayheadPosX(BEAT_WIDTH * playheadBeatRef.current);
-      const timeSignature = timeSignatureRef.current === TimeSignature.ts4_4 ? 4 : 3;
-      const measureBeatMultiplier = 4 * timeSignature;
-      const endOfMeasureToLoopAtBeat = (
-        Math.ceil(
-          farthestRightNoteEndRef.current / measureBeatMultiplier
-        ) * measureBeatMultiplier
+      const endOfMeasureToLoopAtBeat = getEndOfMeasureToLoopAtBeat(farthestRightNoteEndRef.current, timeSignatureRef.current);
+      const shouldLoop = isLoopingRef.current && (
+        userPlayheadBoundsRef.current?.end
+          ? (playheadBeatRef.current >= userPlayheadBoundsRef.current.end)
+          : (playheadBeatRef.current >= endOfMeasureToLoopAtBeat)
       );
-      const shouldLoop = isLoopingRef.current && !hasUserSetStartLoopSpotRef.current && (playheadBeatRef.current >= endOfMeasureToLoopAtBeat);
+      const shouldStop = !isLoopingRef.current && (
+        userPlayheadBoundsRef.current?.end && playheadBeatRef.current > userPlayheadBoundsRef.current.end
+      );
       if (shouldLoop) {
-        playheadBeatRef.current = 1;
+        playheadBeatRef.current = userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 0;
+      } else if (shouldStop) {
+        handleStopComposition();
+        return;
       } else {
         playheadBeatRef.current++;
       }
+      const beatLengthInMs = getBeatLengthInMs(tempoRef.current);
       playerIdRef.current = window.setTimeout(scheduler, beatLengthInMs);
     }
     playerIdRef.current = window.setTimeout(scheduler, 0);
-  }, [audioContext.currentTime, incrementBabyDanceFrame, setPlayheadPosX, tempo, timeSignatureRef, userInstrumentsRef]);
-
-  const handleStopComposition = useCallback(() => {
-    if (playerIdRef.current) {
-      window.clearTimeout(playerIdRef.current);
-    }
-    playerIdRef.current = undefined;
-    userInstrumentsRef.current.forEach((userInstrument) => {
-      userInstrument?.sf2Sampler?.stop();
-    });
-    playheadBeatRef.current = 1;
-    setPlayheadPosX(0);
-    setIsPlaying(false);
-  }, [setPlayheadPosX, userInstrumentsRef]);
+  }, [audioContext, handleStopComposition, incrementBabyDanceFrame, isLoopingRef, isPlayingRef, playheadPosXRef, setIsLooping, setIsPlaying, setPlayheadPosX, tempoRef, timeSignatureRef, userInstrumentsRef, userPlayheadBoundsRef]);
 
   const handleStartLoop = useCallback(() => {
     setIsLooping(true);
@@ -309,10 +371,10 @@ export function CompositionContextProvider({
     setUserInstrumentIndex(0);
     setUserInstruments([getNewUserInstrument(audioContext, 0)]);
     setHowManyInstrumentsIEverMade(1);
-    farthestRightNoteEndRef.current = 1;
+    setFarthestRightNoteEnd(1);
     setComposition({});
     setCopiedNotes([]);
-  }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setHowManyInstrumentsIEverMade, setUserInstrumentIndex, setUserInstruments]);
+  }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setFarthestRightNoteEnd, setHowManyInstrumentsIEverMade, setUserInstrumentIndex, setUserInstruments]);
 
   const compositionActionsContextProvider = useMemo(() => (
     <CompositionActionsContext value={{
@@ -331,6 +393,7 @@ export function CompositionContextProvider({
   return (
     <CompositionContext value={{
       instructionIdRef,
+      _farthestRightNoteEnd,
       compositionByInstructionIdRef,
       _composition, compositionRef, setComposition,
       convertCompositionByInstrumentToComposition,
@@ -342,8 +405,6 @@ export function CompositionContextProvider({
       setHeldPianoKeys,
       _clickedNote, clickedNoteRef, setClickedNote,
       _selectedNotes, selectedNotesRef, setSelectedNotes,
-      isPlaying,
-      _isLooping,
     }}>
       {compositionActionsContextProvider}
     </CompositionContext>
@@ -353,6 +414,7 @@ export function CompositionContextProvider({
 export const CompositionContext = createContext<{
   instructionIdRef: React.RefObject<number>,
   compositionByInstructionIdRef: React.RefObject<Record<string, InstrumentInstruction>>,
+  _farthestRightNoteEnd: number,
   _composition: Composition,
   compositionRef: React.RefObject<Composition>,
   setComposition: (composition: Composition) => void,
@@ -371,8 +433,6 @@ export const CompositionContext = createContext<{
   _selectedNotes: Record<string, NoteIdWithOffset>,
   selectedNotesRef: React.RefObject<Record<string, NoteIdWithOffset>>,
   setSelectedNotes: (notes: Record<string, NoteIdWithOffset>) => void,
-  isPlaying: boolean,
-  _isLooping: boolean,
 } | undefined>(undefined);
 
 export const CompositionActionsContext = createContext<{
@@ -382,8 +442,8 @@ export const CompositionActionsContext = createContext<{
     })[]) => InstrumentInstruction[],
   removeCompositionNotes: (noteIdsToRemove: string[]) => Record<NoteId, InstrumentInstruction>,
   removeInstrumentFromComposition: (userInstrumentIndex: number) => void,
-  handlePlayComposition: ({ wasStartedFromLoop }: {
-      wasStartedFromLoop?: boolean | undefined;
+  handlePlayComposition: ({ shouldLoop }: {
+      shouldLoop?: boolean | undefined;
     }) => void,
   handleStopComposition: () => void,
   handleClearComposition: () => void,

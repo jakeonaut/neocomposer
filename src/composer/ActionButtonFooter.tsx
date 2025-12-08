@@ -6,6 +6,7 @@ import { InputMode, SubdivisionType, TimeSignature } from './consts';
 import { SubdivisionTypeContext } from './contexts/SubdivisionTypeContextProvider';
 import { ClipboardContext } from './contexts/ClipboardContextProvider';
 import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
+import { PlayheadContext } from './contexts/PlayheadContextProvider';
 
 export const ActionButtonsContainer = styled.div`
   display: flex;
@@ -36,9 +37,9 @@ const PixelButton = styled.div<{ $y: number, $inverted: boolean }>`
 
 function PlayStopButton() {
   const {
-    isPlaying,
+    _isPlaying,
     _isLooping,
-  } = useContext(CompositionContext)!;
+  } = useContext(PlayheadContext)!;
   const {
     handleStopComposition,
     handlePlayComposition,
@@ -48,8 +49,10 @@ function PlayStopButton() {
 
   return (
     <>
-      <ActionButton onClick={isPlaying ? handleStopComposition : () => handlePlayComposition({})} title="Play/Stop: Space">
-        {isPlaying ? '⏹️' : '▶️'}
+      <ActionButton onClick={_isPlaying ? handleStopComposition : () => handlePlayComposition({
+        shouldLoop: _isLooping,
+      })} title="Play/Stop: Space (Shift+Space to toggle Loop)">
+        {_isPlaying ? '⏹️' : '▶️'}
       </ActionButton>
       <ActionButton onClick={_isLooping ? handleStopLoop : handleStartLoop}>
         {!_isLooping ? '📴' : '🔁'}
@@ -188,7 +191,7 @@ function InputTimeSignatureButton() {
 }
 
 function TempoInput() {
-  const { tempo, setTempo } = useContext(SongSettingsContext)!;
+  const { _tempo, setTempo } = useContext(SongSettingsContext)!;
   const onTempoChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setTempo(parseInt(e.target.value));
   }, [setTempo]);
@@ -203,7 +206,7 @@ function TempoInput() {
         type="range"
         min="20"
         max="200"
-        value={tempo}
+        value={_tempo}
         onChange={onTempoChange}
       />
     </>

@@ -91,10 +91,8 @@ type MouseHandler = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: 
 const useCellProps = ({
   handleMouseDown,
   handleMouseMove,
-  handleMouseUp,
 }: {
   handleMouseDown: MouseHandler,
-  handleMouseUp: MouseHandler,
   handleMouseMove: MouseHandler,
 }) => {
   const {  _subdivisionType } = useContext(SubdivisionTypeContext)!;
@@ -106,8 +104,7 @@ const useCellProps = ({
     timeSignature: _timeSignature,
     handleMouseDown,
     handleMouseMove,
-    handleMouseUp,
-  }), [_subdivisionType, _timeSignature, beatWidth, handleMouseDown, handleMouseMove, handleMouseUp]);
+  }), [_subdivisionType, _timeSignature, beatWidth, handleMouseDown, handleMouseMove]);
   return cellProps;
 };
 
@@ -115,14 +112,12 @@ export function CompositionGrid({
   children,
   handleMouseDown,
   handleMouseMove,
-  handleMouseUp,
 }: {
   children: React.ReactNode,
   handleMouseDown: MouseHandler,
-  handleMouseUp: MouseHandler,
   handleMouseMove: MouseHandler,
 }) {
-  const cellProps = useCellProps({ handleMouseDown, handleMouseMove, handleMouseUp });
+  const cellProps = useCellProps({ handleMouseDown, handleMouseMove });
   
   return (
     <Grid
@@ -133,8 +128,9 @@ export function CompositionGrid({
       rowCount={pianoRollKeys.length}
       rowHeight={beatHeight - 1}
       style={{
-        height: ((beatHeight - 1) * (pianoRollKeys.length)) + 1,
-        borderBottom: `1px dotted ${lightColor}`,
+        height: ((beatHeight - 1) * (pianoRollKeys.length)) + 1 + 16,
+        paddingTop: 16,
+        marginTop: -16,
       }}
     >
       {children}
@@ -151,14 +147,12 @@ function GridCell({
   timeSignature,
   handleMouseDown,
   handleMouseMove,
-  handleMouseUp,
 }: CellComponentProps<{
   beatWidth: number,
   subdivisionType: SubdivisionType,
   timeSignature: TimeSignature
   handleMouseDown: MouseHandler,
   handleMouseMove: MouseHandler
-  handleMouseUp: MouseHandler
 }>) {
   const midiNote = toMidi(pianoRollKeys[rowIndex])!
   return <GridCellDiv
@@ -166,10 +160,9 @@ function GridCell({
     className="hoverable"
     onMouseDown={(e) => handleMouseDown(e, columnIndex + 1, midiNote)}
     onMouseMove={(e) => handleMouseMove(e, columnIndex + 1, midiNote)}
-    onMouseUp={(e) => handleMouseUp(e, columnIndex + 1, midiNote)}
     style={style}
     $idx={columnIndex}
-    $midiNote={fromMidi(rowIndex)}
+    $midiNote={pianoRollKeys[rowIndex]}
     $subdivision={subdivisionType === SubdivisionType.q ? 4 : 3}
     $timeSignature={timeSignature === TimeSignature.ts4_4 ? 4 : 3}
     $beatWidth={beatWidth}
