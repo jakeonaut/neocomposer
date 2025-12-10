@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, NoteId, NoteIdWithOffset, SubdivisionType, TimeSignature, UserInstrument } from "../consts";
+import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, NoteId, NoteIdWithOffset, PlayheadBounds, SubdivisionType, TimeSignature, UserInstrument } from "../consts";
 import { SongSettingsContext } from "./SongSettingsContextProvider";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import _ from "lodash";
@@ -29,12 +29,19 @@ export function convertCompositionToCompositionByInstrument(composition: Composi
 
 const BEAT_WIDTH = 15;
 
-export function getEndOfMeasureToLoopAtBeat(farthestRightNoteEnd: number, timeSignature: TimeSignature) {
-  const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
-  const measureBeatMultiplier = 4 * timeSignatureVal;
+export function getEndOfMeasureToLoopAtBeat(
+  farthestRightNoteEnd: number, 
+  timeSignature: TimeSignature,
+  userPlayheadBounds: PlayheadBounds | undefined,
+) {
+  // const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
+  const measureBeatMultiplier = 4; // * timeSignatureVal;
   return (
     Math.max(Math.ceil(
-      (farthestRightNoteEnd - 1) / measureBeatMultiplier
+      Math.max(
+        (farthestRightNoteEnd - 1),
+        (userPlayheadBounds?.start ?? 0) + 1,
+      ) / measureBeatMultiplier
     ), 1) * measureBeatMultiplier
   );
 }
@@ -332,17 +339,21 @@ export function CompositionContextProvider({
         incrementBabyDanceFrame,
       });
       setPlayheadPosX(BEAT_WIDTH * playheadBeatRef.current);
-      const endOfMeasureToLoopAtBeat = getEndOfMeasureToLoopAtBeat(farthestRightNoteEndRef.current, timeSignatureRef.current);
+      const endOfMeasureToLoopAtBeat = getEndOfMeasureToLoopAtBeat(
+        farthestRightNoteEndRef.current, 
+        timeSignatureRef.current,
+        userPlayheadBoundsRef.current,
+      );
       const shouldLoop = isLoopingRef.current && (
         userPlayheadBoundsRef.current?.end
-          ? (playheadBeatRef.current >= userPlayheadBoundsRef.current.end)
-          : (playheadBeatRef.current >= endOfMeasureToLoopAtBeat)
+          ? (playheadBeatRef.current === userPlayheadBoundsRef.current.end)
+          : (playheadBeatRef.current === endOfMeasureToLoopAtBeat)
       );
       const shouldStop = !isLoopingRef.current && (
-        userPlayheadBoundsRef.current?.end && playheadBeatRef.current > userPlayheadBoundsRef.current.end
+        userPlayheadBoundsRef.current?.end && playheadBeatRef.current === userPlayheadBoundsRef.current.end + 1
       );
       if (shouldLoop) {
-        playheadBeatRef.current = userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 0;
+        playheadBeatRef.current = userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 1;
       } else if (shouldStop) {
         handleStopComposition();
         return;

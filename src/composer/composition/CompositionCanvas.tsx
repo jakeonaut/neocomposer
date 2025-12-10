@@ -20,6 +20,7 @@ import { CompositionGrid, getBeatWidth, getGridBeatFromMidiBeat, getMidiBeatFrom
 import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
 import { PristineContext } from "../contexts/PristineContextProvider";
 import { AllRenderedNotes } from "./AllRenderedNotes";
+import { PlayheadContext } from "../contexts/PlayheadContextProvider";
 
 const CompositionContainer = styled.div`
   display: flex; 
@@ -68,6 +69,11 @@ export function CompositionCanvas({
     subdivisionTypeRef,
     setSubdivisionType,
   } = useContext(SubdivisionTypeContext)!;
+  const {
+    _userPlayheadBounds,
+    userPlayheadBoundsRef,
+    setUserPlayheadBounds,
+  } = useContext(PlayheadContext)!;
   const pianoKeyWidth = 30;
   const beatWidth = useMemo(() => getBeatWidth(_subdivisionType), [_subdivisionType]);
   
@@ -337,6 +343,11 @@ export function CompositionCanvas({
     [inputModeRef, setCursorXOffset, beatWidth, compositionByInstructionIdRef, isNoteSelected, userInstrumentsRef, setSubdivisionType, handleMouseDown, setClickedNote, selectedNotesRef, setSelectedNotes]
   );
 
+  const resetUserPlayheadBounds = useCallback(() => {
+    if (!userPlayheadBoundsRef.current) return;
+    setUserPlayheadBounds(undefined);
+  }, [setUserPlayheadBounds, userPlayheadBoundsRef]);
+
   useEffect(() => {
     document.addEventListener("mouseup", handleMouseUp);
     return () => {
@@ -344,40 +355,56 @@ export function CompositionCanvas({
     };
   }, [handleMouseUp]);
 
-  const renderedPianoRollKeys = useMemo(() => (<PianoRollKeysContainer>{pianoRollKeys.map((midiNote, _) => (
-      <div
-        key={`row-${midiNote}`}
-        style={{
-          height: beatHeight - 1,
-          // ...(heldPianoKeys[midiNote] ? {
-          //   background: currUserInstrument ? `${currUserInstrument.color}40` : '#b2bcc240',
-          // } : {}),
-        }}
-      >
+  const resetUserPlayheadButton = useMemo(
+    () => (<div style={{
+      cursor: _userPlayheadBounds === undefined ? 'default' : 'pointer',
+      opacity: _userPlayheadBounds === undefined ? 0.25 : 1,
+      position: 'absolute',
+      top: -20,
+      left: 13,
+      fontSize: 14,
+    }} onClick={resetUserPlayheadBounds}>🈁</div>), 
+    [resetUserPlayheadBounds, _userPlayheadBounds]
+  );
+
+  const renderedPianoRollKeys = useMemo(() => (
+    <PianoRollKeysContainer>
+      {resetUserPlayheadButton}
+      {pianoRollKeys.map((midiNote, _) => (
         <div
+          key={`row-${midiNote}`}
           style={{
-            // outline: "1px solid black",
-            // zIndex: 3,
-            // background: "white",
-            // position: "fixed",
-            width: pianoKeyWidth,
-            minWidth: pianoKeyWidth,
-            textAlign: "left",
-            userSelect: "none",
-            cursor: 'pointer',
+            height: beatHeight - 1,
             // ...(heldPianoKeys[midiNote] ? {
-            //   fontWeight: 700,
-            //   fontSize: 16,
-            //   marginTop: -2,
+            //   background: currUserInstrument ? `${currUserInstrument.color}40` : '#b2bcc240',
             // } : {}),
           }}
-          // onMouseDown={() => { currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 }); }}
         >
-          {midiNote}
+          <div
+            style={{
+              // outline: "1px solid black",
+              // zIndex: 3,
+              // background: "white",
+              // position: "fixed",
+              width: pianoKeyWidth,
+              minWidth: pianoKeyWidth,
+              textAlign: "left",
+              userSelect: "none",
+              cursor: 'pointer',
+              // ...(heldPianoKeys[midiNote] ? {
+              //   fontWeight: 700,
+              //   fontSize: 16,
+              //   marginTop: -2,
+              // } : {}),
+            }}
+            // onMouseDown={() => { currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 }); }}
+          >
+            {midiNote}
+          </div>
         </div>
-      </div>
-    ))}</PianoRollKeysContainer>
-  ), [])
+      ))}
+    </PianoRollKeysContainer>
+  ), [resetUserPlayheadButton])
 
   const allRenderedNotes = useMemo(() => (
     <AllRenderedNotes

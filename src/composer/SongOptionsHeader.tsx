@@ -7,6 +7,7 @@ import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider'
 import { AudioContextContext, SongJsonExport } from './consts';
 import { PristineContext } from './contexts/PristineContextProvider';
 import { BabyDanceFrameContext, PlayheadContext } from './contexts/PlayheadContextProvider';
+import { generate } from "random-words";
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -48,6 +49,14 @@ const FileInputLabel = styled.label`
   padding: 2px;
   border: 1px solid black;
   cursor: pointer;
+`;
+const ShuffleButton = styled.div`
+  background: white;
+  padding: 1px 2px;
+  border: 1px solid black;
+  cursor: pointer;
+  margin-left: 2px;
+  margin-right: 4px;
 `;
 
 export function SongOptionsHeader({}: {}) {
@@ -157,11 +166,12 @@ export function SongOptionsHeader({}: {}) {
         }}/></div> */}
         <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={incrementBabyDanceFrame}/></div>
         <div style={{ display: 'flex', flexDirection: 'column', }}>
-          <div style={{ textAlign: 'left', }}>
-            <b>Song Name:</b>&nbsp;
+          <div style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 2 }}>
+            <b>Song Name:</b>
             <input type="text" value={songName} onChange={(e) => {
-              setSongName(e.target.value)
+              setSongName(e.target.value);
             }} />
+            <ShuffleButton onClick={() => { setSongName((generate(2) as string[]).join(' ')); }}>🎲</ShuffleButton>
           </div>
           {/* <div style={{ display: 'flex', alignItems: 'center', }}>
             <label htmlFor="master-instrument-volume">

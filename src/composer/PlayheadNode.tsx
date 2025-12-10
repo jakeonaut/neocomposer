@@ -24,12 +24,13 @@ const PixelCoda = styled.div<{ $y: number, $inverted: boolean }>`
   background: ${({ $y, $inverted }) => `url('./toolicons1x.png') repeat scroll ${
     $inverted ? '-25px' : '0'
   } ${$y}px transparent`};
-  width: 25px;
-  height: 21px;
+  width: 16px;
+  height: 15px;
   image-rendering: pixelated;
+  cursor: grab;
 `;
 
-function beatFromEvent(e: { target: Element, clientX: number }, beatWidth: number) {
+function beatFromEvent(e: { target: HTMLDivElement, clientX: number }, beatWidth: number) {
   const clientRect = e.target.getBoundingClientRect();
   return Math.floor((e.clientX - clientRect.left) / beatWidth);
 }
@@ -39,8 +40,9 @@ export function PlayheadNode() {
   const {
     _isPlaying,
     _isLooping,
-    setUserPlayheadBounds,
     _userPlayheadBounds,
+    userPlayheadBoundsRef,
+    setUserPlayheadBounds,
     incrementBabyDanceFrame,
     setPlayheadPosX,
   } = useContext(PlayheadContext)!;
@@ -58,13 +60,48 @@ export function PlayheadNode() {
   const babyMouseDownRef = useRef(_babyMouseDown);
   const startingPlayheadCursorPos = useRef(0);
   const cursorPos = useRef(0);
+  const playheadNodeElementRef = useRef<HTMLDivElement>(null);
 
   const beatWidth = useMemo(() => getBeatWidth(_subdivisionType), [_subdivisionType]);
+  const endOfMeasureToLoopAtBeat = useMemo(
+    () => getEndOfMeasureToLoopAtBeat(
+      _farthestRightNoteEnd, 
+      _timeSignature,
+      _userPlayheadBounds,
+    ),
+    [_farthestRightNoteEnd, _timeSignature, _userPlayheadBounds]
+  );
 
   const setBabyMouseDown = useCallback((newBabyMouseDown: boolean) => {
     babyMouseDownRef.current = newBabyMouseDown;
     _setBabyMouseDown(newBabyMouseDown);
   }, []);
+
+  const handleCodaLeftMouseDown = useCallback((e: React.MouseEvent) => {
+    const start = beatFromEvent({ target: playheadNodeElementRef.current! as HTMLDivElement, clientX: e.clientX }, beatWidth);
+    playheadMouseDownRef.current = true;
+    setUserPlayheadBounds({
+      start: userPlayheadBoundsRef.current?.start ?? 0,
+      end: userPlayheadBoundsRef.current?.end ?? endOfMeasureToLoopAtBeat,
+    });
+    startingPlayheadCursorPos.current = userPlayheadBoundsRef.current!.end! - 1;
+    cursorPos.current = start;
+    e.stopPropagation();
+    return false;
+  }, [beatWidth, endOfMeasureToLoopAtBeat, setUserPlayheadBounds, userPlayheadBoundsRef]);
+
+  const handleCodaRightMouseDown = useCallback((e: React.MouseEvent) => {
+    const start = beatFromEvent({ target: playheadNodeElementRef.current! as HTMLDivElement, clientX: e.clientX }, beatWidth);
+    playheadMouseDownRef.current = true;
+    setUserPlayheadBounds({
+      start: userPlayheadBoundsRef.current?.start ?? 0,
+      end: userPlayheadBoundsRef.current?.end,
+    });
+    startingPlayheadCursorPos.current = userPlayheadBoundsRef.current!.start;
+    cursorPos.current = start;
+    e.stopPropagation();
+    return false;
+  }, [beatWidth, setUserPlayheadBounds, userPlayheadBoundsRef]);
 
   const handleBabyMouseDown = useCallback((e: React.MouseEvent) => {
     const cursorBeat = playheadPosXRef.current / beatWidth;
@@ -83,7 +120,7 @@ export function PlayheadNode() {
   }, [audioContext, beatWidth, compositionRef, incrementBabyDanceFrame, playheadPosXRef, setBabyMouseDown, tempoRef, userInstrumentsRef]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    const start = beatFromEvent({ target: e.target as Element, clientX: e.clientX }, beatWidth);
+    const start = beatFromEvent({ target: e.target as HTMLDivElement, clientX: e.clientX }, beatWidth);
     playheadMouseDownRef.current = true;
     setUserPlayheadBounds({
       start,
@@ -94,8 +131,10 @@ export function PlayheadNode() {
   }, [beatWidth, playheadMouseDownRef, setUserPlayheadBounds]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    const cursorBeat = beatFromEvent({ target: e.target as Element, clientX: e.clientX }, beatWidth);
-    if (cursorBeat === cursorPos.current) return;
+    const cursorBeat = beatFromEvent({ target: playheadNodeElementRef.current!, clientX: e.clientX }, beatWidth);
+    if (cursorBeat === cursorPos.current || (
+      !babyMouseDownRef.current && !playheadMouseDownRef.current
+    )) return;
     if (babyMouseDownRef.current) {
       setPlayheadPosX((cursorBeat + 1) * beatWidth);
       playCompositionNotesAtBeat({
@@ -115,7 +154,7 @@ export function PlayheadNode() {
       } else if (cursorBeat === startingPlayheadCursorPos.current) {
         setUserPlayheadBounds({
           start: cursorBeat,
-          end: undefined,
+          end: cursorBeat + 1,
         });
       } else {
         setUserPlayheadBounds({
@@ -144,13 +183,10 @@ export function PlayheadNode() {
   }, [handleMouseUp, handleMouseMove]);
 
   const codaSpriteY = useMemo(() => _isLooping ? -189 : -210, [_isLooping]);
-  const endOfMeasureToLoopAtBeat = useMemo(
-    () => getEndOfMeasureToLoopAtBeat(_farthestRightNoteEnd, _timeSignature), 
-    [_farthestRightNoteEnd, _timeSignature]
-  );
 
   return (
     <div
+      ref={playheadNodeElementRef}
       onMouseDown={handleMouseDown}
       style={{
         height: 15,
@@ -171,26 +207,32 @@ export function PlayheadNode() {
         userSelect: 'none',
         ...(_babyMouseDown || _isPlaying ? { pointerEvents: 'none' } : {})
       }}/>
-      <PixelCoda $y={codaSpriteY} $inverted={false} style={{
-        position: 'absolute',
-        left: _userPlayheadBounds?.start !== undefined
-          ? _userPlayheadBounds.start * beatWidth
-          : 0,
-        userSelect: 'none',
-        pointerEvents: 'none',
-      }} />
-      <PixelCoda $y={codaSpriteY} $inverted={true} style={{
-        position: 'absolute',
-        left: _userPlayheadBounds?.end !== undefined
-          ? (_userPlayheadBounds.end - 1) * beatWidth
-          : (endOfMeasureToLoopAtBeat - 1) * beatWidth,
-        userSelect: 'none',
-        pointerEvents: 'none',
-        ...(!_isLooping && _userPlayheadBounds?.end === undefined
-          ? { display: 'none' }
-          : {}
-        )
-      }} />
+      <PixelCoda
+        onMouseDown={handleCodaLeftMouseDown}
+        $y={codaSpriteY} $inverted={false}
+        style={{
+          position: 'absolute',
+          left: _userPlayheadBounds?.start !== undefined
+            ? _userPlayheadBounds.start * beatWidth
+            : 0,
+          userSelect: 'none',
+          display: _userPlayheadBounds === undefined ? 'none': 'unset',
+        }} />
+      <PixelCoda
+        onMouseDown={handleCodaRightMouseDown}
+        $y={codaSpriteY} $inverted={true}
+        style={{
+          position: 'absolute',
+          left: _userPlayheadBounds?.end !== undefined
+            ? (_userPlayheadBounds.end - 1) * beatWidth
+            : (endOfMeasureToLoopAtBeat - 1) * beatWidth,
+          opacity: _userPlayheadBounds?.end === undefined ? 0.25 : 1.0,
+          userSelect: 'none',
+          ...(!_isLooping && _userPlayheadBounds?.end === undefined
+            ? { display: 'none' }
+            : {}
+          )
+        }} />
     </div>
   );
 }

@@ -1,7 +1,5 @@
 import React, { createContext, useCallback, useMemo, useRef, useState } from "react";
-import { Offset } from "../consts";
-
-type PlayheadBounds = { start: Offset['x'], end?: Offset['x'] };
+import { PlayheadBounds } from "../consts";
 
 export function PlayheadContextProvider({ children }: { children: React.ReactNode }) {
   const [babyDanceFrame, _setBabyDanceFrame] = useState(0);

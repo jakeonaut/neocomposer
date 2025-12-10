@@ -175,3 +175,5 @@ export enum InputMode {
 export type CursorPosition = { midiNote: MidiNoteNum; midiBeat: MidiBeat; };
 
 export const AudioContextContext = createContext<AudioContext | undefined>(undefined);
+
+export type PlayheadBounds = { start: Offset['x'], end?: Offset['x'] };

@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useRef, useState } from "react";
+import { generate } from "random-words";
 
 export const SongSettingsContext = createContext<{
   songName: string,
@@ -11,7 +12,7 @@ export const SongSettingsContext = createContext<{
 } | undefined>(undefined);
 
 export function SongSettingsContextProvider({ children } : { children: React.ReactNode }) {
-  const [songName, setSongName] = useState('new_song');
+  const [songName, setSongName] = useState((generate(2) as string[]).join(" "));
   const [_tempo, _setTempo] = useState(100);
   const [masterVolume, setMasterVolume] = useState(100);
 
