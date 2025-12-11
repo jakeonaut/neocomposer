@@ -361,9 +361,12 @@ export function CompositionCanvas({
       opacity: _userPlayheadBounds === undefined ? 0.25 : 1,
       position: 'absolute',
       top: -20,
-      left: 13,
-      fontSize: 14,
-    }} onClick={resetUserPlayheadBounds}>🈁</div>), 
+      left: 10,
+      fontSize: 18,
+      border: '1px solid black',
+      padding: '0px 2px 2px 2px',
+      lineHeight: '14px',
+    }} onClick={resetUserPlayheadBounds}>↺</div>), 
     [resetUserPlayheadBounds, _userPlayheadBounds]
   );
 

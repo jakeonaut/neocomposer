@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, NoteId, NoteIdWithOffset, PlayheadBounds, SubdivisionType, TimeSignature, UserInstrument } from "../consts";
+import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, MidiBeat, NoteId, NoteIdWithOffset, PlayheadBounds, SubdivisionType, TimeSignature, UserInstrument } from "../consts";
 import { SongSettingsContext } from "./SongSettingsContextProvider";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import _ from "lodash";
@@ -27,15 +27,25 @@ export function convertCompositionToCompositionByInstrument(composition: Composi
   return compositionByInstrument;
 }
 
-const BEAT_WIDTH = 15;
+export const BEAT_WIDTH = 15;
+
+export function getStartOfMeasureFromBeat(beat: MidiBeat, timeSignature: TimeSignature) {
+  const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
+  const measureBeatMultiplier = 4 * timeSignatureVal;
+}
+
+export function getEndOfMeasureFromBeat(beat: MidiBeat, timeSignature: TimeSignature) {
+  const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
+  const measureBeatMultiplier = 4 * timeSignatureVal;
+}
 
 export function getEndOfMeasureToLoopAtBeat(
   farthestRightNoteEnd: number, 
   timeSignature: TimeSignature,
   userPlayheadBounds: PlayheadBounds | undefined,
 ) {
-  // const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
-  const measureBeatMultiplier = 4; // * timeSignatureVal;
+  const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
+  const measureBeatMultiplier = 4 * timeSignatureVal;
   return (
     Math.max(Math.ceil(
       Math.max(
@@ -135,7 +145,6 @@ export function CompositionContextProvider({
   const isCompositionMouseDownRef = useRef(_isCompositionMouseDown);
   const onCompositionMouseUpRef = useRef(undefined as ((() => void) | undefined));
   const playerIdRef = useRef(undefined as number | undefined);
-  const playheadBeatRef = useRef(1);
   const instructionIdRef = useRef(0);
   const compositionRef = useRef(_composition);
   const compositionByInstructionIdRef = useRef<Record<string, InstrumentInstruction>>({});
@@ -307,8 +316,7 @@ export function CompositionContextProvider({
     userInstrumentsRef.current.forEach((userInstrument) => {
       userInstrument?.sf2Sampler?.stop();
     });
-    playheadBeatRef.current = userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 0;
-    setPlayheadPosX(BEAT_WIDTH * playheadBeatRef.current);
+    setPlayheadPosX(BEAT_WIDTH * (userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 0));
     setIsPlaying(false);
   }, [setIsPlaying, setPlayheadPosX, userInstrumentsRef, userPlayheadBoundsRef]);
 
@@ -318,10 +326,6 @@ export function CompositionContextProvider({
       return
     }
     setIsPlaying(true);
-    playheadBeatRef.current = playheadPosXRef.current / BEAT_WIDTH; // userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 0;
-    // setPlayheadPosX(BEAT_WIDTH * playheadBeatRef.current);
-    // TODO(jaketrower): totally based on bpm... 120 beats per minute = 2 beats per second, 32 noteBlocks per second = duration of 0.03125
-    // so beatLengthInSeconds = tempo / 2
     function scheduler() {
       // While there are notes that will need to play before the next interval,
       // schedule them and advance the pointer.
@@ -329,7 +333,7 @@ export function CompositionContextProvider({
       //   scheduleNote(currentNote, nextNoteTime);
       //   nextNote();
       // }
-      const midiBeat = playheadBeatRef.current;
+      const midiBeat = playheadPosXRef.current / BEAT_WIDTH;
       playCompositionNotesAtBeat({
         audioContext,
         composition: compositionRef.current,
@@ -338,7 +342,6 @@ export function CompositionContextProvider({
         userInstruments: userInstrumentsRef.current,
         incrementBabyDanceFrame,
       });
-      setPlayheadPosX(BEAT_WIDTH * playheadBeatRef.current);
       const endOfMeasureToLoopAtBeat = getEndOfMeasureToLoopAtBeat(
         farthestRightNoteEndRef.current, 
         timeSignatureRef.current,
@@ -346,19 +349,19 @@ export function CompositionContextProvider({
       );
       const shouldLoop = isLoopingRef.current && (
         userPlayheadBoundsRef.current?.end
-          ? (playheadBeatRef.current === userPlayheadBoundsRef.current.end)
-          : (playheadBeatRef.current === endOfMeasureToLoopAtBeat)
+          ? (playheadPosXRef.current === userPlayheadBoundsRef.current.end * BEAT_WIDTH)
+          : (playheadPosXRef.current === endOfMeasureToLoopAtBeat * BEAT_WIDTH)
       );
       const shouldStop = !isLoopingRef.current && (
-        userPlayheadBoundsRef.current?.end && playheadBeatRef.current === userPlayheadBoundsRef.current.end + 1
+        userPlayheadBoundsRef.current?.end && playheadPosXRef.current === userPlayheadBoundsRef.current.end + 1
       );
       if (shouldLoop) {
-        playheadBeatRef.current = userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 1;
+        setPlayheadPosX(BEAT_WIDTH * (userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 1));
       } else if (shouldStop) {
         handleStopComposition();
         return;
       } else {
-        playheadBeatRef.current++;
+        setPlayheadPosX(playheadPosXRef.current + BEAT_WIDTH);
       }
       const beatLengthInMs = getBeatLengthInMs(tempoRef.current);
       playerIdRef.current = window.setTimeout(scheduler, beatLengthInMs);

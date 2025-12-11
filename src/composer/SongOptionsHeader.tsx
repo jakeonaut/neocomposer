@@ -167,11 +167,12 @@ export function SongOptionsHeader({}: {}) {
         <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={incrementBabyDanceFrame}/></div>
         <div style={{ display: 'flex', flexDirection: 'column', }}>
           <div style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 2 }}>
-            <b>Song Name:</b>
+            𖡼𖤣𖥧𖡼𓋼𖤣𖥧𓋼𓍊<b style={{ marginLeft: 2}}>Song Name:</b>
             <input type="text" value={songName} onChange={(e) => {
               setSongName(e.target.value);
             }} />
             <ShuffleButton onClick={() => { setSongName((generate(2) as string[]).join(' ')); }}>🎲</ShuffleButton>
+            𖡼𖤣𖥧𖡼𓋼𖤣𖥧𓋼𓍊
           </div>
           {/* <div style={{ display: 'flex', alignItems: 'center', }}>
             <label htmlFor="master-instrument-volume">

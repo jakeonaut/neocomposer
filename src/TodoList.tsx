@@ -5,7 +5,7 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>[ ] - clicking playhead should place babyhead there on mouse down... playhead bounds shouldn't be modified until click & drag</li>
+        <li>[ ] - Double click should snap the PLAYHEAD_START & STOP to the measure! (shift + double click should add to this (and cover the distance))</li>
         <hr/>
         <li>[ ] undo/redo. each action (placing a note(s)), should have an opposite action (deleting a note(s)).</li>
         <ul><li>this seems preferable than caching the entire state of the application multiple times into memory.
