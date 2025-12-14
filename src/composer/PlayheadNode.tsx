@@ -2,9 +2,9 @@ import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } 
 import styled from "styled-components";
 import { BabyDanceFrameContext, PlayheadContext, PlayheadPosXContext } from "./contexts/PlayheadContextProvider";
 import { SubdivisionTypeContext } from "./contexts/SubdivisionTypeContextProvider";
-import { BEAT_WIDTH, CompositionContext, getEndOfMeasureToLoopAtBeat, playCompositionNotesAtBeat } from "./contexts/CompositionContextProvider";
+import { CompositionContext, playCompositionNotesAtBeat } from "./contexts/CompositionContextProvider";
 import { TimeSignatureContext } from "./contexts/TimeSignatureContextProvider";
-import { AudioContextContext } from "./consts";
+import { AudioContextContext, BEAT_WIDTH, beatHeight, getEndOfMeasureFromBeat, getEndOfMeasureToLoopAtBeat, getStartOfMeasureFromBeat, mediumColor, pianoRollBeats, pianoRollKeys, zIndex_playhead } from "./consts";
 import { SongSettingsContext } from "./contexts/SongSettingsContextProvider";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
 
@@ -50,7 +50,7 @@ export function PlayheadNode() {
   const { userInstrumentsRef } = useContext(UserInstrumentContext)!;
   const { _farthestRightNoteEnd, compositionRef } = useContext(CompositionContext)!;
   const { _subdivisionType } = useContext(SubdivisionTypeContext)!;
-  const { _timeSignature } = useContext(TimeSignatureContext)!;
+  const { _timeSignature, timeSignatureRef } = useContext(TimeSignatureContext)!;
   const { _playheadPosX, playheadPosXRef } = useContext(PlayheadPosXContext)!;
 
   const [_babyMouseDown, _setBabyMouseDown] = useState(false);
@@ -134,8 +134,21 @@ export function PlayheadNode() {
   }, [audioContext, compositionRef, incrementBabyDanceFrame, setPlayheadMouseDown, setPlayheadPosX, tempoRef, userInstrumentsRef]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-
-  }, []);
+    const cursorBeat = beatFromEvent({ target: playheadNodeElementRef.current!, clientX: e.clientX });
+    const startOfClickedMeasure = getStartOfMeasureFromBeat(cursorBeat, timeSignatureRef.current);
+    const endOfClickedMeasure = getEndOfMeasureFromBeat(cursorBeat, timeSignatureRef.current);
+    if (e.shiftKey && userPlayheadBoundsRef.current !== undefined) {
+      setUserPlayheadBounds({
+        start: Math.min(userPlayheadBoundsRef.current.start, startOfClickedMeasure),
+        end: Math.max(userPlayheadBoundsRef.current.end ?? 0, endOfClickedMeasure),
+      });
+    } else {
+      setUserPlayheadBounds({
+        start: startOfClickedMeasure,
+        end: endOfClickedMeasure,
+      });
+    }
+  }, [setUserPlayheadBounds, timeSignatureRef, userPlayheadBoundsRef]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     const cursorBeat = beatFromEvent({ target: playheadNodeElementRef.current!, clientX: e.clientX });
@@ -198,52 +211,69 @@ export function PlayheadNode() {
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
       style={{
-        height: 15,
+        height: pianoRollKeys.length * beatHeight - 62,
         content: ' ',
-        position: 'relative',
-        top: -14,
+        position: 'absolute',
+        top: 0,
         left: 0,
         cursor: _babyMouseDown || _codaMouseDown ? 'grabbing' : 'pointer',
         userSelect: 'none',
+        pointerEvents: 'none',
       }}
     >
-      <BabyPlayheadImg
-        onMouseDown={handleBabyMouseDown}
-        src="trans.png" $frame={babyDanceFrame} style={{
-        left: Math.max(_playheadPosX - 15 - 2, -2),
-        cursor: 'grab',
-        zIndex: 1,
-        userSelect: 'none',
-        ...(_babyMouseDown || _playheadMouseDown || _codaMouseDown || _isPlaying ? { pointerEvents: 'none' } : {})
-      }}/>
-      <PixelCoda
-        onMouseDown={handleCodaLeftMouseDown}
-        $y={codaSpriteY} $inverted={false}
-        style={{
-          position: 'absolute',
-          left: _userPlayheadBounds?.start !== undefined
-            ? _userPlayheadBounds.start * BEAT_WIDTH
-            : 0,
-          userSelect: 'none',
-          display: _userPlayheadBounds === undefined || _userPlayheadBounds.start === 0 ? 'none': 'unset',
-          ...(_babyMouseDown || _playheadMouseDown || _codaMouseDown ? { pointerEvents: 'none' } : {})
-        }} />
-      <PixelCoda
-        onMouseDown={handleCodaRightMouseDown}
-        $y={codaSpriteY} $inverted={true}
-        style={{
-          position: 'absolute',
-          left: _userPlayheadBounds?.end !== undefined
-            ? (_userPlayheadBounds.end - 1) * BEAT_WIDTH
-            : (endOfMeasureToLoopAtBeat - 1) * BEAT_WIDTH,
-          opacity: _userPlayheadBounds?.end === undefined ? 0.25 : 1.0,
-          userSelect: 'none',
-          ...(!_isLooping && _userPlayheadBounds?.end === undefined
-            ? { display: 'none' }
-            : {}
-          ),
-          ...(_babyMouseDown || _playheadMouseDown || _codaMouseDown || _userPlayheadBounds?.end === undefined ? { pointerEvents: 'none' } : {})
-        }} />
+      <div style={{
+        position: 'sticky',
+        background: 'white',
+        top: -16,
+        width: (pianoRollBeats.length * BEAT_WIDTH) + 32,
+        height: 16,
+        borderBottom: `1px solid ${mediumColor}`,
+        zIndex: zIndex_playhead,
+        pointerEvents: 'all',
+      }}>
+        <div style={{ position: 'relative', left: 30, }}>
+          <BabyPlayheadImg
+            onMouseDown={handleBabyMouseDown}
+            src="trans.png" $frame={babyDanceFrame} style={{
+            left: Math.max(_playheadPosX - 15 - 2, -2),
+            top: -4,
+            cursor: 'grab',
+            zIndex: 1,
+            userSelect: 'none',
+            ...(_babyMouseDown || _playheadMouseDown || _codaMouseDown || _isPlaying ? { pointerEvents: 'none' } : {})
+          }}/>
+          <PixelCoda
+            onMouseDown={handleCodaLeftMouseDown}
+            $y={codaSpriteY} $inverted={false}
+            style={{
+              position: 'absolute',
+              top: 2,
+              left: _userPlayheadBounds?.start !== undefined
+                ? _userPlayheadBounds.start * BEAT_WIDTH
+                : 0,
+              userSelect: 'none',
+              display: _userPlayheadBounds === undefined || _userPlayheadBounds.start === 0 ? 'none': 'unset',
+              ...(_babyMouseDown || _playheadMouseDown || _codaMouseDown ? { pointerEvents: 'none' } : {}),
+            }} />
+          <PixelCoda
+            onMouseDown={handleCodaRightMouseDown}
+            $y={codaSpriteY} $inverted={true}
+            style={{
+              position: 'absolute',
+              top: 2,
+              left: _userPlayheadBounds?.end !== undefined
+                ? (_userPlayheadBounds.end - 1) * BEAT_WIDTH
+                : (endOfMeasureToLoopAtBeat - 1) * BEAT_WIDTH,
+              opacity: _userPlayheadBounds?.end === undefined ? 0.25 : 1.0,
+              userSelect: 'none',
+              ...(!_isLooping && _userPlayheadBounds?.end === undefined
+                ? { display: 'none' }
+                : {}
+              ),
+              ...(_babyMouseDown || _playheadMouseDown || _codaMouseDown || _userPlayheadBounds?.end === undefined ? { pointerEvents: 'none' } : {})
+            }} />
+        </div>
+      </div>
     </div>
   );
 }

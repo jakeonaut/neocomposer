@@ -1,7 +1,6 @@
 import React, { CSSProperties, useCallback, useMemo } from "react";
 import styled from "styled-components";
-import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType, NoteId } from "../consts";
-import { BEAT_WIDTH } from "../contexts/CompositionContextProvider";
+import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType, NoteId, BEAT_WIDTH } from "../consts";
 
 const StyledNote = styled.div<{
   $width: number,

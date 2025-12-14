@@ -1,14 +1,11 @@
-import React, { useContext, useMemo } from "react";
-import { beatHeight, MidiBeat, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature } from "../consts";
+import React, { useContext, useEffect, useMemo } from "react";
+import { beatHeight, getBeatWidth, lightColor, mediumColor, MidiBeat, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature, veryLightColor } from "../consts";
 import styled from "styled-components";
 import { fromMidi, toMidi } from "../../smplr/player/midi";
-import { CellComponentProps, Grid } from "react-window";
+import { CellComponentProps, Grid, useGridRef } from "react-window";
 import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
 import { TimeSignatureContext } from "../contexts/TimeSignatureContextProvider";
-
-const lightColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.25)';
-const mediumColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.5)'
-const veryLightColor = '#ced8e0ff'; //"rgba(17, 156, 238, 0.12)";
+import { createPortal } from "react-dom";
 
 const GridCellDiv = styled.div<{
   $idx: number,
@@ -17,6 +14,7 @@ const GridCellDiv = styled.div<{
   $midiNote: string,
   $beatWidth: number,
 }>`
+  margin-left: 30px;
   position: relative;
   cursor: pointer;
   border-top: 1px ${({ $midiNote }) => $midiNote === pianoRollKeys[0] || ($midiNote[0] === "B" && $midiNote[1] !== 'b')
@@ -42,50 +40,6 @@ const GridCellDiv = styled.div<{
   };
 `;
 
-export function getMidiBeatFromGridBeat(gridBeat: MidiBeat, subdivisionType: SubdivisionType, noteSubdivisionType: SubdivisionType, roundUpInstead: boolean = false) {
-  let midiBeat = gridBeat;
-  if (subdivisionType === SubdivisionType.t) {
-    if (noteSubdivisionType === SubdivisionType.q) {
-      midiBeat = Math.round((4 * (gridBeat - 1) / 3) + 1);
-    } else if (noteSubdivisionType === SubdivisionType.t) {
-      const offset = (gridBeat - 1) % 3;
-      const whichQuarterNote = Math.floor((gridBeat - 1) / 3.0);
-      const roundingUpOffset = roundUpInstead && offset === 2 ? 1 : 0;
-      midiBeat = whichQuarterNote * 4 + offset + 1 + roundingUpOffset;
-    }
-  } else if (subdivisionType === SubdivisionType.q && noteSubdivisionType === SubdivisionType.t) {
-    const currOffset = (gridBeat - 1) % 4;
-    const newOffset = Math.min(currOffset, 2);
-    midiBeat = midiBeat - currOffset + newOffset;
-  }
-  // If subdivisionType === SubdivisionType.q && noteSubdivisionType === SubdivisionType.q, don't need to do anything
-  return midiBeat;
-}
-
-export function getGridBeatFromMidiBeat(midiBeat: MidiBeat, subdivisionType: SubdivisionType) { // , noteSubdivisionType: SubdivisionType) {
-  let gridBeat = midiBeat;
-  if (subdivisionType === SubdivisionType.t) {
-    const offset = midiBeat % 4;
-    gridBeat = (Math.floor((midiBeat - 1) / 4) * 3) + offset;
-    // if (noteSubdivisionType === SubdivisionType.q && offset === 0) {
-    //   gridBeat += 3;
-    // }
-  }
-  return gridBeat;
-}
-
-export function getBeatWidth(subdivisionType: SubdivisionType) {
-  switch(subdivisionType) {
-    case SubdivisionType.q:
-      return 15;
-    case SubdivisionType.t:
-      return 20;
-    default:
-      const exhaustiveCheck: never = subdivisionType;
-      throw new Error(`Unhandled subdivision type: ${exhaustiveCheck}`);
-  }
-}
-
 type MouseHandler = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: MidiBeat, midiNote: MidiNoteNum) => false;
 
 const useCellProps = ({
@@ -108,6 +62,7 @@ const useCellProps = ({
   return cellProps;
 };
 
+let hasInitializedScroll = false;
 export function CompositionGrid({
   children,
   handleMouseDown,
@@ -117,24 +72,37 @@ export function CompositionGrid({
   handleMouseDown: MouseHandler,
   handleMouseMove: MouseHandler,
 }) {
+  const gridRef = useGridRef(null);
+  const gridElement = gridRef.current?.element;
   const cellProps = useCellProps({ handleMouseDown, handleMouseMove });
+  useEffect(() => {
+    if (gridRef.current?.element && !hasInitializedScroll) {
+      hasInitializedScroll = true;
+      gridRef.current.element.scrollTo(0, 356);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gridRef.current]);
   
   return (
-    <Grid
-      cellComponent={GridCell}
-      cellProps={cellProps}
-      columnCount={pianoRollBeats.length}
-      columnWidth={cellProps.beatWidth}
-      rowCount={pianoRollKeys.length}
-      rowHeight={beatHeight - 1}
-      style={{
-        height: ((beatHeight - 1) * (pianoRollKeys.length)) + 1 + 16,
-        paddingTop: 16,
-        marginTop: -16,
-      }}
-    >
-      {children}
-    </Grid>
+    <>
+      <Grid
+        gridRef={gridRef}
+        cellComponent={GridCell}
+        cellProps={cellProps}
+        columnCount={pianoRollBeats.length}
+        columnWidth={cellProps.beatWidth}
+        rowCount={pianoRollKeys.length}
+        rowHeight={beatHeight - 1}
+        style={{
+          height: ((beatHeight - 1) * (pianoRollKeys.length)) + 1 + 16,
+          paddingTop: 16,
+          marginTop: -16,
+          overscrollBehavior: 'contain',
+          borderBottom: `1px solid ${mediumColor}`,
+        }}
+      />
+      {gridElement && createPortal(children, gridElement)}
+    </>
   );
 } 
 

@@ -200,17 +200,21 @@ export function Maestro() {
           addCompositionNotes([
             ...removedNoteToShift.map((noteToShift) => {
               if (e.key === "ArrowDown") {
-                noteToShift.midiNote -= 1;
+                if (e.shiftKey) { noteToShift.midiNote -= 4; }
+                else { noteToShift.midiNote -= 1; }
               }
               if (e.key === "ArrowUp") {
-                noteToShift.midiNote += 1;
+                if (e.shiftKey) { noteToShift.midiNote += 4; }
+                else { noteToShift.midiNote += 1; }
               }
               if (e.key === "ArrowLeft") {
                 // TODO(jaketrower): should take into account subdivision type?
-                noteToShift.midiBeat -= 1;
+                if (e.shiftKey) { noteToShift.midiBeat -= 4; }
+                else { noteToShift.midiBeat -= 1; }
               }
               if (e.key === "ArrowRight") {
-                noteToShift.midiBeat += 1;
+                if (e.shiftKey) { noteToShift.midiBeat += 4; }
+                else { noteToShift.midiBeat += 1; }
               }
               return { ...noteToShift };
             })
@@ -375,11 +379,10 @@ export function Maestro() {
         <h3>&nbsp;&nbsp;&nbsp;Tips!</h3>
         <ul>
           <li>Click (and drag) the grid to place notes!</li>
-          <li>Click a note again to delete it.</li>
+          <li>Quickly click a note again to delete it!</li>
           <li>Use asdfghjkl;wetyuop keys to practice!</li>
           <li>Use 1, 2, 3, etc. to quickly swap between instruments!</li>
           <li>Use shift to quickly swap between note pencil and select mode!</li>
-          <li>Use Q to toggle triplet-mode! </li>
         </ul>
         </div>
       </Footer>

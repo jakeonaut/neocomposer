@@ -1,9 +1,8 @@
 import React, { useCallback, useContext, useMemo } from "react";
-import { beatHeight, CursorPosition, InputMode, NoteId, pianoRollKeys, zIndex_rectSelect } from "../consts";
+import { beatHeight, CursorPosition, InputMode, NoteId, pianoRollKeys, zIndex_rectSelect, getBeatWidth, getMidiBeatFromGridBeat } from "../consts";
 import { UserInstrumentContext } from "../contexts/UserInstrumentContextProvider";
 import { CompositionContext } from "../contexts/CompositionContextProvider";
 import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
-import { getBeatWidth, getMidiBeatFromGridBeat } from "./CompositionGrid";
 import { PlacedNote } from "./PlacedNote";
 import { toMidi } from "../../smplr/player/midi";
 import styled from "styled-components";
@@ -12,6 +11,7 @@ import styled from "styled-components";
 const PlacedNotesOverlay = styled.div`
   position: absolute;
   top: 16px;
+  left: 30px;
 `;
 
 const RectSelector = styled.div<{ $left: number, $top: number, $width: number, $height: number }>`

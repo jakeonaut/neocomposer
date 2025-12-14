@@ -23,7 +23,7 @@ export class SamplePlayer implements InternalPlayer {
   public readonly buffers: AudioBuffers;
   _config: SamplePlayerConfig;
   _disconnected = false;
-  _stop: Trigger<SampleStop | undefined>;
+  _stop: Trigger<Omit<SampleStop, 'time'> & { time: number }>;
 
   public constructor(
     public readonly context: BaseAudioContext,
@@ -83,8 +83,7 @@ export class SamplePlayer implements InternalPlayer {
     // Stop with decay
     const decayTime = sample.decayTime ?? this.options.decayTime;
     const [decay, startDecay] = createDecayEnvelope(context, decayTime);
-    function stop(time?: number) {
-      time ??= context.currentTime;
+    function stop(time: number) {
       if (time <= startAt) {
         source.stop(time);
       } else {
@@ -113,8 +112,8 @@ export class SamplePlayer implements InternalPlayer {
       ]),
       sample.stop?.(stop),
       this._stop.subscribe((event) => {
-        if (!event || event.stopId === undefined || event.stopId === stopId) {
-          stop(event?.time);
+        if (event.stopId === undefined || event.stopId === stopId) {
+          stop(event.time);
         }
       }),
     ]);
@@ -132,11 +131,14 @@ export class SamplePlayer implements InternalPlayer {
       stop(startAt + duration);
     }
 
-    return stop;
+    return stop as (time?: number) => void;
   }
 
   stop(sample?: SampleStop) {
-    this._stop.trigger(sample);
+    this._stop.trigger({
+      ...sample,
+      time: sample?.time ?? this.context.currentTime,
+    });
   }
 
   public disconnect() {
@@ -157,18 +159,15 @@ function createDecayEnvelope(
   context: BaseAudioContext,
   envelopeTime = 0.2
 ): [AudioNode, (time: number) => number] {
-  let stopAt = 0;
   const envelope = context.createGain();
   envelope.gain.value = 1.0;
 
   function start(time: number): number {
-    if (stopAt) return stopAt;
     envelope.gain.cancelScheduledValues(time);
     const envelopeAt = time || context.currentTime;
-    stopAt = envelopeAt + envelopeTime;
+    const stopAt = envelopeAt + envelopeTime;
     envelope.gain.setValueAtTime(1.0, envelopeAt);
     envelope.gain.linearRampToValueAtTime(0, stopAt);
-
     return stopAt;
   }
 

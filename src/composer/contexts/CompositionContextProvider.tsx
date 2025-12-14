@@ -1,60 +1,12 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
-import { AudioContextContext, Composition, CompositionByInstrument, InstrumentInstruction, MidiBeat, NoteId, NoteIdWithOffset, PlayheadBounds, SubdivisionType, TimeSignature, UserInstrument } from "../consts";
+import { AudioContextContext, BEAT_WIDTH, Composition, getEndOfMeasureToLoopAtBeat, InstrumentInstruction, NoteId, NoteIdWithOffset, SubdivisionType, UserInstrument } from "../consts";
 import { SongSettingsContext } from "./SongSettingsContextProvider";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import _ from "lodash";
 import { PlayheadContext, PlayheadPosXContext } from "./PlayheadContextProvider";
 import { ClipboardContext } from "./ClipboardContextProvider";
 import { TimeSignatureContext } from "./TimeSignatureContextProvider";
-
-export function convertCompositionToCompositionByInstrument(composition: Composition) {
-  const compositionByInstrument: CompositionByInstrument = {};
-  Object.entries(composition).forEach(([_, row]) => {
-    Object.entries(row).forEach(([_, instructions]) => {
-      Object.values(instructions).forEach((instruction) => {
-        if (!compositionByInstrument[instruction.userInstrumentIndex]) {
-          compositionByInstrument[instruction.userInstrumentIndex] = [];
-        }
-        compositionByInstrument[instruction.userInstrumentIndex].push([
-          instruction.midiBeat,
-          instruction.midiNote,
-          instruction.noteWidth,
-          instruction.subdivisionType,
-        ]);
-      });
-    });
-  });
-  return compositionByInstrument;
-}
-
-export const BEAT_WIDTH = 15;
-
-export function getStartOfMeasureFromBeat(beat: MidiBeat, timeSignature: TimeSignature) {
-  const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
-  const measureBeatMultiplier = 4 * timeSignatureVal;
-}
-
-export function getEndOfMeasureFromBeat(beat: MidiBeat, timeSignature: TimeSignature) {
-  const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
-  const measureBeatMultiplier = 4 * timeSignatureVal;
-}
-
-export function getEndOfMeasureToLoopAtBeat(
-  farthestRightNoteEnd: number, 
-  timeSignature: TimeSignature,
-  userPlayheadBounds: PlayheadBounds | undefined,
-) {
-  const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
-  const measureBeatMultiplier = 4 * timeSignatureVal;
-  return (
-    Math.max(Math.ceil(
-      Math.max(
-        (farthestRightNoteEnd - 1),
-        (userPlayheadBounds?.start ?? 0) + 1,
-      ) / measureBeatMultiplier
-    ), 1) * measureBeatMultiplier
-  );
-}
+import { globals } from "../globals";
 
 function getBeatLengthInMs(tempo: number) {
   const bpm = tempo;
@@ -145,7 +97,6 @@ export function CompositionContextProvider({
   const isCompositionMouseDownRef = useRef(_isCompositionMouseDown);
   const onCompositionMouseUpRef = useRef(undefined as ((() => void) | undefined));
   const playerIdRef = useRef(undefined as number | undefined);
-  const instructionIdRef = useRef(0);
   const compositionRef = useRef(_composition);
   const compositionByInstructionIdRef = useRef<Record<string, InstrumentInstruction>>({});
   const whenWasMouseDownedRef = useRef<number>(0);
@@ -207,32 +158,6 @@ export function CompositionContextProvider({
     _setComposition(newComposition);
   }, []);
 
-  const convertCompositionByInstrumentToComposition = useCallback((
-    compositionByInstrument: CompositionByInstrument
-  ) => {
-    instructionIdRef.current = 0;
-    const composition: Composition = {};
-    Object.entries(compositionByInstrument).forEach(([userInstrumentIndex, instructions]) => {
-      instructions.forEach((instruction) => {
-        const midiBeat = instruction[0] as number;
-        const midiNote = instruction[1] as number;
-        const noteWidth = instruction[2] as number;
-        const subdivisionType = instruction[3] as SubdivisionType || 'q';
-        const newInstruction: InstrumentInstruction = {
-          noteId: ++instructionIdRef.current,
-          userInstrumentIndex: parseInt(userInstrumentIndex),
-          midiBeat,
-          midiNote,
-          noteWidth,
-          subdivisionType,
-        }
-        if (!composition[midiBeat]) composition[midiBeat] = {};
-        if (!composition[midiBeat][midiNote]) composition[midiBeat][midiNote] = {};
-        composition[midiBeat][midiNote][newInstruction.noteId] = newInstruction;
-      });
-    });
-    return composition;
-  }, []);
   const removeCompositionNotes = useCallback((idsToRemove: string[]) => {
     const removedInstrumentInstructions: Record<NoteId, InstrumentInstruction> = {};
     const newComposition = { ...compositionRef.current };
@@ -293,7 +218,7 @@ export function CompositionContextProvider({
         if (midiBeat + noteWidth > farthestRightNoteEndRef.current) {
           setFarthestRightNoteEnd(midiBeat + noteWidth);
         }
-        const noteId = noteToAdd.noteId || ++instructionIdRef.current;
+        const noteId = noteToAdd.noteId || ++globals.instructionId;
         const newInstrumentInstruction = {
           ...noteToAdd,
           noteId,
@@ -385,10 +310,11 @@ export function CompositionContextProvider({
     setUserInstrumentIndex(0);
     setUserInstruments([getNewUserInstrument(audioContext, 0)]);
     setHowManyInstrumentsIEverMade(1);
+    setPlayheadPosX(0);
     setFarthestRightNoteEnd(1);
     setComposition({});
     setCopiedNotes([]);
-  }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setFarthestRightNoteEnd, setHowManyInstrumentsIEverMade, setUserInstrumentIndex, setUserInstruments]);
+  }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setFarthestRightNoteEnd, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments]);
 
   const compositionActionsContextProvider = useMemo(() => (
     <CompositionActionsContext value={{
@@ -406,11 +332,9 @@ export function CompositionContextProvider({
   ), [addCompositionNotes, children, handleClearComposition, handlePlayComposition, handleStartLoop, handleStopComposition, handleStopLoop, removeCompositionNotes, removeInstrumentFromComposition]);
   return (
     <CompositionContext value={{
-      instructionIdRef,
       _farthestRightNoteEnd,
       compositionByInstructionIdRef,
       _composition, compositionRef, setComposition,
-      convertCompositionByInstrumentToComposition,
       _isCompositionMouseDown, isCompositionMouseDownRef, setIsCompositionMouseDown,
       manuallyUpdateFartherRightNoteEnd,
       whenWasMouseDownedRef,
@@ -426,13 +350,11 @@ export function CompositionContextProvider({
 }
 
 export const CompositionContext = createContext<{
-  instructionIdRef: React.RefObject<number>,
   compositionByInstructionIdRef: React.RefObject<Record<string, InstrumentInstruction>>,
   _farthestRightNoteEnd: number,
   _composition: Composition,
   compositionRef: React.RefObject<Composition>,
   setComposition: (composition: Composition) => void,
-  convertCompositionByInstrumentToComposition: (compositionByInstrument: CompositionByInstrument) => Composition,
   _isCompositionMouseDown: boolean,
   isCompositionMouseDownRef: React.RefObject<boolean>,
   setIsCompositionMouseDown: (newIsCompositionMouseDown: boolean) => void,
