@@ -1,14 +1,15 @@
 import React, { useCallback, useContext } from 'react';
 import styled from 'styled-components'
-import { CompositionActionsContext, CompositionContext } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtonFooter';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, SongJsonExport, TimeSignature } from './consts';
 import { PristineContext } from './contexts/PristineContextProvider';
-import { BabyDanceFrameContext, PlayheadContext } from './contexts/PlayheadContextProvider';
 import { generate } from "random-words";
 import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
+import { BabyDanceFrameContext, PlayTheSongContext } from './contexts/PlayTheSongContextProvider';
+import { PlayheadPosXContext } from './contexts/PlayheadPosXContextProvider';
+import { CompositionActionsContext } from './contexts/CompositionActionsContextProvider';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -60,7 +61,7 @@ const ShuffleButton = styled.div`
   margin-right: 4px;
 `;
 
-export function SongOptionsHeader({}: {}) {
+export function SongOptionsHeader() {
   const audioContext = useContext(AudioContextContext)!;
   const { timeSignatureRef, setTimeSignature } = useContext(TimeSignatureContext)!;
   const {
@@ -72,17 +73,18 @@ export function SongOptionsHeader({}: {}) {
     setTempo,
   } = useContext(SongSettingsContext)!;
   const { babyDanceFrame } = useContext(BabyDanceFrameContext)!;
-  const { setPlayheadPosX, incrementBabyDanceFrame } = useContext(PlayheadContext)!;
+  const { incrementBabyDanceFrame } = useContext(PlayTheSongContext)!;
+  const { setPlayheadPosX } = useContext(PlayheadPosXContext)!;
   const { setPristine } = useContext(PristineContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const { 
     compositionRef,
     setComposition,
-    manuallyUpdateFartherRightNoteEnd,
-  } = useContext(CompositionContext)!;
+    manuallyUpdateFarthestRightNoteEnd,
+  } = useContext(CompositionActionsContext)!;
   const { 
     handleClearComposition,
-  } = useContext(CompositionActionsContext)!;
+  } = useContext(PlayTheSongContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const {
     userInstrumentsRef,
@@ -115,9 +117,9 @@ export function SongOptionsHeader({}: {}) {
     setHowManyInstrumentsIEverMade(newUserInstruments.length);
     setComposition(convertCompositionByInstrumentToComposition(jsonObj.composition));
     setPlayheadPosX(0);
-    manuallyUpdateFartherRightNoteEnd();
+    manuallyUpdateFarthestRightNoteEnd();
     setPristine(true);
-  }, [audioContext, getNewUserInstrument, manuallyUpdateFartherRightNoteEnd, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setPristine, setSongName, setTempo, setTimeSignature, setUserInstrumentIndex, setUserInstruments]);
+  }, [audioContext, getNewUserInstrument, manuallyUpdateFarthestRightNoteEnd, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setPristine, setSongName, setTempo, setTimeSignature, setUserInstrumentIndex, setUserInstruments]);
   const handleSaveCompositionToFile = useCallback(() => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify({

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import './App.css';
-import { Maestro } from './composer/Maestro';
 import { CompositionContextProvider } from "./composer/contexts/CompositionContextProvider";
 import { AudioContextContext } from './composer/consts';
 import { UserInstrumentContextProvider } from './composer/contexts/UserInstrumentContextProvider';
@@ -10,29 +9,54 @@ import { PristineContextProvider } from './composer/contexts/PristineContextProv
 import { PlayheadContextProvider } from './composer/contexts/PlayheadContextProvider';
 import { ClipboardContextProvider } from './composer/contexts/ClipboardContextProvider';
 import { TimeSignatureContextProvider } from './composer/contexts/TimeSignatureContextProvider';
+import { PlayTheSongContextProvider } from './composer/contexts/PlayTheSongContextProvider';
+import { PlayheadPosXContextProvider } from './composer/contexts/PlayheadPosXContextProvider';
+import { MaestroConductor } from './composer/MaestroConductor';
+import { MouseDownContextProvider } from './composer/contexts/MouseDownContextProvider';
+import { ClickedSelectedNotesContextProvider } from './composer/contexts/ClickedSelectedNotesContextProvider';
+import { CompositionActionsContextProvider } from './composer/contexts/CompositionActionsContextProvider';
+import { UndoRedoHistoryContextProvider } from './composer/contexts/UndoRedoHistoryContextProvider';
+import { ExecuteUndoRedoContextProvider } from './composer/contexts/ExecuteUndoRedoContextProvider';
+import { BeatSizeContextProvider } from './composer/contexts/BeatSizeContextProvider';
 
 function App() {
   const [audioContext] = useState(new AudioContext());
   return (
     <div className="App">
       <AudioContextContext value={audioContext}>
-        <PristineContextProvider>
-          <PlayheadContextProvider>
-            <SongSettingsContextProvider>
-              <UserInstrumentContextProvider>
-                <TimeSignatureContextProvider>
-                  <SubdivisionTypeContextProvider>
-                    <ClipboardContextProvider>
-                      <CompositionContextProvider>
-                        <Maestro />
-                      </CompositionContextProvider>
-                    </ClipboardContextProvider>
-                  </SubdivisionTypeContextProvider>
-                </TimeSignatureContextProvider>
-              </UserInstrumentContextProvider>
-            </SongSettingsContextProvider>
-          </PlayheadContextProvider>
-        </PristineContextProvider>
+        <BeatSizeContextProvider>
+          <PristineContextProvider>
+            <PlayheadContextProvider>
+              <PlayheadPosXContextProvider>
+                <SongSettingsContextProvider>
+                  <UserInstrumentContextProvider>
+                    <TimeSignatureContextProvider>
+                      <SubdivisionTypeContextProvider>
+                        <ClipboardContextProvider>
+                          <UndoRedoHistoryContextProvider>
+                            <CompositionContextProvider>
+                              <CompositionActionsContextProvider>
+                                <ExecuteUndoRedoContextProvider>
+                                  <PlayTheSongContextProvider>
+                                    <ClickedSelectedNotesContextProvider>
+                                      <MouseDownContextProvider>
+                                        <MaestroConductor/>
+                                      </MouseDownContextProvider>
+                                    </ClickedSelectedNotesContextProvider> 
+                                  </PlayTheSongContextProvider>
+                                </ExecuteUndoRedoContextProvider>
+                              </CompositionActionsContextProvider>
+                            </CompositionContextProvider>
+                          </UndoRedoHistoryContextProvider>
+                        </ClipboardContextProvider>
+                      </SubdivisionTypeContextProvider>
+                    </TimeSignatureContextProvider>
+                  </UserInstrumentContextProvider>
+                </SongSettingsContextProvider>
+              </PlayheadPosXContextProvider>
+            </PlayheadContextProvider>
+          </PristineContextProvider>
+        </BeatSizeContextProvider>
       </AudioContextContext>
     </div>
   );

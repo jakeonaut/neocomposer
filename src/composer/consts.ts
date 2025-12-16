@@ -7,6 +7,7 @@ export const zIndex_selectedNote = 2;
 export const zIndex_rectSelect = 2;
 export const zIndex_clickedNote = 3;
 export const zIndex_playhead = 4;
+export const zIndex_resetPlayheadButton = 5;
 
 export const lightColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.25)';
 export const mediumColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.5)'
@@ -43,7 +44,6 @@ export const pianoRollKeys: MidiNote[] = [];
 );
 pianoRollKeys.push(...["C7", "Db7", "D7", "Eb7", "E7", "F7"]);
 pianoRollKeys.reverse();
-export const beatHeight = 15;
 export const pianoRollBeats: number[] = new Array(160);
 pianoRollBeats.fill(0);
 
@@ -115,6 +115,14 @@ export type InstrumentInstruction = {
   midiNote: MidiNoteNum;
   subdivisionType: SubdivisionType,
 };
+export function isNoteEqual(a: InstrumentInstruction, b: InstrumentInstruction) {
+  return a.noteId === b.noteId
+    && a.userInstrumentIndex === b.userInstrumentIndex
+    && a.noteWidth === b.noteWidth
+    && a.midiBeat === b.midiBeat
+    && a.midiNote === b.midiNote
+    && a.subdivisionType === b.subdivisionType;
+}
 export type Offset = { x: number, y: number };
 export type NoteIdWithOffset = { offset: Offset };
 export type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
@@ -217,12 +225,13 @@ export function getGridBeatFromMidiBeat(midiBeat: MidiBeat, subdivisionType: Sub
   return gridBeat;
 }
 
-export function getBeatWidth(subdivisionType: SubdivisionType) {
+// TODO(jaketrower): ruh roh! it won't work with the scrolling sizes..
+export function getRelativeBeatWidth(subdivisionType: SubdivisionType, baseBeatWidth: number) {
   switch(subdivisionType) {
     case SubdivisionType.q:
-      return 15;
+      return baseBeatWidth;
     case SubdivisionType.t:
-      return 20;
+      return (baseBeatWidth * 4.0) / 3.0;
     default:
       const exhaustiveCheck: never = subdivisionType;
       throw new Error(`Unhandled subdivision type: ${exhaustiveCheck}`);
@@ -249,7 +258,8 @@ export function convertCompositionToCompositionByInstrument(composition: Composi
   return compositionByInstrument;
 }
 
-export const BEAT_WIDTH = 15;
+export const DEFAULT_BEAT_WIDTH = 15;
+export const DEFAULT_BEAT_HEIGHT = 15;
 
 export function getStartOfMeasureFromBeat(beat: MidiBeat, timeSignature: TimeSignature) {
   const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
@@ -304,3 +314,53 @@ export function convertCompositionByInstrumentToComposition(compositionByInstrum
   });
   return composition;
 };
+
+export function getBeatLengthInMs(tempo: number) {
+  const bpm = tempo;
+  const bps = bpm / 60.0;
+  const nthNoteDivision = 4.0;
+  const nthNotesPerSec = bps * nthNoteDivision;
+  const beatLengthInSeconds = 1 / nthNotesPerSec;
+  return beatLengthInSeconds * 1000;
+}
+
+export function playCompositionNotesAtBeat({
+    composition,
+    tempo,
+    midiBeat,
+    userInstruments,
+    audioContext,
+    incrementBabyDanceFrame,
+  } : {
+    composition: Composition,
+    tempo: number
+    midiBeat: number
+    userInstruments: UserInstrument[],
+    audioContext: AudioContext,
+    incrementBabyDanceFrame: () => void,
+  }) {
+  const beatLengthInSeconds = getBeatLengthInMs(tempo) / 1000;
+  const now = audioContext.currentTime;
+  if (composition[midiBeat]) {
+    Object.values(composition[midiBeat]).forEach((midiNoteInstructions) => 
+      Object.values(midiNoteInstructions).forEach((instrumentInstruction) => {
+        const { midiNote } = instrumentInstruction;
+        // TODO(jaketrower): in order to achieve ^^, will need playhead to instantiate sampler play at runtime,
+        // rather than preprogram them all at PLAY button press...
+        const userInstrumentToPlay =
+          userInstruments[instrumentInstruction.userInstrumentIndex];
+        if (!userInstrumentToPlay?.sf2Sampler) return;
+        const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
+        const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
+          ? 0
+          : ((midiBeat - 1) % 4) * beatLengthInSeconds * ((beatLengthInSeconds * 4.0) / 3.0);
+        userInstrumentToPlay.sf2Sampler.start({
+          note: midiNote,
+          time: now + tripletBeatOffsetInSeconds,
+          duration: durationSec,
+          onStart: () => incrementBabyDanceFrame()
+        });
+      })
+    );
+  }
+}

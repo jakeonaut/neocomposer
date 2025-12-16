@@ -5,10 +5,13 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>[ ] - LAGGGG when scrolling while playing the composer... (the virtualization aint good enough, need to make the GridCells not individual elements :(</li>
-        <li>[ ] - problem with playhead not being clickable once scrolling horizontally (it's too short)</li>
+        <li>Click and drag on playhead should move the baby, but instead it seems to freeze and scroll the composition grid up?</li>
         <hr/>
+        <li>[ ] shift + double clicking any part of a measure should select every note in that measure</li>
+        <li>[ ] shift + select a row, or a column, or an instrument, should select all notes of that type</li>
+        <li>[ ] - :think: patterns????</li>
         <li>[ ] undo/redo. each action (placing a note(s)), should have an opposite action (deleting a note(s)).</li>
+        <li>[ ] moving notes with arrow keys should only save an undo state after the user changes (or removes) selection</li>
         <ul><li>this seems preferable than caching the entire state of the application multiple times into memory.
           <br/>will have to have a max undo history though probably..</li></ul>
 <hr/>

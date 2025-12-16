@@ -1,9 +1,8 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { CSSProperties, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
   AudioContextContext,
-  beatHeight,
   CursorPosition,
-  getBeatWidth,
+  getRelativeBeatWidth,
   getGridBeatFromMidiBeat,
   getMidiBeatFromGridBeat,
   getPlacedNotesFromComposition,
@@ -13,10 +12,10 @@ import {
   NoteId,
   NoteIdWithOffset,
   pianoRollKeys,
+  zIndex_resetPlayheadButton,
 } from "../consts";
 import styled from "styled-components";
 import { toMidi } from "../../smplr/player/midi";
-import { CompositionActionsContext, CompositionContext } from "../contexts/CompositionContextProvider";
 import { UserInstrumentContext } from "../contexts/UserInstrumentContextProvider";
 import _ from "lodash";
 import { CompositionGrid } from "./CompositionGrid";
@@ -24,6 +23,11 @@ import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvid
 import { PristineContext } from "../contexts/PristineContextProvider";
 import { AllRenderedNotes } from "./AllRenderedNotes";
 import { PlayheadContext } from "../contexts/PlayheadContextProvider";
+import { MouseDownContext } from "../contexts/MouseDownContextProvider";
+import { ClickedSelectedNotesContext } from "../contexts/ClickedSelectedNotesContextProvider";
+import { CompositionActionsContext } from "../contexts/CompositionActionsContextProvider";
+import { useThrottledCallback } from "use-debounce";
+import { BeatSizeContext } from "../contexts/BeatSizeContextProvider";
 
 const CompositionContainer = styled.div`
   display: flex; 
@@ -33,7 +37,6 @@ const CompositionContainer = styled.div`
 const CompositionGridContainer = styled.div`
   position: relative;
   display: flex;
-  margin-top: 16px;
   height: 400px;
 `;
 
@@ -44,9 +47,9 @@ const PianoRollKeysContainer = styled.div`
   left: 0px;
 `;
 
-const PianoRollKeysSubContainer = styled.div`
+const PianoRollKeysSubContainer = styled.div<{ $beatHeight: number }>`
   position: absolute;
-  top: -${(beatHeight - 1) * (pianoRollKeys.length + 1) - 15}px;
+  top: ${({ $beatHeight }) => `-${($beatHeight - 1) * (pianoRollKeys.length + 1) - $beatHeight}px`};
 `;
 
 export function CompositionCanvas({
@@ -70,13 +73,17 @@ export function CompositionCanvas({
   const {
     compositionRef,
     compositionByInstructionIdRef,
+  } = useContext(CompositionActionsContext)!;
+  const {
     isCompositionMouseDownRef: isMouseDownRef,
     setIsCompositionMouseDown: setIsMouseDown,
     whenWasMouseDownedRef,
     onCompositionMouseUpRef,
+  } = useContext(MouseDownContext)!;
+  const {
     clickedNoteRef, setClickedNote,
     selectedNotesRef, setSelectedNotes,
-  } = useContext(CompositionContext)!;
+  } = useContext(ClickedSelectedNotesContext)!;
   const {
     addCompositionNotes,
     removeCompositionNotes,
@@ -91,8 +98,9 @@ export function CompositionCanvas({
     userPlayheadBoundsRef,
     setUserPlayheadBounds,
   } = useContext(PlayheadContext)!;
+  const { _beatWidth, _beatHeight } = useContext(BeatSizeContext)!;
   const pianoKeyWidth = 30;
-  const beatWidth = useMemo(() => getBeatWidth(_subdivisionType), [_subdivisionType]);
+  const beatWidth = useMemo(() => getRelativeBeatWidth(_subdivisionType, _beatWidth), [_subdivisionType, _beatWidth]);
   
   const [_cursorXOffset, _setCursorXOffset] = useState(0);
   const [_cursorPosition, _setCursorPosition] = useState<
@@ -139,6 +147,12 @@ export function CompositionCanvas({
       e.preventDefault();
       e.stopPropagation();
       onCompositionMouseUpRef.current = undefined;
+      if (inputModeRef.current === InputMode.DEFAULT
+          && Object.values(selectedNotesRef.current).length > 0
+          && (!clickedNoteRef.current || !isNoteSelected(clickedNoteRef.current))) {
+        setSelectedNotes({});
+        return false  ;
+      }
       setIsMouseDown(true);
       setCursorPosition({ midiNote, midiBeat: midiBeat - cursorXOffsetRef.current });
       setStartingCursorPos({ midiNote, midiBeat });
@@ -149,12 +163,9 @@ export function CompositionCanvas({
         userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({ note: midiNote, duration: 0.25 });
       }
       hasMouseMovedRef.current = false;
-      if (inputModeRef.current === InputMode.DEFAULT && (!clickedNoteRef.current || !isNoteSelected(clickedNoteRef.current))) {
-        setSelectedNotes({});
-      }
       return false;
     },
-    [onCompositionMouseUpRef, setIsMouseDown, setCursorPosition, setStartingCursorPos, clickedNoteRef, inputModeRef, isNoteSelected, audioContext, userInstrumentsRef, userInstrumentIndexRef, setSelectedNotes]
+    [onCompositionMouseUpRef, inputModeRef, selectedNotesRef, clickedNoteRef, isNoteSelected, setIsMouseDown, setCursorPosition, setStartingCursorPos, setSelectedNotes, audioContext, userInstrumentsRef, userInstrumentIndexRef]
   );
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
@@ -176,6 +187,7 @@ export function CompositionCanvas({
               }]);
             } else {
               const clickedNote = compositionByInstructionIdRef.current[clickedNoteRef.current!.toString()];
+              // TODO(jaketrower): !!!
               const instrumentInstructionsById = removeCompositionNotes([
                 clickedNoteRef.current.toString(),
                 ...Object.keys(selectedNotesRef.current).filter((noteId) => noteId !== clickedNoteRef.current!.toString()),
@@ -321,6 +333,7 @@ export function CompositionCanvas({
     },
     [isMouseDownRef, inputModeRef, setCursorPosition, clickedNoteRef, userInstrumentsRef, userInstrumentIndexRef]
   );
+  const throttledHandleMouseMove = useThrottledCallback(handleMouseMove, 10);
 
   const handlePlacedNoteMouseDown = useCallback(
     (
@@ -377,53 +390,62 @@ export function CompositionCanvas({
       cursor: _userPlayheadBounds === undefined ? 'default' : 'pointer',
       opacity: _userPlayheadBounds === undefined ? 0.25 : 1,
       position: 'relative',
-      top: 0,
+      top: -4,
       left: 10,
       fontSize: 18,
       border: '1px solid black',
       padding: '0px 2px 2px 2px',
       lineHeight: '14px',
       width: 12,
+      zIndex: zIndex_resetPlayheadButton,
     }} onClick={resetUserPlayheadBounds}>↺</div>), 
     [resetUserPlayheadBounds, _userPlayheadBounds]
   );
 
+  const pianoRollKeysContainerStyle = useMemo(() => ({
+    height: _beatHeight - 1,
+    // ...(heldPianoKeys[midiNote] ? {
+    //   background: currUserInstrument ? `${currUserInstrument.color}40` : '#b2bcc240',
+    // } : {}),
+  }), []);
+  const pianoRollKeyBaseStyle = useMemo(() => ({
+    // outline: "1px solid black",
+    // zIndex: 3,
+    // background: "white",
+    // position: "fixed",
+    width: pianoKeyWidth,
+    minWidth: pianoKeyWidth,
+    textAlign: "right",
+    userSelect: "none",
+    cursor: 'pointer',
+    borderRight: '1px solid black',
+    borderBottom: '1px solid black',
+    height: 13,
+    fontSize: 12,
+    background: 'white',
+    color: 'black',
+    // ...(heldPianoKeys[midiNote] ? {
+    //   fontWeight: 700,
+    //   fontSize: 16,
+    //   marginTop: -2,
+    // } : {}),
+  }), []);
+  const pianoRollKeyStyle = useCallback((midiNote: string) => ({
+    ...pianoRollKeyBaseStyle,
+    ...(midiNote[1] === 'b' ? {
+      background: 'gray',
+      color: 'white',
+    } : {}),
+  } as CSSProperties), [pianoRollKeyBaseStyle]);
   const renderedPianoRollKeys = useMemo(() => (
     <PianoRollKeysContainer>
-      <PianoRollKeysSubContainer>
+      <PianoRollKeysSubContainer $beatHeight={_beatHeight}>
         {pianoRollKeys.map((midiNote, _) => (
           <div
             key={`row-${midiNote}`}
-            style={{
-              height: beatHeight - 1,
-              // ...(heldPianoKeys[midiNote] ? {
-              //   background: currUserInstrument ? `${currUserInstrument.color}40` : '#b2bcc240',
-              // } : {}),
-            }}
+            style={pianoRollKeysContainerStyle}
           >
-            <div
-              style={{
-                // outline: "1px solid black",
-                // zIndex: 3,
-                // background: "white",
-                // position: "fixed",
-                width: pianoKeyWidth,
-                minWidth: pianoKeyWidth,
-                textAlign: "right",
-                userSelect: "none",
-                cursor: 'pointer',
-                borderRight: '1px solid black',
-                borderBottom: '1px solid black',
-                height: 13,
-                fontSize: 12,
-                background: midiNote[1] === 'b' ? 'gray' : 'white',
-                color: midiNote[1] === 'b' ? 'white' : 'black',
-                // ...(heldPianoKeys[midiNote] ? {
-                //   fontWeight: 700,
-                //   fontSize: 16,
-                //   marginTop: -2,
-                // } : {}),
-              }}
+            <div style={pianoRollKeyStyle(midiNote)}
               // onMouseDown={() => { currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 }); }}
             >
               {midiNote}
@@ -432,7 +454,7 @@ export function CompositionCanvas({
         ))}
       </PianoRollKeysSubContainer>
     </PianoRollKeysContainer>
-  ), [resetUserPlayheadButton])
+  ), [pianoRollKeyStyle, pianoRollKeysContainerStyle])
 
   const allRenderedNotes = useMemo(() => (
     <AllRenderedNotes
@@ -447,12 +469,12 @@ export function CompositionCanvas({
   const renderedCompositionGrid = useMemo(() => (
     <CompositionGrid
       handleMouseDown={handleMouseDown}
-      handleMouseMove={handleMouseMove}>
+      handleMouseMove={throttledHandleMouseMove}>
       {children}
       {renderedPianoRollKeys}
       {allRenderedNotes}
     </CompositionGrid>
-  ), [children, renderedPianoRollKeys, allRenderedNotes, handleMouseDown, handleMouseMove]);
+  ), [children, renderedPianoRollKeys, allRenderedNotes, handleMouseDown, throttledHandleMouseMove]);
 
   return (
     <CompositionContainer>

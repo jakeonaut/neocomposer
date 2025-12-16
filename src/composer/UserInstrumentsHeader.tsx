@@ -1,13 +1,14 @@
-import React, { useCallback, useContext, useMemo } from 'react';
+import React, { MouseEvent, useCallback, useContext, useMemo } from 'react';
 import styled from 'styled-components'
 import { useUploadSf2 } from './hooks/useUploadSf2';
 import { Soundfont2Sampler } from '../smplr/soundfont2';
 import { AudioContextContext, getARandomNote } from './consts';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
-import { CompositionActionsContext } from './contexts/CompositionContextProvider';
 import { useThrottledCallback } from "use-debounce";
-import { PlayheadContext } from './contexts/PlayheadContextProvider';
 import { ClipboardContext } from './contexts/ClipboardContextProvider';
+import { PlayTheSongContext } from './contexts/PlayTheSongContextProvider';
+import { CompositionActionsContext } from './contexts/CompositionActionsContextProvider';
+import { ClickedSelectedNotesContext } from './contexts/ClickedSelectedNotesContextProvider';
 
 const SoundfontHeader = styled.div<{ $color: string }>`
   height: 28px;
@@ -65,7 +66,7 @@ const ShuffleButton = styled.div`
 export function UserInstrumentsHeader() {
   const audioContext = useContext(AudioContextContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
-  const { incrementBabyDanceFrame } = useContext(PlayheadContext)!;
+  const { incrementBabyDanceFrame } = useContext(PlayTheSongContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const { removeInstrumentFromComposition } = useContext(CompositionActionsContext)!;
   const { removeInstrumentFromCopiedNotes } = useContext(ClipboardContext)!;
@@ -83,6 +84,8 @@ export function UserInstrumentsHeader() {
     userInstrumentNameInputRef,
     userInstrumentVolumeInputRef,
   } = useContext(UserInstrumentContext)!;
+  const { selectNotesByInstrument } = useContext(ClickedSelectedNotesContext)!;
+  const { compositionByInstructionIdRef } = useContext(CompositionActionsContext)!;
   const _selectedSf2InstOption = useMemo(() => _userInstruments[_userInstrumentIndex].sf2InstrumentName, [_userInstruments, _userInstrumentIndex]);
 
   const onAddNewUserInstrument = useCallback(() => {
@@ -201,14 +204,17 @@ export function UserInstrumentsHeader() {
         backgroundColor: userInstrument.color ?? 'white',
         fontWeight: index === _userInstrumentIndex ? 700 : 400
       }}
-      onClick={() => {
+      onClick={(e: MouseEvent) => {
         setUserInstrumentIndex(index);
         _userInstruments[index].sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
+        if (e.shiftKey) {
+          selectNotesByInstrument(index, compositionByInstructionIdRef.current);
+        }
       }}
     >
         {userInstrument.name ?? index}
       </UserInstrumentTab>
-  )), [_userInstruments, _userInstrumentIndex, setUserInstrumentIndex]);
+  )), [_userInstruments, _userInstrumentIndex, setUserInstrumentIndex, selectNotesByInstrument, compositionByInstructionIdRef]);
   
   const currColor = _userInstruments[_userInstrumentIndex].color ?? 'white';
   return (

@@ -1,17 +1,17 @@
-import React, { CSSProperties, useCallback, useMemo } from "react";
+import React, { CSSProperties, useCallback, useContext, useMemo } from "react";
 import styled from "styled-components";
-import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType, NoteId, BEAT_WIDTH } from "../consts";
+import { zIndex_placedNote, zIndex_selectedNote, zIndex_clickedNote, InstrumentInstruction, SubdivisionType, NoteId, getRelativeBeatWidth } from "../consts";
+import { BeatSizeContext } from "../contexts/BeatSizeContextProvider";
 
 const StyledNote = styled.div<{
   $width: number,
   $top: number,
   $left: number,
   $bgColor: string,
-  $shouldMouseIgnoreMe?: boolean,
   $isClickedNote?: boolean,
   $isNoteSelected?: boolean,
 }>`
-  cursor: ${({ $shouldMouseIgnoreMe }) => $shouldMouseIgnoreMe ? 'default' : 'pointer' };
+  cursor: pointer;
   width: ${({ $width }) => `${$width}px`};
   height: 13px;
   content: " ";
@@ -32,10 +32,8 @@ const StyledNote = styled.div<{
       ? $isClickedNote ? '' : ', 2px 2px 0px 0px blue'
       : $isClickedNote ? ', 2px 2px 0px 0px black' : ''
   }` };
-  pointer-events: ${({ $shouldMouseIgnoreMe, $isClickedNote }) => $shouldMouseIgnoreMe || $isClickedNote ? 'none' : 'unset' };
 `;
 
-const BEAT_HEIGHT = 14;
 export function PlacedNote({
   children,
   topmostMidiNote,
@@ -57,16 +55,17 @@ export function PlacedNote({
   isNoteSelected?: boolean;
   style?: CSSProperties
 }) {
+  const { _beatWidth, _beatHeight } = useContext(BeatSizeContext)!;
   const { midiBeat, midiNote, noteWidth, subdivisionType } = instrumentInstruction;
-  const beatWidth = subdivisionType === SubdivisionType.q ? 15 : 20;
+  const beatWidth = getRelativeBeatWidth(subdivisionType, _beatWidth);
   
   const shouldWiggleShift = ((isClickedNote && !isNoteSelected) || (isNoteSelected && !isClickedNote));
   const topShift = shouldWiggleShift ? -1 : 0
-  const y = (topmostMidiNote - midiNote) * BEAT_HEIGHT;
+  const y = (topmostMidiNote - midiNote) * (_beatHeight - 1);
   const top = y + 1 + topShift;
 
   const leftShift = shouldWiggleShift ? -1 : 0;
-  const x = (midiBeat - 1) * BEAT_WIDTH;
+  const x = (midiBeat - 1) * _beatWidth;
   const tripletLeftShift = subdivisionType === SubdivisionType.t ? 5 * ((midiBeat - 1) % 4) : 0;
   const left = x + 1 + leftShift + tripletLeftShift;
   const noteId = useMemo(() => instrumentInstruction.noteId, [instrumentInstruction.noteId]);
@@ -81,7 +80,6 @@ export function PlacedNote({
       $top={top}
       $left={left}
       $width={noteWidth * beatWidth - 1}
-      $shouldMouseIgnoreMe={shouldMouseIgnoreMe}
       $isClickedNote={isClickedNote}
       onMouseDown={handleMouseDown}
       style={style}>

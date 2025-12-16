@@ -1,11 +1,13 @@
-import React, { useContext, useEffect, useMemo } from "react";
-import { beatHeight, getBeatWidth, lightColor, mediumColor, MidiBeat, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature, veryLightColor } from "../consts";
-import styled from "styled-components";
-import { fromMidi, toMidi } from "../../smplr/player/midi";
-import { CellComponentProps, Grid, useGridRef } from "react-window";
+import React, { UIEvent, useCallback, useContext, useEffect, useMemo } from "react";
+import { getRelativeBeatWidth, lightColor, mediumColor, MidiBeat, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature, veryLightColor } from "../consts";
+import styled, { CSSProperties } from "styled-components";
+import { toMidi } from "../../smplr/player/midi";
+import { CellComponentProps, Grid, useGridCallbackRef } from "react-window";
 import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
 import { TimeSignatureContext } from "../contexts/TimeSignatureContextProvider";
 import { createPortal } from "react-dom";
+import { DebouncedState } from "use-debounce/dist/useDebouncedCallback";
+import { BeatSizeContext } from "../contexts/BeatSizeContextProvider";
 
 const GridCellDiv = styled.div<{
   $idx: number,
@@ -47,11 +49,12 @@ const useCellProps = ({
   handleMouseMove,
 }: {
   handleMouseDown: MouseHandler,
-  handleMouseMove: MouseHandler,
+  handleMouseMove: DebouncedState<MouseHandler>,
 }) => {
-  const {  _subdivisionType } = useContext(SubdivisionTypeContext)!;
+  const { _beatWidth } = useContext(BeatSizeContext)!;
+  const { _subdivisionType } = useContext(SubdivisionTypeContext)!;
   const { _timeSignature } = useContext(TimeSignatureContext)!;
-  const beatWidth = useMemo(() => getBeatWidth(_subdivisionType), [_subdivisionType]);
+  const beatWidth = useMemo(() => getRelativeBeatWidth(_subdivisionType, _beatWidth), [_subdivisionType, _beatWidth]);
   const cellProps = useMemo(() => ({
     beatWidth,
     subdivisionType: _subdivisionType,
@@ -70,38 +73,45 @@ export function CompositionGrid({
 }: {
   children: React.ReactNode,
   handleMouseDown: MouseHandler,
-  handleMouseMove: MouseHandler,
+  handleMouseMove: DebouncedState<MouseHandler>,
 }) {
-  const gridRef = useGridRef(null);
-  const gridElement = gridRef.current?.element;
+  const { _beatHeight } = useContext(BeatSizeContext)!;
+  const [grid, setGrid] = useGridCallbackRef(null);
   const cellProps = useCellProps({ handleMouseDown, handleMouseMove });
   useEffect(() => {
-    if (gridRef.current?.element && !hasInitializedScroll) {
+    if (grid?.element && !hasInitializedScroll) {
       hasInitializedScroll = true;
-      gridRef.current.element.scrollTo(0, 356);
+      grid.element.scrollTo(0, 356);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gridRef.current]);
+  }, [grid]);
+
+  const gridStyle = useMemo(() => ({
+    height: ((_beatHeight - 1) * (pianoRollKeys.length)) + 1 + 16,
+    paddingTop: 16,
+    marginTop: -16,
+    overscrollBehavior: 'contain',
+    borderBottom: `1px solid ${mediumColor}`,
+  } as CSSProperties), [_beatHeight]);
+
+  const handleScroll = useCallback((e: UIEvent) => {
+    // if (e.)
+  }, []);
   
   return (
     <>
       <Grid
-        gridRef={gridRef}
+        gridRef={setGrid}
         cellComponent={GridCell}
         cellProps={cellProps}
         columnCount={pianoRollBeats.length}
         columnWidth={cellProps.beatWidth}
         rowCount={pianoRollKeys.length}
-        rowHeight={beatHeight - 1}
-        style={{
-          height: ((beatHeight - 1) * (pianoRollKeys.length)) + 1 + 16,
-          paddingTop: 16,
-          marginTop: -16,
-          overscrollBehavior: 'contain',
-          borderBottom: `1px solid ${mediumColor}`,
-        }}
+        rowHeight={_beatHeight - 1}
+        style={gridStyle}
+        overscanCount={100}
+        onScroll={handleScroll}
       />
-      {gridElement && createPortal(children, gridElement)}
+      {grid?.element && createPortal(children, grid.element)}
     </>
   );
 } 
@@ -120,7 +130,7 @@ function GridCell({
   subdivisionType: SubdivisionType,
   timeSignature: TimeSignature
   handleMouseDown: MouseHandler,
-  handleMouseMove: MouseHandler
+  handleMouseMove: DebouncedState<MouseHandler>
 }>) {
   const midiNote = toMidi(pianoRollKeys[rowIndex])!
   return <GridCellDiv

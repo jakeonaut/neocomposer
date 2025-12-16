@@ -1,12 +1,15 @@
-import React, { useCallback, useContext } from 'react';
-import styled from "styled-components";
-import { CompositionActionsContext, CompositionContext } from './contexts/CompositionContextProvider';
+import React, { useCallback, useContext, useMemo } from 'react';
+import styled, { CSSProperties } from "styled-components";
+import { CompositionContext } from './contexts/CompositionContextProvider';
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { InputMode, SubdivisionType, TimeSignature } from './consts';
 import { SubdivisionTypeContext } from './contexts/SubdivisionTypeContextProvider';
 import { ClipboardContext } from './contexts/ClipboardContextProvider';
 import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
 import { PlayheadContext } from './contexts/PlayheadContextProvider';
+import { PlayTheSongContext } from './contexts/PlayTheSongContextProvider';
+import { MouseDownContext } from './contexts/MouseDownContextProvider';
+import { ClickedSelectedNotesContext } from './contexts/ClickedSelectedNotesContextProvider';
 
 export const ActionButtonsContainer = styled.div`
   display: flex;
@@ -37,15 +40,13 @@ const PixelButton = styled.div<{ $y: number, $inverted: boolean }>`
 
 function PlayStopButton() {
   const {
-    _isPlaying,
-    _isLooping,
-  } = useContext(PlayheadContext)!;
-  const {
     handleStopComposition,
     handlePlayComposition,
     handleStopLoop,
-    handleStartLoop
-  } = useContext(CompositionActionsContext)!;
+    handleStartLoop,
+    _isPlaying,
+    _isLooping,
+  } = useContext(PlayTheSongContext)!;
 
   return (
     <>
@@ -62,7 +63,7 @@ function PlayStopButton() {
 }
 
 function CutButton({ onClick } : { onClick: () => void }) {
-  const { _selectedNotes, _clickedNote } = useContext(CompositionContext)!;
+  const { _selectedNotes, _clickedNote } = useContext(ClickedSelectedNotesContext)!;
   return (
     <ActionButton
       title="Cut: ctrl+x"
@@ -75,12 +76,16 @@ function CutButton({ onClick } : { onClick: () => void }) {
 }
 
 function CopyButton({ onClick } : { onClick: () => void }) {
-  const { _selectedNotes, _clickedNote } = useContext(CompositionContext)!;
+  const { _selectedNotes, _clickedNote } = useContext(ClickedSelectedNotesContext)!;
+  const containerStyle = useMemo(
+    () => (Object.values(_selectedNotes).length > 0 || _clickedNote !== undefined ? {} : { filter: 'opacity(0.5)' }),
+    [_clickedNote, _selectedNotes]
+  );
   return (
     <ActionButton
       title="Copy: ctrl+c"
       onClick={onClick}
-      style={Object.values(_selectedNotes).length > 0 || _clickedNote !== undefined ? {} : { filter: 'opacity(0.5)' }}
+      style={containerStyle}
     >
       📑
     </ActionButton>
@@ -89,11 +94,12 @@ function CopyButton({ onClick } : { onClick: () => void }) {
 
 function PasteButton({ onClick } : { onClick: () => void }) {
   const { _copiedNotes } = useContext(ClipboardContext)!;
+  const containerStyle = useMemo(() => (_copiedNotes.length > 0 ? {} : { filter: 'opacity(0.5)' }), [_copiedNotes.length]);
   return (
     <ActionButton
       title="Paste: ctrl+v"
       onClick={onClick}
-      style={_copiedNotes.length > 0 ? {} : { filter: 'opacity(0.5)' }}
+      style={containerStyle}
     >
       📋
     </ActionButton>
@@ -106,16 +112,23 @@ function InputDefaultButton({
   setInputMode,
 }: {
   _inputMode: InputMode,
-  setInputMode: (inputMode: InputMode) => void
+  setInputMode: (inputMode: InputMode, isMouseDown: boolean) => void
 }) {
+  const { isCompositionMouseDownRef } = useContext(MouseDownContext)!;
+  const setDefaultButton = useCallback(
+    () => setInputMode(InputMode.DEFAULT, isCompositionMouseDownRef.current),
+    [isCompositionMouseDownRef, setInputMode]
+  );
+  const containerStyle = useMemo(() => ({
+    paddingBottom: 4,
+    paddingTop: 1,
+    ...(_inputMode === InputMode.DEFAULT ? { background: 'gray', cursor: 'unset', } : {}),
+  } as CSSProperties), [_inputMode]);
+
   return (
     <PixelActionButton
-      onClick={() => setInputMode(InputMode.DEFAULT)}
-      style={{
-        paddingBottom: 4,
-        paddingTop: 1,
-        ...(_inputMode === InputMode.DEFAULT ? { background: 'gray', cursor: 'unset', } : {}),
-      }}>
+      onClick={setDefaultButton}
+      style={containerStyle}>
         <PixelButton $y={-147} $inverted={_inputMode === InputMode.DEFAULT} title="Place Notes: Shift" />
     </PixelActionButton>
   );
@@ -126,17 +139,23 @@ function InputSelectionButton({
   setInputMode,
 }: {
   _inputMode: InputMode,
-  setInputMode: (inputMode: InputMode) => void
+  setInputMode: (inputMode: InputMode, isMouseDown: boolean) => void
 }) {
+  const { isCompositionMouseDownRef } = useContext(MouseDownContext)!;
+  const setInputModeToSelect = useCallback(
+    () => setInputMode(InputMode.SELECT, isCompositionMouseDownRef.current),
+    [isCompositionMouseDownRef, setInputMode]
+  );
+  const containerStyle = useMemo(() => ({
+    paddingBottom: 3,
+    paddingTop: 2,
+    marginLeft: -6,
+    ...(_inputMode === InputMode.SELECT ? { background: 'gray', cursor: 'unset' } : {}),
+  } as CSSProperties), [_inputMode]);
   return (
     <PixelActionButton
-      onClick={() => setInputMode(InputMode.SELECT)}
-      style={{
-        paddingBottom: 3,
-        paddingTop: 2,
-        marginLeft: -6,
-        ...(_inputMode === InputMode.SELECT ? { background: 'gray', cursor: 'unset' } : {}),
-      }}>
+      onClick={setInputModeToSelect}
+      style={containerStyle}>
       <PixelButton $y={-21} $inverted={_inputMode === InputMode.SELECT} title="Select Notes: Shift" />
     </PixelActionButton>
   );
@@ -156,10 +175,12 @@ function InputSubdivisionTypeButton() {
     }
   }, [setSubdivisionType, subdivisionTypeRef]);
 
+  const containerStyle = useMemo(() => ({ paddingBottom: 4, paddingTop: 1, position: 'absolute', left: 32, paddingRight: 0 } as CSSProperties), []);
+
   return (
     <PixelActionButton
       onClick={onToggleSubdivisionType}
-      style={{ paddingBottom: 4, paddingTop: 1, position: 'absolute', left: 32, paddingRight: 0 }}>
+      style={containerStyle}>
       <PixelButton $y={-63} $inverted={_subdivisionType === SubdivisionType.t} 
       title="Sixteenth or Triplet Mode: Q" />
     </PixelActionButton>
@@ -180,10 +201,18 @@ function InputTimeSignatureButton() {
     }
   }, [setTimeSignature, timeSignatureRef]);
 
+  const containerStyle = useMemo(() => ({
+    paddingBottom: 4,
+    paddingTop: 1,
+    position: 'absolute',
+    left: 3,
+    paddingRight: 0 
+  } as CSSProperties), []);
+
   return (
     <PixelActionButton
       onClick={onToggleTimeSignature}
-      style={{ paddingBottom: 4, paddingTop: 1, position: 'absolute', left: 3, paddingRight: 0 }}>
+      style={containerStyle}>
       <PixelButton $y={-84} $inverted={_timeSignature === TimeSignature.ts3_4} 
         title="Time Signature: R" />
     </PixelActionButton>
@@ -221,13 +250,14 @@ export function ActionButtonFooter({
   tryPasteCopiedNotes,
 }: {
   _inputMode: InputMode,
-  setInputMode: (inputMode: InputMode) => void,
+  setInputMode: (inputMode: InputMode, isMouseDown: boolean) => void,
   tryCopySelectedNotes: () => void,
   tryCutSelectedNotes: () => void,
   tryPasteCopiedNotes: () => void
 }) {
+  const containerStyle = useMemo(() => ({ marginTop: 8, justifyContent: 'center' }), []);
   return (
-    <ActionButtonsContainer style={{ marginTop: 8, justifyContent: 'center' }}>
+    <ActionButtonsContainer style={containerStyle}>
       <InputTimeSignatureButton />
       <InputSubdivisionTypeButton />
       <PlayStopButton />
