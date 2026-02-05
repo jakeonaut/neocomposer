@@ -11,22 +11,22 @@ import { BabyDanceFrameContext, PlayTheSongContext } from "./contexts/PlayTheSon
 import { CompositionActionsContext } from "./contexts/CompositionActionsContextProvider";
 import { BeatSizeContext } from "./contexts/BeatSizeContextProvider";
 
-const PlayheadContainer = styled.div<{ $isMouseDown: boolean, $beatHeight: number }>`
+const PlayheadContainer = styled.div<{ $beatHeight: number }>`
   height: ${({ $beatHeight }) => `${pianoRollKeys.length * $beatHeight - 62}px`};
   content: ' ';
   position: absolute;
   top: 0;
   left: 0;
-  cursor: ${({ $isMouseDown }) => $isMouseDown ? 'grabbing' : 'pointer'};
   user-select: none;
   pointer-events: none;
 `;
 
-const PlayheadStickyContainer = styled.div<{ $beatWidth: number }>`
+const PlayheadStickyContainer = styled.div<{ $isMouseDown: boolean, $beatWidth: number }>`
   position: sticky;
   background: white;
   top: -16px;
   width: ${({ $beatWidth }) => `${(pianoRollBeats.length * $beatWidth) + 32}px`};
+  cursor: ${({ $isMouseDown }) => $isMouseDown ? 'grabbing' : 'pointer'};
   height: 16px;
   border-bottom: 1px solid ${mediumColor};
   z-index: ${zIndex_playhead};
@@ -189,6 +189,9 @@ export function PlayheadNode() {
         incrementBabyDanceFrame,
       });
     }
+    e.stopPropagation();
+    e.preventDefault();
+    return false;
   }, [audioContext, beatWidthRef, compositionRef, handleQuickPlayResetAtCurrentBeat, incrementBabyDanceFrame, isPlayingRef, setBabyMouseDown, setPlayheadPosX, tempoRef, userInstrumentsRef]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
@@ -268,10 +271,9 @@ export function PlayheadNode() {
       ref={playheadNodeElementRef}
       onMouseDown={handleMouseDown}
       onDoubleClick={handleDoubleClick}
-      $isMouseDown={_babyMouseDown || _codaMouseDown}
       $beatHeight={_beatHeight}
     >
-      <PlayheadStickyContainer $beatWidth={_beatWidth}>
+      <PlayheadStickyContainer $beatWidth={_beatWidth} $isMouseDown={_babyMouseDown || _codaMouseDown}>
         <PlayheadSubContainer>
           <BabyPlayheadImg
             onMouseDown={handleBabyMouseDown}

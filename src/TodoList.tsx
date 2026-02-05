@@ -5,8 +5,6 @@ export function TodoList() {
     <div style={{ textAlign: "left", }}>
       <h3>&nbsp;&nbsp;&nbsp;TODO:</h3>
       <ul>
-        <li>Click and drag on playhead should move the baby, but instead it seems to freeze and scroll the composition grid up?</li>
-        <hr/>
         <li>[ ] shift + double clicking any part of a measure should select every note in that measure</li>
         <li>[ ] shift + select a row, or a column, or an instrument, should select all notes of that type</li>
         <li>[ ] - :think: patterns????</li>

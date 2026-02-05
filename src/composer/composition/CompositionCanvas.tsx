@@ -305,6 +305,7 @@ export function CompositionCanvas({
       midiBeat: MidiBeat,
       midiNote: MidiNoteNum
     ) => {
+      console.log("HELLO?!");
       if (
         isMouseDownRef.current &&
         cursorPositionRef.current &&
