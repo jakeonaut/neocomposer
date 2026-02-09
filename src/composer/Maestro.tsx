@@ -1,8 +1,8 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import styled from "styled-components";
 import { TodoList } from "../TodoList";
-import { AudioContextContext, convertCompositionToCompositionByInstrument, getARandomNote, InputMode, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType, TimeSignature } from "./consts";
-import { CompositionContext } from "./contexts/CompositionContextProvider";
+import { TipsAndTricks } from "../TipsAndTricks";
+import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType, TimeSignature } from "./consts";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
 import { ActionButtonFooter } from "./ActionButtonFooter";
 import { SubdivisionTypeContext } from "./contexts/SubdivisionTypeContextProvider";
@@ -13,7 +13,6 @@ import { PlayTheSongContext } from "./contexts/PlayTheSongContextProvider";
 import { MouseDownContext } from "./contexts/MouseDownContextProvider";
 import { ClickedSelectedNotesContext } from "./contexts/ClickedSelectedNotesContextProvider";
 import { CompositionActionsContext } from "./contexts/CompositionActionsContextProvider";
-import { UndoRedoHistoryContext } from "./contexts/UndoRedoHistoryContextProvider";
 import { ExecuteUndoRedoContext } from "./contexts/ExecuteUndoRedoContextProvider";
 
 const Footer = styled.div`
@@ -26,13 +25,11 @@ export function Maestro({
   renderChildren,
   _inputMode,
   setInputMode,
-  inputModeRef,
   trySetInputMode,
 } : {
   renderChildren: (footer: React.ReactElement) => React.ReactElement,
   _inputMode: InputMode,
   setInputMode: (newInputMode: InputMode) => void,
-  inputModeRef: React.RefObject<InputMode>,
   trySetInputMode: (newInputMode: InputMode, isMouseDown: boolean) => void,
 }) {
   const audioContext = useContext(AudioContextContext)!;
@@ -77,7 +74,6 @@ export function Maestro({
     handlePlayComposition,
   } = useContext(PlayTheSongContext)!;
   const {
-    compositionRef,
     compositionByInstructionIdRef,
     addCompositionNotes,
     removeCompositionNotes,
@@ -395,15 +391,8 @@ export function Maestro({
     />
     <br />
     <div style={{ textAlign: 'left'}}>
-    <TodoList />
-    <h3>&nbsp;&nbsp;&nbsp;Tips!</h3>
-    <ul>
-      <li>Click (and drag) the grid to place notes!</li>
-      <li>Quickly click a note again to delete it!</li>
-      <li>Use asdfghjkl;wetyuop keys to practice!</li>
-      <li>Use 1, 2, 3, etc. to quickly swap between instruments!</li>
-      <li>Use shift to quickly swap between note pencil and select mode!</li>
-    </ul>
+      <TodoList />
+      <TipsAndTricks />
     </div>
   </Footer>), [_inputMode, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, trySetInputMode]);
   const renderedChildren = useMemo(() => renderChildren(footer), [footer, renderChildren]);

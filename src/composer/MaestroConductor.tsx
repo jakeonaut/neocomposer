@@ -6,8 +6,6 @@ import { SongOptionsHeader } from "./SongOptionsHeader";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
 import { CompositionCanvas } from "./composition/CompositionCanvas";
 import { PlayheadNode } from "./PlayheadNode";
-import { ActionButtonFooter } from "./ActionButtonFooter";
-import { TodoList } from "../TodoList";
 
 const MaestroContainer = styled.div`
   display: flex;
@@ -37,7 +35,6 @@ export function MaestroConductor() {
     <Maestro
       _inputMode={_inputMode}
       setInputMode={setInputMode}
-      inputModeRef={inputModeRef}
       trySetInputMode={trySetInputMode}
       renderChildren={(footer: React.ReactElement) => (
         <MaestroContainer>
@@ -49,7 +46,7 @@ export function MaestroConductor() {
           {/* Pass setInputMode in directly since we are firing it at the end of a handleMouseUp callback and
             * isCompositionMouseDown won't update the state and the trySetInputMode function until after the event bubbling */}
           <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode}>
-            <PlayheadNode />
+            <PlayheadNode _inputMode={_inputMode} inputModeRef={inputModeRef} />
           </CompositionCanvas>
           {footer}
         </MaestroContainer>

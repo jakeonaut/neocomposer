@@ -13,6 +13,8 @@ import {
   NoteIdWithOffset,
   pianoRollKeys,
   zIndex_resetPlayheadButton,
+  getStartOfMeasureFromBeat,
+  getEndOfMeasureFromBeat,
 } from "../consts";
 import styled from "styled-components";
 import { toMidi } from "../../smplr/player/midi";
@@ -28,6 +30,7 @@ import { ClickedSelectedNotesContext } from "../contexts/ClickedSelectedNotesCon
 import { CompositionActionsContext } from "../contexts/CompositionActionsContextProvider";
 import { useThrottledCallback } from "use-debounce";
 import { BeatSizeContext } from "../contexts/BeatSizeContextProvider";
+import { TimeSignatureContext } from "../contexts/TimeSignatureContextProvider";
 
 const CompositionContainer = styled.div`
   display: flex; 
@@ -74,6 +77,7 @@ export function CompositionCanvas({
     compositionRef,
     compositionByInstructionIdRef,
   } = useContext(CompositionActionsContext)!;
+  const { timeSignatureRef } = useContext(TimeSignatureContext)!;
   const {
     isCompositionMouseDownRef: isMouseDownRef,
     setIsCompositionMouseDown: setIsMouseDown,
@@ -167,6 +171,31 @@ export function CompositionCanvas({
     },
     [onCompositionMouseUpRef, inputModeRef, selectedNotesRef, clickedNoteRef, isNoteSelected, setIsMouseDown, setCursorPosition, setStartingCursorPos, setSelectedNotes, audioContext, userInstrumentsRef, userInstrumentIndexRef]
   );
+  const handleDoubleClick = useCallback((
+    e: React.MouseEvent<HTMLDivElement, MouseEvent>,
+    midiBeat: MidiBeat,
+    midiNote: MidiNoteNum,
+  ) => {
+    if (inputModeRef.current !== InputMode.SELECT) { return false; }
+    const startOfMeasure = getStartOfMeasureFromBeat(midiBeat, timeSignatureRef.current);
+    const endOfMeasure = getEndOfMeasureFromBeat(midiBeat, timeSignatureRef.current);
+    setSelectedNotes({
+      ...selectedNotesRef.current,
+      ...(Object.entries(compositionByInstructionIdRef.current).reduce((acc, [noteId, instrumentInstruction]) => {
+        if (instrumentInstruction.midiBeat > startOfMeasure && instrumentInstruction.midiBeat <= endOfMeasure) {
+          return {
+            ...acc,
+            [noteId]: {
+              noteId: parseInt(noteId),
+              offset: { x: 0, y: 0 },
+            },
+          };
+        }
+        return acc;
+      }, {} as Record<string, NoteIdWithOffset>)),
+    });
+    return false;
+  }, [compositionByInstructionIdRef, inputModeRef, selectedNotesRef, setSelectedNotes, timeSignatureRef]);
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
       if (isMouseDownRef.current && cursorPositionRef.current && startingCursorPosRef.current) {
@@ -229,7 +258,7 @@ export function CompositionCanvas({
                   }))
               ]);
               // fuck it just clear the selected notes
-              setSelectedNotes({});
+              // setSelectedNotes({});
             }
           } else if (clickedNoteRef.current && !hasMouseMovedRef.current) {
             const secondsSince = (Date.now() - whenWasMouseDownedRef.current) / 1000.0;
@@ -257,9 +286,7 @@ export function CompositionCanvas({
           }
           const newlySelectedNotes = getPlacedNotesFromComposition(compositionRef.current, bounds);
           let newSelectedNotes = selectedNotesRef.current;
-          if (Object.keys(newlySelectedNotes).length === 0 && !hasMouseMovedRef.current) {
-            newSelectedNotes = {};
-          } else if (Object.keys(newlySelectedNotes).length > 0) {
+          if (Object.keys(newlySelectedNotes).length > 0) {
             newSelectedNotes = {
               ...newSelectedNotes,
               ...(Object.values(newlySelectedNotes).reduce((acc, note) => (
@@ -470,12 +497,13 @@ export function CompositionCanvas({
   const renderedCompositionGrid = useMemo(() => (
     <CompositionGrid
       handleMouseDown={handleMouseDown}
+      handleDoubleClick={handleDoubleClick}
       handleMouseMove={throttledHandleMouseMove}>
       {children}
       {renderedPianoRollKeys}
       {allRenderedNotes}
     </CompositionGrid>
-  ), [children, renderedPianoRollKeys, allRenderedNotes, handleMouseDown, throttledHandleMouseMove]);
+  ), [handleMouseDown, handleDoubleClick, throttledHandleMouseMove, children, renderedPianoRollKeys, allRenderedNotes]);
 
   return (
     <CompositionContainer>

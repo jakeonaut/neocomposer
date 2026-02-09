@@ -27,6 +27,7 @@ export function ClickedSelectedNotesContextProvider({
   }, []);
   const selectNotesByInstrument = useCallback((userInstrumentIndex: number, compositionByInstructionId: Record<string, InstrumentInstruction>) => {
     setSelectedNotes({
+      ...selectedNotesRef.current,
       ...(Object.entries(compositionByInstructionId).reduce((acc, [noteId, instrumentInstruction]) => {
         if (instrumentInstruction.userInstrumentIndex === userInstrumentIndex) {
           return {

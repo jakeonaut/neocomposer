@@ -73,6 +73,13 @@ export function PlacedNote({
     (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => onMouseDown?.(e, noteId),
     [onMouseDown, noteId]
   );
+  const handleDoubleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+      e.stopPropagation();
+      e.preventDefault();
+      return false;
+    }, [] 
+  );
   return (
     <StyledNote
       $bgColor={bgColor}
@@ -82,6 +89,7 @@ export function PlacedNote({
       $width={noteWidth * beatWidth - 1}
       $isClickedNote={isClickedNote}
       onMouseDown={handleMouseDown}
+      onDoubleClick={handleDoubleClick}
       style={style}>
       {children}
     </StyledNote>

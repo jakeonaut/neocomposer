@@ -42,13 +42,15 @@ const GridCellDiv = styled.div<{
   };
 `;
 
-type MouseHandler = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: MidiBeat, midiNote: MidiNoteNum) => false;
+type MouseHandler = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: MidiBeat, midiNote: MidiNoteNum) => boolean | undefined;
 
 const useCellProps = ({
   handleMouseDown,
+  handleDoubleClick,
   handleMouseMove,
 }: {
   handleMouseDown: MouseHandler,
+  handleDoubleClick: MouseHandler,
   handleMouseMove: DebouncedState<MouseHandler>,
 }) => {
   const { _beatWidth } = useContext(BeatSizeContext)!;
@@ -60,8 +62,9 @@ const useCellProps = ({
     subdivisionType: _subdivisionType,
     timeSignature: _timeSignature,
     handleMouseDown,
+    handleDoubleClick,
     handleMouseMove,
-  }), [_subdivisionType, _timeSignature, beatWidth, handleMouseDown, handleMouseMove]);
+  }), [_subdivisionType, _timeSignature, beatWidth, handleMouseDown, handleDoubleClick, handleMouseMove]);
   return cellProps;
 };
 
@@ -69,15 +72,17 @@ let hasInitializedScroll = false;
 export function CompositionGrid({
   children,
   handleMouseDown,
+  handleDoubleClick,
   handleMouseMove,
 }: {
   children: React.ReactNode,
   handleMouseDown: MouseHandler,
+  handleDoubleClick: MouseHandler,
   handleMouseMove: DebouncedState<MouseHandler>,
 }) {
   const { _beatHeight } = useContext(BeatSizeContext)!;
   const [grid, setGrid] = useGridCallbackRef(null);
-  const cellProps = useCellProps({ handleMouseDown, handleMouseMove });
+  const cellProps = useCellProps({ handleMouseDown, handleDoubleClick, handleMouseMove });
   useEffect(() => {
     if (grid?.element && !hasInitializedScroll) {
       hasInitializedScroll = true;
@@ -124,12 +129,14 @@ function GridCell({
   subdivisionType,
   timeSignature,
   handleMouseDown,
+  handleDoubleClick,
   handleMouseMove,
 }: CellComponentProps<{
   beatWidth: number,
   subdivisionType: SubdivisionType,
   timeSignature: TimeSignature
   handleMouseDown: MouseHandler,
+  handleDoubleClick: MouseHandler,
   handleMouseMove: DebouncedState<MouseHandler>
 }>) {
   const midiNote = toMidi(pianoRollKeys[rowIndex])!
@@ -138,6 +145,7 @@ function GridCell({
     className="hoverable"
     onMouseDown={(e) => handleMouseDown(e, columnIndex + 1, midiNote)}
     onMouseMove={(e) => handleMouseMove(e, columnIndex + 1, midiNote)}
+    onDoubleClick={(e) => handleDoubleClick(e, columnIndex + 1, midiNote)}
     style={style}
     $idx={columnIndex}
     $midiNote={pianoRollKeys[rowIndex]}
