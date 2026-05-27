@@ -6,6 +6,7 @@ import { SongOptionsHeader } from "./SongOptionsHeader";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
 import { CompositionCanvas } from "./composition/CompositionCanvas";
 import { PlayheadNode } from "./PlayheadNode";
+import { TodoList } from "../TodoList";
 
 const MaestroContainer = styled.div`
   display: flex;
@@ -17,6 +18,7 @@ const Header = styled.div`
   max-width: 960px;
   display: flex;
   flex-direction: column;
+  position: relative;
 `;
 
 export function MaestroConductor() {
@@ -39,8 +41,13 @@ export function MaestroConductor() {
       renderChildren={(footer: React.ReactElement) => (
         <MaestroContainer>
           <Header>
-            <SongOptionsHeader />
-            <UserInstrumentsHeader />
+            <SongOptionsHeader footer={footer} />
+            <div style={{display: "flex"}}>
+              <div>
+                <UserInstrumentsHeader />
+              </div>
+              <TodoList />
+            </div>
           </Header>
           {/* TODO(jaketrower): Can I refactor this now after the ref refactors? */}
           {/* Pass setInputMode in directly since we are firing it at the end of a handleMouseUp callback and
@@ -48,7 +55,6 @@ export function MaestroConductor() {
           <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode}>
             <PlayheadNode _inputMode={_inputMode} inputModeRef={inputModeRef} />
           </CompositionCanvas>
-          {footer}
         </MaestroContainer>
       )} />
   );

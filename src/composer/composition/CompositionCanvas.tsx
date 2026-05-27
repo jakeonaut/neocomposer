@@ -284,7 +284,7 @@ export function CompositionCanvas({
             right: getMidiBeatFromGridBeat(Math.max(cursorPositionRef.current.midiBeat, startingCursorPosRef.current.midiBeat), subdivisionTypeRef.current, subdivisionTypeRef.current, true),
             bottom: Math.max(toMidi(cursorPositionRef.current.midiNote)!, toMidi(startingCursorPosRef.current.midiNote)!),
           }
-          const newlySelectedNotes = getPlacedNotesFromComposition(compositionRef.current, bounds);
+          const newlySelectedNotes = getPlacedNotesFromComposition(compositionRef.current, userInstrumentsRef.current, bounds);
           let newSelectedNotes = selectedNotesRef.current;
           if (Object.keys(newlySelectedNotes).length > 0) {
             newSelectedNotes = {
@@ -332,7 +332,7 @@ export function CompositionCanvas({
       midiBeat: MidiBeat,
       midiNote: MidiNoteNum
     ) => {
-      console.log("HELLO?!");
+      // console.log("HELLO?!");
       if (
         isMouseDownRef.current &&
         cursorPositionRef.current &&
@@ -435,7 +435,7 @@ export function CompositionCanvas({
     // ...(heldPianoKeys[midiNote] ? {
     //   background: currUserInstrument ? `${currUserInstrument.color}40` : '#b2bcc240',
     // } : {}),
-  }), []);
+  }), [_beatHeight]);
   const pianoRollKeyBaseStyle = useMemo(() => ({
     // outline: "1px solid black",
     // zIndex: 3,
@@ -482,7 +482,7 @@ export function CompositionCanvas({
         ))}
       </PianoRollKeysSubContainer>
     </PianoRollKeysContainer>
-  ), [pianoRollKeyStyle, pianoRollKeysContainerStyle])
+  ), [_beatHeight, pianoRollKeyStyle, pianoRollKeysContainerStyle])
 
   const allRenderedNotes = useMemo(() => (
     <AllRenderedNotes

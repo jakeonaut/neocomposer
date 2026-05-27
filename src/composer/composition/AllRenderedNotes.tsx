@@ -64,15 +64,18 @@ function StaticPlacedNotes({
           if (clickedNote && (instrumentInstruction.noteId === clickedNote.noteId || isNoteSelected(instrumentInstruction.noteId))) {
             return null;
           }
-          const bgColor = _userInstruments[instrumentInstruction.userInstrumentIndex].color ?? 'gray';
+          const userInstrument = _userInstruments[instrumentInstruction.userInstrumentIndex];
+          const bgColor = userInstrument.color ?? 'gray';
+          const visible = userInstrument.visible ?? true;
           return (<PlacedNote
             key={instrumentInstruction.noteId}
             topmostMidiNote={topmostMidiNote}
             bgColor={bgColor}
+            visible={visible}
             instrumentInstruction={instrumentInstruction}
             onMouseDown={handlePlacedNoteMouseDown}
             isNoteSelected={isNoteSelected(instrumentInstruction.noteId)}
-          />)
+          />);
         })))}
   </>);
 }
@@ -93,6 +96,7 @@ function CreatedNote({
   const { _clickedNote } = useContext(ClickedSelectedNotesContext)!;
   const { _subdivisionType } = useContext(SubdivisionTypeContext)!;
   const topmostMidiNote = useMemo(() => toMidi(pianoRollKeys[0])!, []);
+  const userInstrument = _userInstruments[_userInstrumentIndex];
 
   return (<>
     {/* DRAGGING TO CREATE A NEW NOTE */}
@@ -103,7 +107,8 @@ function CreatedNote({
       && (
         <PlacedNote
           topmostMidiNote={topmostMidiNote}
-          bgColor={_userInstruments[_userInstrumentIndex].color ?? "gray"}
+          bgColor={userInstrument.color ?? "gray"}
+          visible={userInstrument.visible}
           instrumentInstruction={{
             noteId: -1,
             midiBeat: getMidiBeatFromGridBeat(Math.min(_cursorPosition.midiBeat, _startingCursorPos.midiBeat), _subdivisionType, _subdivisionType),
@@ -148,6 +153,8 @@ function DraggingExistingNote({
   const isNoteSelected = useCallback((noteId: NoteId) => {
     return !!Object.keys(_selectedNotes).find((n) => parseInt(n) === noteId);
   }, [_selectedNotes]);
+  
+  const clickedNoteUserInstrument = clickedNote ? _userInstruments[clickedNote.userInstrumentIndex] : undefined;
 
   return (<>
     {/* DRAGGING EXISTING NOTE */}
@@ -155,11 +162,13 @@ function DraggingExistingNote({
       && _startingCursorPos
       && _cursorPosition
       && clickedNote
+      && clickedNoteUserInstrument
       && (
         <>
           <PlacedNote
             topmostMidiNote={topmostMidiNote}
-            bgColor={_userInstruments[clickedNote.userInstrumentIndex].color}
+            bgColor={clickedNoteUserInstrument.color}
+            visible={clickedNoteUserInstrument.visible}
             instrumentInstruction={{
               noteId: clickedNote.noteId,
               midiBeat: getMidiBeatFromGridBeat(_cursorPosition.midiBeat + _cursorXOffset, _subdivisionType, clickedNote.subdivisionType),
@@ -173,11 +182,13 @@ function DraggingExistingNote({
           />
           {Object.entries(_selectedNotes).map(([noteId, noteWithOffset]) => {
             const instrumentInstructionWithOffset = compositionByInstructionIdRef.current[noteId];
+            const userInstrument = _userInstruments[instrumentInstructionWithOffset.userInstrumentIndex];
             return (noteId !== clickedNote.toString()
             && (<PlacedNote
               key={noteId}
               topmostMidiNote={topmostMidiNote}
-              bgColor={_userInstruments[instrumentInstructionWithOffset.userInstrumentIndex].color}
+              bgColor={userInstrument.color}
+              visible={userInstrument.visible}
               instrumentInstruction={{
                 noteId: instrumentInstructionWithOffset.noteId,
                 midiBeat: getMidiBeatFromGridBeat(

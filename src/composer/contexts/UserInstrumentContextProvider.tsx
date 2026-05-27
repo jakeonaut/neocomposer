@@ -1,7 +1,8 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { AudioContextContext, sf2DefaultColours, UserInstrument } from "../consts";
+import { AudioContextContext, DEFAULT_VOLUME, getNewInstrumentColor, UserInstrument } from "../consts";
 import { Soundfont2Sampler } from "../../smplr/soundfont2";
 import { SoundFont2 } from 'soundfont2';
+// import * as randomEmoji from 'random-unicode-emoji';
 
 export const UserInstrumentContext = createContext<{
   _userInstruments: UserInstrument[],
@@ -19,6 +20,7 @@ export const UserInstrumentContext = createContext<{
 } | undefined>(undefined);
 
 export function createUserInstrument(audioContext: AudioContext, index: number, arrayBuffer?: Uint8Array): UserInstrument {
+  const volume = DEFAULT_VOLUME;
   const { sampler: sf2Sampler, randomInstrumentIdx } = (() => {
     if (arrayBuffer) {
       const soundfont2Sampler = new Soundfont2Sampler(audioContext, {
@@ -33,12 +35,16 @@ export function createUserInstrument(audioContext: AudioContext, index: number, 
       return { sampler: undefined, randomInstrumentIdx: undefined };
     }
   })();
+  // const randomEmojis = randomEmoji.random({count: 2});
   return {
+    // name: `${randomEmojis[0]}${randomEmojis[1]}${index+1}`,
     name: `ins${index+1}`,
-    color: index < sf2DefaultColours.length ? sf2DefaultColours[index] : 'hsl(' + 360 * Math.random() + ', 60%, 70%)',
+    color: getNewInstrumentColor(index),
     sf2Sampler: sf2Sampler,
     sf2InstrumentName: sf2Sampler?.instrumentNames[randomInstrumentIdx],
-    volume: 100,
+    volume,
+    visible: true,
+    solo: false,
   };
 }
 
@@ -89,6 +95,7 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
         createSoundfont: (data) => new SoundFont2(data),
       })
       const sampler = await soundfont2Sampler.load;
+      sampler.player.output.setVolume(userInstrumentsRef.current[0].volume);
       const randomInstrumentIdx = Math.floor(Math.random() * sampler.instrumentNames.length);
       sampler.loadInstrument(sampler.instrumentNames[randomInstrumentIdx]);
       setUserInstruments([{

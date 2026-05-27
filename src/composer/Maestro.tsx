@@ -1,7 +1,5 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { TodoList } from "../TodoList";
-import { TipsAndTricks } from "../TipsAndTricks";
 import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType, TimeSignature } from "./consts";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
 import { ActionButtonFooter } from "./ActionButtonFooter";
@@ -389,11 +387,6 @@ export function Maestro({
       tryCutSelectedNotes={tryCutSelectedNotes}
       tryPasteCopiedNotes={tryPasteCopiedNotes}
     />
-    <br />
-    <div style={{ textAlign: 'left'}}>
-      <TodoList />
-      <TipsAndTricks />
-    </div>
   </Footer>), [_inputMode, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, trySetInputMode]);
   const renderedChildren = useMemo(() => renderChildren(footer), [footer, renderChildren]);
   return renderedChildren;

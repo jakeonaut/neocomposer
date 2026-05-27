@@ -50,7 +50,7 @@ const BabyPlayheadImg = styled.img<{ $frame: number, $playheadPosX: number, $bea
   top: -4px;
   cursor: grab;
   z-index: 1;
-  userSelect: 'none';
+  user-select: none;
   ...(${({ $preventPointerEvents }) => $preventPointerEvents ? { pointerEvents: 'none' } : {}});
 `;
 

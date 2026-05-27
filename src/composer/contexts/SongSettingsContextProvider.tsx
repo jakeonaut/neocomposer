@@ -13,7 +13,7 @@ export const SongSettingsContext = createContext<{
 
 export function SongSettingsContextProvider({ children } : { children: React.ReactNode }) {
   const [songName, setSongName] = useState((generate(2) as string[]).join(" "));
-  const [_tempo, _setTempo] = useState(100);
+  const [_tempo, _setTempo] = useState(Math.floor(Math.random() * 40) + 80);
   const [masterVolume, setMasterVolume] = useState(100);
 
   const tempoRef = useRef(_tempo);

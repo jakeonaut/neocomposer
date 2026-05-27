@@ -3,7 +3,7 @@ import styled from 'styled-components'
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtonFooter';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
-import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, SongJsonExport, TimeSignature } from './consts';
+import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getNewInstrumentColor, SongJsonExport, TimeSignature, UserInstrument } from './consts';
 import { PristineContext } from './contexts/PristineContextProvider';
 import { generate } from "random-words";
 import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
@@ -15,6 +15,7 @@ const SongHeaderContainer = styled.div`
   background-color: white;
   height: 32px;
   display: flex;
+  // flex-wrap: wrap;
   gap: 4px;
   outline: 1px solid black;
   margin: 2px;
@@ -61,7 +62,7 @@ const ShuffleButton = styled.div`
   margin-right: 4px;
 `;
 
-export function SongOptionsHeader() {
+export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   const audioContext = useContext(AudioContextContext)!;
   const { timeSignatureRef, setTimeSignature } = useContext(TimeSignatureContext)!;
   const {
@@ -103,10 +104,18 @@ export function SongOptionsHeader() {
   const handleLoadCompositionFromFileJson = useCallback((jsonObj: SongJsonExport) => {
     setSongName(jsonObj.songName);
     setTempo(jsonObj.tempo);
-    const newUserInstruments = [...jsonObj.userInstruments.map((jsonInstrument, index) => {
+    const newUserInstruments: UserInstrument[] = [...jsonObj.userInstruments.map((jsonInstrument, index) => {
+      // TODO(jaketrower): handle save/load with different .sf2s then the default !
       const sf2Sampler = getNewUserInstrument(audioContext, index).sf2Sampler;
       sf2Sampler?.loadInstrument(jsonInstrument.sf2InstrumentName!);
       return {
+        name: `ins${index+1}`,
+        color: getNewInstrumentColor(index),
+        // TODO(jaketrower): handle save/load with different .sf2s then the default !
+        sf2InstrumentName: sf2Sampler?.instrumentNames[0],
+        volume: DEFAULT_VOLUME,
+        visible: true, 
+        solo: false,
         ...jsonInstrument,
         sf2Sampler,
       }
@@ -173,12 +182,13 @@ export function SongOptionsHeader() {
         <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={incrementBabyDanceFrame}/></div>
         <div style={{ display: 'flex', flexDirection: 'column', }}>
           <div style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 2 }}>
-            𖡼𖤣𖥧𖡼𓋼𖤣𖥧𓋼𓍊<b style={{ marginLeft: 2}}>Song Name:</b>
+            <b style={{ marginLeft: 2}}>Song Name:</b>
             <input type="text" value={songName} onChange={(e) => {
               setSongName(e.target.value);
             }} />
             <ShuffleButton onClick={() => { setSongName((generate(2) as string[]).join(' ')); }}>🎲</ShuffleButton>
-            𖡼𖤣𖥧𖡼𓋼𖤣𖥧𓋼𓍊
+            𖡼𖤣𖥧𖡼𓋼𖤣&nbsp;
+            {footer}
           </div>
           {/* <div style={{ display: 'flex', alignItems: 'center', }}>
             <label htmlFor="master-instrument-volume">

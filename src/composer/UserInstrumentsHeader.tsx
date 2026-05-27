@@ -1,4 +1,4 @@
-import React, { MouseEvent, useCallback, useContext, useMemo } from 'react';
+import React, { MouseEvent, useCallback, useContext, useEffect, useMemo } from 'react';
 import styled from 'styled-components'
 import { useUploadSf2 } from './hooks/useUploadSf2';
 import { Soundfont2Sampler } from '../smplr/soundfont2';
@@ -18,6 +18,7 @@ const SoundfontHeader = styled.div<{ $color: string }>`
   background-color: ${({ $color }) => $color};
   margin: 2px;
   align-items: center;
+  width: fit-content;
 `;
 const ColorPicker = styled.div`
   border: 1px solid black;
@@ -35,7 +36,7 @@ const FileInputLabel = styled.label`
 `;
 const UserInstrumentSelector = styled.div`
   display: flex;
-  margin: 0px 0px 12px 28px;
+  margin: 0px 0px 4px 28px;
 `;
 const UserInstrumentTab = styled.div`
   display: flex;
@@ -47,7 +48,7 @@ const UserInstrumentTab = styled.div`
   border: 1px solid black;
   user-select: none;
   margin-left: 2px;
-  margin-top: 2px;
+  margin-top: 1px;
   cursor: pointer;
   &:hover {
     border: 1px inset #d7d5d5;
@@ -100,6 +101,7 @@ export function UserInstrumentsHeader() {
     const newUserInstruments = [ ...userInstrumentsRef.current ];
     newUserInstruments[userInstrumentIndexRef.current]!.sf2Sampler = sampler;
     newUserInstruments[userInstrumentIndexRef.current]!.sf2InstrumentName = sf2InstrumentName;
+    sampler.player.output.setVolume(newUserInstruments[userInstrumentIndexRef.current].volume);
     setUserInstruments([...newUserInstruments]);
     const now = audioContext.currentTime;
     ["C4", "G4"].forEach((note, i) => {
@@ -152,14 +154,45 @@ export function UserInstrumentsHeader() {
     const volume = parseInt(e.target.value);
     if (userInstrument.sf2Sampler) {
       userInstrument.sf2Sampler.player.output.setVolume(volume);
+      // userInstrument.sf2Sampler.stop();
+      // userInstrument.sf2Sampler.start({ note: 'C4', duration: 0.5 });
     }
-    // TODO(jaketrower): need to do this on load too?? 
     userInstrument.volume = volume;
     const newUserInstruments = [...userInstrumentsRef.current];
     newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
     setUserInstruments(newUserInstruments);
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
   const onUserInstrumentVolumeChange = useThrottledCallback(_onUserInstrumentVolumeChange, 100);
+  const onUserInstrumentSoloToggle = useCallback(() => {
+    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    const solo = userInstrument.solo;
+    const isBecomingSolo = !solo;
+    if (isBecomingSolo) {
+      for (let i = 0; i < userInstrumentsRef.current.length; i++) {
+        userInstrumentsRef.current[i].visible = false;
+        userInstrumentsRef.current[i].solo = false;
+      }
+      userInstrument.solo = true;
+      userInstrument.visible = true;
+    } else {
+      for (let i = 0; i < userInstrumentsRef.current.length; i++) {
+        userInstrumentsRef.current[i].visible = true;
+        userInstrumentsRef.current[i].solo = false;
+      }
+      userInstrument.solo = false;
+    }
+    const newUserInstruments = [...userInstrumentsRef.current];
+    newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+    setUserInstruments(newUserInstruments);
+  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
+  const onUserInstrumentVisibilityToggle = useCallback(() => {
+    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    const visible = userInstrument.visible;
+    userInstrument.visible = !visible;
+    const newUserInstruments = [...userInstrumentsRef.current];
+    newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+    setUserInstruments(newUserInstruments);
+  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
 
   const _onColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
@@ -220,7 +253,7 @@ export function UserInstrumentsHeader() {
   return (
     <>
       <SoundfontHeader $color={currColor}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%', }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ColorPicker>
             <label htmlFor="instrument-color" style={{
               background: `url('./toolicons1x.png') repeat scroll  0  -126px transparent`,
@@ -274,6 +307,46 @@ export function UserInstrumentsHeader() {
               id="user-instrument-volume"
               defaultValue={_userInstruments[_userInstrumentIndex].volume}
               onChange={onUserInstrumentVolumeChange} />
+          </div>
+          <div onClick={onUserInstrumentSoloToggle}
+            style={{
+              border: '1px solid black',
+              position: 'relative',
+              width: 20,
+              height: 20,
+              content: '',
+              cursor: 'pointer',
+            }}>
+            <div style={{
+              background: `url('./toolicons1x.png') repeat scroll  ${_userInstruments[_userInstrumentIndex].solo ? '0' : '-25px'}   -231px transparent`,
+              width: 25,
+              height: 21,
+              imageRendering: 'pixelated',
+              userSelect: 'none',
+              position: 'absolute',
+              top: -2,
+              left: -3,
+            }}>&nbsp;</div>
+          </div>
+          <div onClick={onUserInstrumentVisibilityToggle}
+            style={{
+              border: '1px solid black',
+              position: 'relative',
+              width: 20,
+              height: 20,
+              content: '',
+              cursor: 'pointer',
+            }}>
+            <div style={{
+              background: `url('./toolicons1x.png') repeat scroll  ${_userInstruments[_userInstrumentIndex].visible ? '0' : '-25px'}   -168px transparent`,
+              width: 25,
+              height: 21,
+              imageRendering: 'pixelated',
+              userSelect: 'none',
+              position: 'absolute',
+              top: -2,
+              left: -3,
+            }}>&nbsp;</div>
           </div>
           <div onClick={onTryDeleteInstrument}
             style={{

@@ -227,8 +227,8 @@ function TempoInput() {
 
   return (
     <>
-      <label htmlFor="tempo">
-        <b>Tempo:</b>
+      <label htmlFor="tempo" style={{position: "relative", left: "8px"}}>
+        Tempo:
       </label>
       <input
         id="tempo"
@@ -237,6 +237,7 @@ function TempoInput() {
         max="200"
         value={_tempo}
         onChange={onTempoChange}
+        style={{width: "100px"}}
       />
     </>
   );
@@ -255,19 +256,20 @@ export function ActionButtonFooter({
   tryCutSelectedNotes: () => void,
   tryPasteCopiedNotes: () => void
 }) {
-  const containerStyle = useMemo(() => ({ marginTop: 8, justifyContent: 'center' }), []);
+  const containerStyle = useMemo(() => ({ marginTop: 1, justifyContent: 'center' }), []);
   return (
     <ActionButtonsContainer style={containerStyle}>
-      <InputTimeSignatureButton />
-      <InputSubdivisionTypeButton />
+      {/* <InputTimeSignatureButton />
+      <InputSubdivisionTypeButton /> */}
       <PlayStopButton />
       <TempoInput />
       <InputDefaultButton _inputMode={_inputMode} setInputMode={setInputMode} />
       <InputSelectionButton _inputMode={_inputMode} setInputMode={setInputMode} />
       &nbsp;
-      <CutButton onClick={tryCutSelectedNotes} />
+      {/* <!-- These don't seem to be working right. But ctrl+c etc. does --> */}
+      {/* <CutButton onClick={tryCutSelectedNotes} />
       <CopyButton onClick={tryCopySelectedNotes} />
-      <PasteButton onClick={tryPasteCopiedNotes} />
+      <PasteButton onClick={tryPasteCopiedNotes} /> */}
     </ActionButtonsContainer>
   );
 }

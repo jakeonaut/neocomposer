@@ -45,6 +45,7 @@ export function UndoRedoHistoryContextProvider({
 
   const handleAddToUndoStack = useCallback((newUndoHistoryFrame: HistoryFrame) => {
     if (globals.isExecutingUndoRedo) { return; }
+    console.log("Add to undo stack: ", newUndoHistoryFrame);
     const existingUndoHistoryToKeep = undoHistoryRef.current.slice(0, historyIndexRef.current + 1);
     setUndoHistory([
       ...existingUndoHistoryToKeep,

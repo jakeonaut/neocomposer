@@ -2,6 +2,8 @@ import { createContext } from "react";
 import { Soundfont2Sampler } from "../smplr/soundfont2";
 import { globals } from "./globals";
 
+export const DEFAULT_VOLUME = 50;
+
 export const zIndex_placedNote = 1;
 export const zIndex_selectedNote = 2;
 export const zIndex_rectSelect = 2;
@@ -13,6 +15,15 @@ export const lightColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.25)';
 export const mediumColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.5)'
 export const veryLightColor = '#ced8e0ff'; //"rgba(17, 156, 238, 0.12)";
 
+function shuffleArray(arr: unknown[]) {
+    for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+}
+
 export const sf2DefaultColours = [
   "#f1ad85",
   "#87b8a4",
@@ -21,6 +32,14 @@ export const sf2DefaultColours = [
   "#cdb3d7",
   "#9b9b9b",
 ];
+shuffleArray(sf2DefaultColours);
+
+export const getNewInstrumentColor = (index: number) => index < sf2DefaultColours.length ? sf2DefaultColours[index] : 'hsl(' + 360 * Math.random() + ', 60%, 70%)';
+
+// export const sf2DefaultInstrumentNames = [
+//   "🎻", "🎺", "🎸", "🥁", "🎹", "🪕", "🎶", "🎷", "📯", "📀", "♬", "🪗", "📣", "𝄢", "𝄞", "🎼", "🪈", "💥", "🕺", "💀", "🐸", "🕰️",
+//   ""
+// ];
 
 const fullOctave: OctavelessMidiNote[] = [
   "C",
@@ -99,7 +118,17 @@ export type UserInstrument = {
   sf2Sampler: Soundfont2Sampler | undefined;
   sf2InstrumentName: string | undefined;
   volume: number;
+  visible: boolean;
+  solo: boolean;
 };
+export type OptionalUserInstrument = {
+  name?: string;
+  color?: string;
+  sf2InstrumentName?: string;
+  volume?: number;
+  visible?: boolean;
+  solo?: boolean;
+}
 export type MidiNote = string;
 export type OctavelessMidiNote = string;
 export type MidiNoteNum = number;
@@ -139,12 +168,14 @@ export type CompositionByInstrument = Record<NoteId, (number | SubdivisionType)[
 export type SongJsonExport = {
   songName: string,
   tempo: number,
-  userInstruments: Omit<UserInstrument, 'sf2Sampler'>[],
+  userInstruments: Omit<OptionalUserInstrument, 'sf2Sampler'>[],
   composition: CompositionByInstrument,
   timeSignature: TimeSignature,
 }
 type Bounds = { left: number, right: number, top: number, bottom: number };
-export function getPlacedNotesFromComposition(composition: Composition, bounds?: Bounds) {
+
+// Excludes "invisible" notes.
+export function getPlacedNotesFromComposition(composition: Composition, userInstruments: UserInstrument[], bounds?: Bounds) {
   const allPlacedNotes: { [id: NoteId]: InstrumentInstruction } = {};
   const compositionByMidiNote = Object.values(composition).reduce((acc, column) => {
     Object.entries(column).forEach(([midiNote, instrumentInstructions]) => {
@@ -162,6 +193,7 @@ export function getPlacedNotesFromComposition(composition: Composition, bounds?:
     for (let y = bounds.top; y < bounds.bottom + 1; y++) {
       if (!compositionByMidiNote[y]) continue;
       Object.values(compositionByMidiNote[y]).forEach((note) => {
+        if (!userInstruments[note.userInstrumentIndex].visible) return;
         if ((bounds.left <= note.midiBeat + note.noteWidth - 1 && bounds.left >= note.midiBeat)
            || (bounds.right >= note.midiBeat && bounds.right <= note.midiBeat + note.noteWidth - 1)
            || (bounds.left <= note.midiBeat && bounds.right >= note.midiBeat + note.noteWidth - 1)) {
@@ -349,6 +381,7 @@ export function playCompositionNotesAtBeat({
         // rather than preprogram them all at PLAY button press...
         const userInstrumentToPlay =
           userInstruments[instrumentInstruction.userInstrumentIndex];
+        if (!userInstrumentToPlay?.visible) return;
         if (!userInstrumentToPlay?.sf2Sampler) return;
         const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
         const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q

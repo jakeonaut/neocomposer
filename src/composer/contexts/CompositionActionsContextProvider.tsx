@@ -47,12 +47,6 @@ export function CompositionActionsContextProvider({
       });
     });
     compositionRef.current = newComposition;
-    // if (_.isEqual(
-    //   Object.keys(compositionByInstructionIdRef.current), 
-    //   Object.keys(prevCompositionByInstructionId)
-    // )) {
-    //   return;
-    // }
     handleAddToUndoStack(getHistoryFrameFromCompositionDiff(
       { ...compositionByInstructionIdRef.current },
       { ...prevCompositionByInstructionId }
@@ -75,7 +69,7 @@ export function CompositionActionsContextProvider({
       if (Object.keys(newComposition[midiBeat]).length === 0) {
         delete newComposition[midiBeat];
       }
-      delete compositionByInstructionIdRef.current[noteId];
+      // delete compositionByInstructionIdRef.current[noteId];
       if (farthestRightNoteEndRef.current <= instrumentInstruction.midiBeat + instrumentInstruction.noteWidth) {
         manuallyUpdateFarthestRightNoteEnd();
       }
@@ -99,9 +93,6 @@ export function CompositionActionsContextProvider({
             if (Object.keys(newComposition[midiBeat]).length === 0) {
               delete newComposition[midiBeat];
             }
-            if (farthestRightNoteEndRef.current <= instrumentInstruction.midiBeat + instrumentInstruction.noteWidth) {
-              manuallyUpdateFarthestRightNoteEnd();
-            }
           } else if (instrumentInstruction.userInstrumentIndex > userInstrumentIndexToDelete) {
             newComposition[midiBeat][midiNote][noteId].userInstrumentIndex -= 1;
           }
@@ -109,6 +100,7 @@ export function CompositionActionsContextProvider({
       });
     });
     setComposition(newComposition);
+    manuallyUpdateFarthestRightNoteEnd();
   }, [manuallyUpdateFarthestRightNoteEnd, setComposition]);
   const addCompositionNotes = useCallback(
     (notesToAdd: (Omit<InstrumentInstruction, 'noteId'> & { noteId?: number })[]): InstrumentInstruction[] => {

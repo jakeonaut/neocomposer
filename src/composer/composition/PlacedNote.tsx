@@ -8,6 +8,7 @@ const StyledNote = styled.div<{
   $top: number,
   $left: number,
   $bgColor: string,
+  $visible: boolean,
   $isClickedNote?: boolean,
   $isNoteSelected?: boolean,
 }>`
@@ -32,12 +33,15 @@ const StyledNote = styled.div<{
       ? $isClickedNote ? '' : ', 2px 2px 0px 0px blue'
       : $isClickedNote ? ', 2px 2px 0px 0px black' : ''
   }` };
+  opacity: ${({ $visible }) => `${$visible ? '1.0' : '0.5'}`};
+  pointer-events: ${({ $visible }) => `${$visible ? 'auto' : 'none'}`};
 `;
 
 export function PlacedNote({
   children,
   topmostMidiNote,
   bgColor,
+  visible,
   instrumentInstruction,
   shouldMouseIgnoreMe,
   onMouseDown,
@@ -48,6 +52,7 @@ export function PlacedNote({
   children?: React.ReactNode
   topmostMidiNote: number;
   bgColor: string;
+  visible: boolean;
   instrumentInstruction: InstrumentInstruction,
   shouldMouseIgnoreMe?: boolean;
   onMouseDown?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>, noteId: NoteId) => void
@@ -83,6 +88,7 @@ export function PlacedNote({
   return (
     <StyledNote
       $bgColor={bgColor}
+      $visible={visible}
       $isNoteSelected={isNoteSelected}
       $top={top}
       $left={left}
