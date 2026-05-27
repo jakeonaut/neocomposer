@@ -175,7 +175,7 @@ function InputSubdivisionTypeButton() {
     }
   }, [setSubdivisionType, subdivisionTypeRef]);
 
-  const containerStyle = useMemo(() => ({ paddingBottom: 4, paddingTop: 1, position: 'absolute', left: 32, paddingRight: 0 } as CSSProperties), []);
+  const containerStyle = useMemo(() => ({ paddingBottom: 4, paddingTop: 1, paddingRight: 0 } as CSSProperties), []);
 
   return (
     <PixelActionButton
@@ -204,8 +204,8 @@ function InputTimeSignatureButton() {
   const containerStyle = useMemo(() => ({
     paddingBottom: 4,
     paddingTop: 1,
-    position: 'absolute',
-    left: 3,
+    // position: 'absolute',
+    // left: 3,
     paddingRight: 0 
   } as CSSProperties), []);
 
@@ -259,13 +259,13 @@ export function ActionButtonFooter({
   const containerStyle = useMemo(() => ({ marginTop: 1, justifyContent: 'center' }), []);
   return (
     <ActionButtonsContainer style={containerStyle}>
-      {/* <InputTimeSignatureButton />
-      <InputSubdivisionTypeButton /> */}
       <PlayStopButton />
       <TempoInput />
       <InputDefaultButton _inputMode={_inputMode} setInputMode={setInputMode} />
       <InputSelectionButton _inputMode={_inputMode} setInputMode={setInputMode} />
       &nbsp;
+      <InputTimeSignatureButton />
+      <InputSubdivisionTypeButton />
       {/* <!-- These don't seem to be working right. But ctrl+c etc. does --> */}
       {/* <CutButton onClick={tryCutSelectedNotes} />
       <CopyButton onClick={tryCopySelectedNotes} />

@@ -42,12 +42,12 @@ export function MaestroConductor() {
         <MaestroContainer>
           <Header>
             <SongOptionsHeader footer={footer} />
-            <div style={{display: "flex"}}>
-              <div>
+            {/* <div style={{display: "flex"}}>
+              <div> */}
                 <UserInstrumentsHeader />
-              </div>
+              {/* </div>
               <TodoList />
-            </div>
+            </div> */}
           </Header>
           {/* TODO(jaketrower): Can I refactor this now after the ref refactors? */}
           {/* Pass setInputMode in directly since we are firing it at the end of a handleMouseUp callback and
