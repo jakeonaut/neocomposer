@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo } from "react";
 import styled from "styled-components";
-import { AudioContextContext, getARandomNote, InputMode, keyboardPianoKeys, NoteIdWithOffset, SubdivisionType, TimeSignature } from "./consts";
+import { AudioContextContext, getARandomNote, InputMode, increaseKeyboardPianoOctaveShift, decreaseKeyboardPianoOctaveShift, getKeyboardPianoKey, NoteIdWithOffset, SubdivisionType, TimeSignature } from "./consts";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
 import { ActionButtonFooter } from "./ActionButtonFooter";
 import { SubdivisionTypeContext } from "./contexts/SubdivisionTypeContextProvider";
@@ -313,9 +313,15 @@ export function Maestro({
         e.stopPropagation();
         return false;
       }
-      const playedNote = keyboardPianoKeys.has(e.key)
-        ? keyboardPianoKeys.get(e.key)
-        : undefined;
+      if (e.code === "Minus") { // -
+        decreaseKeyboardPianoOctaveShift();
+        setHeldPianoKeys({});
+      }
+      if (e.code === "Equal") { // =
+        increaseKeyboardPianoOctaveShift();
+        setHeldPianoKeys({});
+      }
+      const playedNote = getKeyboardPianoKey(e.key);
       if (!playedNote) return;
       heldPianoKeys[playedNote] = true;
       setHeldPianoKeys({...heldPianoKeys});
@@ -339,12 +345,12 @@ export function Maestro({
       }
       return false;
     }
-    const playedNote = keyboardPianoKeys.has(e.key)
-      ? keyboardPianoKeys.get(e.key)
-      : undefined;
+    const playedNote = getKeyboardPianoKey(e.key);
     if (!playedNote) return;
-    delete heldPianoKeys[playedNote];
-    setHeldPianoKeys({...heldPianoKeys});
+    if (playedNote in heldPianoKeys) {
+      delete heldPianoKeys[playedNote];
+      setHeldPianoKeys({...heldPianoKeys});
+    }
   }, [heldPianoKeys, setHeldPianoKeys, trySetInputMode, isCompositionMouseDownRef, onCompositionMouseUpRef, setInputMode]);
 
   const handleMouseDown = useCallback((e: MouseEvent) => {

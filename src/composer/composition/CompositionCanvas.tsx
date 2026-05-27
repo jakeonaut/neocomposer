@@ -474,7 +474,14 @@ export function CompositionCanvas({
             style={pianoRollKeysContainerStyle}
           >
             <div style={pianoRollKeyStyle(midiNote)}
-              // onMouseDown={() => { currUserInstrument.sf2Sampler?.start({ note: midiNote, duration: 0.25 }); }}
+              onMouseDown={() => {
+                userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({ note: midiNote, duration: 0.25 }); 
+              }}
+              onMouseOver={(e) => {
+                if (e.buttons === 1) {
+                  userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({ note: midiNote, duration: 0.25 }); 
+                }
+              }}
             >
               {midiNote}
             </div>

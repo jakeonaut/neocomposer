@@ -66,7 +66,7 @@ pianoRollKeys.reverse();
 export const pianoRollBeats: number[] = new Array(160);
 pianoRollBeats.fill(0);
 
-export const keyboardPianoKeys = new Map(
+const keyboardPianoKeys = new Map(
   Object.entries({
     a: "C4",
     w: "Db4",
@@ -88,6 +88,43 @@ export const keyboardPianoKeys = new Map(
     "'": "F5",
   })
 );
+
+export const getKeyboardPianoKey = (key: string) => {
+  if (!keyboardPianoKeys.has(key)) {
+    return undefined;
+  }
+  try {
+    let keyboardPianoKey = keyboardPianoKeys.get(key)!;
+    if (keyboardPianoKeyOctaveShift !== 0) {
+      const octavelessKey = keyboardPianoKey.substring(0, keyboardPianoKey.length - 1);
+      const octave = Number.parseInt(keyboardPianoKey.substring(keyboardPianoKey.length, 1));
+      keyboardPianoKey = octavelessKey + (octave + keyboardPianoKeyOctaveShift).toString()
+    };
+    return keyboardPianoKey;
+  } catch (e) {
+    return keyboardPianoKeys.get(key);
+  }
+}
+
+const MINIMUM_OCTAVE_SHIFT = -2;
+const MAXIMUM_OCTAVE_SHIFT = 2;
+let keyboardPianoKeyOctaveShift = 0;
+
+export const getKeyboardPianoOctaveShift = () => {
+  return keyboardPianoKeyOctaveShift;
+};
+
+export const increaseKeyboardPianoOctaveShift = () => {
+  if (keyboardPianoKeyOctaveShift < MAXIMUM_OCTAVE_SHIFT) {
+    keyboardPianoKeyOctaveShift += 1;
+  }
+};
+
+export const decreaseKeyboardPianoOctaveShift = () => {
+  if (keyboardPianoKeyOctaveShift > MINIMUM_OCTAVE_SHIFT) {
+    keyboardPianoKeyOctaveShift -= 1;
+  }
+}
 
 const majorKeyboardPianoKeys = new Map(
   Object.entries({
