@@ -4,11 +4,10 @@ import { TipsAndTricks } from "./TipsAndTricks";
 export function TodoList() {
   const [isExpanded, setIsExpanded] = useState(false);
   return (
-    <div style={{
+    <div className="howToPlay" style={{
       textAlign: "left",
       position: "absolute",
-      right: 1,
-      top: 37,
+      right: 3,
       zIndex: 999,
       border: "1px solid black",
       background: "lightgray",
@@ -17,6 +16,8 @@ export function TodoList() {
       minHeight: isExpanded ? "1120px" : "28px",
       marginBottom: isExpanded ? "-1120px" : "-28px",
       overflow: "clip",
+      // pointerEvents: isExpanded ? "auto" : "none",
+      // opacity: isExpanded ? 1.0 : 0.4,
     }}>
       {isExpanded ? (<>
         <TipsAndTricks />
@@ -26,7 +27,7 @@ export function TodoList() {
         <div style={{fontSize: "15px", lineHeight: "26px"}}>&nbsp;How to Play:</div>
       </>)}
       <div onClick={()=>setIsExpanded((prev) => !prev)}
-        style={{userSelect: "none", border: "1px solid black", cursor: "pointer", width: "20px", position: "absolute", height: "20px", textAlign: "center", right: "3px", top: "3px", fontSize: "18px", lineHeight: "19px", background: "white",}}>
+        style={{pointerEvents: "auto", userSelect: "none", border: "1px solid black", cursor: "pointer", width: "20px", position: "absolute", height: "20px", textAlign: "center", right: "3px", top: "3px", fontSize: "18px", lineHeight: "19px", background: "white",}}>
         {isExpanded ? "-" : "+"}
       </div>
       {isExpanded && (

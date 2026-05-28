@@ -1,15 +1,18 @@
 import React, { useCallback, useContext } from 'react';
 import styled from 'styled-components'
+import { renderOffline } from "../offline";
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtonFooter';
-import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
-import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getNewInstrumentColor, SongJsonExport, TimeSignature, UserInstrument } from './consts';
+import { createUserInstrument, UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
+import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getBeatLengthInMs, getInstrumentInstructionFromNoteData, getNewInstrumentColor, JsonNoteData, SongJsonExport, SubdivisionType, TimeSignature, UserInstrument } from './consts';
 import { PristineContext } from './contexts/PristineContextProvider';
 import { generate } from "random-words";
 import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
 import { BabyDanceFrameContext, PlayTheSongContext } from './contexts/PlayTheSongContextProvider';
 import { PlayheadPosXContext } from './contexts/PlayheadPosXContextProvider';
 import { CompositionActionsContext } from './contexts/CompositionActionsContextProvider';
+import { Soundfont2Sampler, SplendidGrandPiano } from '../smplr';
+import { SoundFont2 } from 'soundfont2';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -88,6 +91,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   } = useContext(PlayTheSongContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const {
+    defaultSoundfontBuffer,
     userInstrumentsRef,
     setUserInstruments,
     setUserInstrumentIndex,
@@ -173,6 +177,51 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     }
   }, [handleLoadCompositionFromFileJson]);
 
+  const handleExportSongToWav = useCallback(async () => {
+    try {
+      const renderedOfflineAudioResult = await renderOffline(async (audioContext) => {
+        const offlineSf2Samplers = userInstrumentsRef.current.map((userInstrument, index) => {
+          // TODO(jaketrower): This will need to be modified to handle multiple sf2s as well...
+          const { sf2Sampler } = createUserInstrument(audioContext, 0, defaultSoundfontBuffer);
+          sf2Sampler!.player.output.setVolume(userInstrument.volume);
+          if (userInstrument.sf2InstrumentName) {
+            sf2Sampler!.loadInstrument(userInstrument.sf2InstrumentName);
+          }
+          return sf2Sampler!;
+        });
+        const compositionByInstrument = convertCompositionToCompositionByInstrument(compositionRef.current);
+        const beatLengthInSeconds = getBeatLengthInMs(tempoRef.current) / 1000;
+        Object.keys(compositionByInstrument).forEach((userInstrumentIdxStr: string) => {
+          const userInstrumentIdx = Number.parseInt(userInstrumentIdxStr);
+          const sf2Sampler = offlineSf2Samplers[userInstrumentIdx];
+          const notesToPlay = compositionByInstrument[userInstrumentIdx];
+          notesToPlay.forEach((noteData: JsonNoteData) => {
+            // TODO(jaketrower): Would be nice to have some shared helper functions for this maybe, between here and playCompositionNotesAtBeat
+            const instrumentInstruction = getInstrumentInstructionFromNoteData(noteData, userInstrumentIdx);
+            const { midiNote, midiBeat } = instrumentInstruction;
+            const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
+            const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
+              ? 0
+              : ((midiBeat - 1) % 4) * beatLengthInSeconds * ((beatLengthInSeconds * 4.0) / 3.0);
+            console.log(`Play note ${midiNote} at time ${midiBeat * beatLengthInSeconds + tripletBeatOffsetInSeconds}s (aka beat: ${midiBeat}) for ${durationSec}s`);
+            sf2Sampler.start({
+              note: midiNote,
+              time: (midiBeat * beatLengthInSeconds) + tripletBeatOffsetInSeconds,
+              duration: durationSec,
+            });
+          });
+        });
+      }, {
+        // duration: 10, // TODO(jaketrower): Should find the longest duration + midiBeat... can rely on coda repeat??
+      });
+
+      renderedOfflineAudioResult.downloadWav(`${songName}.wav`);
+    } catch (e) {
+      console.log(e);
+      alert("We tried, but failed, to export the song! See console for more details.");
+    }
+  }, [compositionRef, defaultSoundfontBuffer, songName, tempoRef, userInstrumentsRef]);
+
   return (
     <>
       <SongHeaderContainer>
@@ -216,6 +265,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
           <DivButton onClick={handleSaveCompositionToFile}>💾 Save As</DivButton>
           <FileInputLabel htmlFor={`song-to-load`}>📥 Load</FileInputLabel>
           <input id={`song-to-load`} type="file" accept=".json" onChange={onLoadSongJson} style={{ display: 'none' }} />
+          <DivButton onClick={handleExportSongToWav}>💾 Export as .Wav</DivButton>
         </ActionButtonsContainer>
       </SongHeaderContainer>
     </>

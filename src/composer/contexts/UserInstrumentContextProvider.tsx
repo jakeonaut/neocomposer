@@ -5,6 +5,7 @@ import { SoundFont2 } from 'soundfont2';
 // import * as randomEmoji from 'random-unicode-emoji';
 
 export const UserInstrumentContext = createContext<{
+  defaultSoundfontBuffer: Uint8Array | undefined,
   _userInstruments: UserInstrument[],
   userInstrumentsRef: React.RefObject<UserInstrument[]>,
   setUserInstruments: (userInstruments: UserInstrument[]) => void,
@@ -111,6 +112,7 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
   }, [defaultSoundfontBuffer]);
   return (
     <UserInstrumentContext value={{
+      defaultSoundfontBuffer,
       _userInstruments,
       userInstrumentsRef,
       setUserInstruments,

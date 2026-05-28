@@ -171,6 +171,7 @@ export type OctavelessMidiNote = string;
 export type MidiNoteNum = number;
 export type MidiBeat = number;
 export type NoteId = number;
+export type InstrumentIndex = number;
 export enum SubdivisionType { q ='q', t = 't' };
 export enum TimeSignature { ts4_4 = '4_4', ts3_4 = '3_4' };
 export type InstrumentInstruction = {
@@ -201,7 +202,8 @@ export type Composition = {
 };
 // The (number | SubdivisionType)[] represents [measure, note, subdivision, midiNote, noteWidth]
 // useful to represent as an array in the exported json for brevity
-export type CompositionByInstrument = Record<NoteId, (number | SubdivisionType)[][]>;
+export type JsonNoteData = (number | SubdivisionType)[];
+export type CompositionByInstrument = Record<InstrumentIndex, JsonNoteData[]>;
 export type SongJsonExport = {
   songName: string,
   tempo: number,
@@ -359,23 +361,29 @@ export function getEndOfMeasureToLoopAtBeat(
   );
 }
 
+export function getInstrumentInstructionFromNoteData(noteData: JsonNoteData, userInstrumentIndex: number): InstrumentInstruction {
+  const midiBeat = noteData[0] as number;
+  const midiNote = noteData[1] as number;
+  const noteWidth = noteData[2] as number;
+  const subdivisionType = noteData[3] as SubdivisionType || 'q';
+  return {
+    noteId: ++globals.instructionId,
+    userInstrumentIndex: userInstrumentIndex,
+    midiBeat,
+    midiNote,
+    noteWidth,
+    subdivisionType,
+  };
+}
+
 export function convertCompositionByInstrumentToComposition(compositionByInstrument: CompositionByInstrument) {
   globals.instructionId = 0;
   const composition: Composition = {};
   Object.entries(compositionByInstrument).forEach(([userInstrumentIndex, instructions]) => {
     instructions.forEach((instruction) => {
-      const midiBeat = instruction[0] as number;
-      const midiNote = instruction[1] as number;
-      const noteWidth = instruction[2] as number;
-      const subdivisionType = instruction[3] as SubdivisionType || 'q';
-      const newInstruction: InstrumentInstruction = {
-        noteId: ++globals.instructionId,
-        userInstrumentIndex: parseInt(userInstrumentIndex),
-        midiBeat,
-        midiNote,
-        noteWidth,
-        subdivisionType,
-      }
+      const newInstruction = getInstrumentInstructionFromNoteData(instruction, parseInt(userInstrumentIndex));
+      const {midiBeat, midiNote} = newInstruction;
+
       if (!composition[midiBeat]) composition[midiBeat] = {};
       if (!composition[midiBeat][midiNote]) composition[midiBeat][midiNote] = {};
       composition[midiBeat][midiNote][newInstruction.noteId] = newInstruction;
@@ -420,6 +428,7 @@ export function playCompositionNotesAtBeat({
           userInstruments[instrumentInstruction.userInstrumentIndex];
         if (!userInstrumentToPlay?.visible) return;
         if (!userInstrumentToPlay?.sf2Sampler) return;
+        // TODO(jaketrower): Would be nice to have some shared helper functions for this maybe, between here and handleExportSongToWav
         const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
         const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
           ? 0
