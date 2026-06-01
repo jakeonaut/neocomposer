@@ -2,7 +2,7 @@ import React, { MouseEvent, useCallback, useContext, useEffect, useMemo } from '
 import styled from 'styled-components'
 import { useUploadSf2 } from './hooks/useUploadSf2';
 import { Soundfont2Sampler } from '../smplr/soundfont2';
-import { AudioContextContext, getARandomNote } from './consts';
+import { AudioContextContext, getARandomNote, sf2DefaultColours } from './consts';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { useThrottledCallback } from "use-debounce";
 import { ClipboardContext } from './contexts/ClipboardContextProvider';
@@ -87,10 +87,12 @@ export function UserInstrumentsHeader() {
   } = useContext(UserInstrumentContext)!;
   const { selectNotesByInstrument } = useContext(ClickedSelectedNotesContext)!;
   const { compositionByInstructionIdRef } = useContext(CompositionActionsContext)!;
-  const _selectedSf2InstOption = useMemo(() => _userInstruments[_userInstrumentIndex].sf2InstrumentName, [_userInstruments, _userInstrumentIndex]);
+  const _selectedSf2InstOption = useMemo(() => {
+    return _userInstruments.length >   0 ? _userInstruments[_userInstrumentIndex].sf2InstrumentName : undefined
+  }, [_userInstruments, _userInstrumentIndex]);
 
-  const onAddNewUserInstrument = useCallback(() => {
-    const newInstrument = getNewUserInstrument(audioContext, howManyInstrumentsIEverMade);
+  const onAddNewUserInstrument = useCallback(async () => {
+    const newInstrument = await getNewUserInstrument(audioContext, howManyInstrumentsIEverMade);
     setHowManyInstrumentsIEverMade(howManyInstrumentsIEverMade + 1);
     setUserInstruments([...userInstrumentsRef.current, newInstrument]);
     setUserInstrumentIndex(userInstrumentsRef.current.length - 1);
@@ -101,7 +103,7 @@ export function UserInstrumentsHeader() {
     const newUserInstruments = [ ...userInstrumentsRef.current ];
     newUserInstruments[userInstrumentIndexRef.current]!.sf2Sampler = sampler;
     newUserInstruments[userInstrumentIndexRef.current]!.sf2InstrumentName = sf2InstrumentName;
-    sampler.player.output.setVolume(newUserInstruments[userInstrumentIndexRef.current].volume);
+    sampler.output.volume = newUserInstruments[userInstrumentIndexRef.current].volume;
     setUserInstruments([...newUserInstruments]);
     const now = audioContext.currentTime;
     ["C4", "G4"].forEach((note, i) => {
@@ -153,7 +155,7 @@ export function UserInstrumentsHeader() {
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
     const volume = parseInt(e.target.value);
     if (userInstrument.sf2Sampler) {
-      userInstrument.sf2Sampler.player.output.setVolume(volume);
+      userInstrument.sf2Sampler.output.volume = volume;
       // userInstrument.sf2Sampler.stop();
       // userInstrument.sf2Sampler.start({ note: 'C4', duration: 0.5 });
     }
@@ -224,9 +226,10 @@ export function UserInstrumentsHeader() {
     setUserInstruments(newUserInstruments);
   }, [userInstrumentsRef, removeInstrumentFromComposition, userInstrumentIndexRef, removeInstrumentFromCopiedNotes, setUserInstruments, setUserInstrumentIndex]);
 
-  const sf2InstOptions = useMemo(() => {
-    return _userInstruments[_userInstrumentIndex].sf2Sampler?.instrumentNames.map(
-    (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>); }, 
+  const sf2InstOptions = useMemo(() =>(_userInstruments.length > 0
+      ? _userInstruments[_userInstrumentIndex].sf2Sampler?.instrumentNames.map(
+        (name, index) => <option value={name} key={`${name}-${index}`}>{name}</option>)
+      : []), 
     [_userInstrumentIndex, _userInstruments]
   );
 
@@ -234,7 +237,7 @@ export function UserInstrumentsHeader() {
     <UserInstrumentTab
       key={`${userInstrument?.name}-${index}`}
       style={{
-        backgroundColor: userInstrument.color ?? 'white',
+        backgroundColor: userInstrument?.color ?? sf2DefaultColours[(index % sf2DefaultColours.length)],
         fontWeight: index === _userInstrumentIndex ? 700 : 400
       }}
       onClick={(e: MouseEvent) => {
@@ -245,11 +248,11 @@ export function UserInstrumentsHeader() {
         }
       }}
     >
-        {userInstrument.name ?? index}
+        {userInstrument?.name ?? index}
       </UserInstrumentTab>
   )), [_userInstruments, _userInstrumentIndex, setUserInstrumentIndex, selectNotesByInstrument, compositionByInstructionIdRef]);
   
-  const currColor = _userInstruments[_userInstrumentIndex].color ?? 'white';
+  const currColor = _userInstruments[_userInstrumentIndex]?.color ?? sf2DefaultColours[0];
   return (
     <>
       <SoundfontHeader $color={currColor}>
@@ -281,9 +284,9 @@ export function UserInstrumentsHeader() {
             <input
               ref={userInstrumentNameInputRef}
               type="text"
-              defaultValue={_userInstruments[_userInstrumentIndex].name}
+              defaultValue={_userInstruments[_userInstrumentIndex]?.name}
               onChange={onNameChange} />
-            {_userInstruments[_userInstrumentIndex].sf2Sampler && (<>
+            {_userInstruments[_userInstrumentIndex]?.sf2Sampler && (<>
               <div style={{ display: 'flex' }}>
                 {/* <label htmlFor="sf2-instrument-select">Select instrument: </label> */}
                 <select id="sf2-instrument-select"
@@ -305,7 +308,7 @@ export function UserInstrumentsHeader() {
               ref={userInstrumentVolumeInputRef}
               style={{ width: 100 }}
               id="user-instrument-volume"
-              defaultValue={_userInstruments[_userInstrumentIndex].volume}
+              defaultValue={_userInstruments[_userInstrumentIndex]?.volume}
               onChange={onUserInstrumentVolumeChange} />
           </div>
           <div onClick={onUserInstrumentSoloToggle}
@@ -318,7 +321,7 @@ export function UserInstrumentsHeader() {
               cursor: 'pointer',
             }}>
             <div style={{
-              background: `url('./toolicons1x.png') repeat scroll  ${_userInstruments[_userInstrumentIndex].solo ? '0' : '-25px'}   -231px transparent`,
+              background: `url('./toolicons1x.png') repeat scroll  ${_userInstruments[_userInstrumentIndex]?.solo ? '0' : '-25px'}   -231px transparent`,
               width: 25,
               height: 21,
               imageRendering: 'pixelated',
@@ -338,7 +341,7 @@ export function UserInstrumentsHeader() {
               cursor: 'pointer',
             }}>
             <div style={{
-              background: `url('./toolicons1x.png') repeat scroll  ${_userInstruments[_userInstrumentIndex].visible ? '0' : '-25px'}   -168px transparent`,
+              background: `url('./toolicons1x.png') repeat scroll  ${_userInstruments[_userInstrumentIndex]?.visible ? '0' : '-25px'}   -168px transparent`,
               width: 25,
               height: 21,
               imageRendering: 'pixelated',

@@ -4,7 +4,7 @@ import { UserInstrumentContext } from "../contexts/UserInstrumentContextProvider
 import { CompositionContext } from "../contexts/CompositionContextProvider";
 import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
 import { PlacedNote } from "./PlacedNote";
-import { toMidi } from "../../smplr/player/midi";
+import { toMidi } from "../../smplr/smplr/midi";
 import styled from "styled-components";
 import { MouseDownContext } from "../contexts/MouseDownContextProvider";
 import { ClickedSelectedNotesContext } from "../contexts/ClickedSelectedNotesContextProvider";

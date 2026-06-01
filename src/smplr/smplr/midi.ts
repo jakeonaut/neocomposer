@@ -13,24 +13,19 @@ function noteNameToMidi(note: string): number | undefined {
   return [0, 2, 4, 5, 7, 9, 11][step] + alt + 12 * (oct + 1);
 }
 
-export function fromMidi(note: number): string {
-  const noteRemainder = note % 12;
-  return [
-    'C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'
-  ][noteRemainder];
-}
-
+/** @internal Not part of the public 1.0 API surface. */
 export function toMidi(note: string | number | undefined): number | undefined {
   return note === undefined
     ? undefined
     : typeof note === "number"
-    ? note
-    : noteNameToMidi(note);
+      ? note
+      : noteNameToMidi(note);
 }
 
+/** @internal Not part of the public 1.0 API surface. */
 export function findNearestMidi(
   midi: number,
-  isAvailable: Record<string | number, unknown>
+  isAvailable: Record<string | number, unknown>,
 ): [number, number] {
   let i = 0;
   while (isAvailable[midi + i] === undefined && i < 128) {

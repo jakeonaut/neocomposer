@@ -1,3 +1,4 @@
+import { asConstructable } from "../smplr/as-constructable";
 import { PROCESSOR } from "./processor.min";
 
 const PARAMS = [
@@ -17,7 +18,15 @@ const PARAMS = [
 
 const init = new WeakMap<AudioContext, Promise<void>>();
 
-async function createDattorroReverbEffect(context: AudioContext) {
+async function createDattorroReverbEffect(
+  context: AudioContext,
+): Promise<AudioWorkletNode | undefined> {
+  if (!context.audioWorklet) {
+    console.warn(
+      "AudioWorklet not supported in this context. Reverb not available.",
+    );
+    return undefined;
+  }
   let ready = init.get(context);
   if (!ready) {
     const blob = new Blob([PROCESSOR], { type: "application/javascript" });
@@ -33,7 +42,7 @@ async function createDattorroReverbEffect(context: AudioContext) {
   return reverb;
 }
 
-export class Reverb {
+class ReverbImpl {
   _effect: AudioWorkletNode | undefined;
   _ready: Promise<this>;
   public readonly input: AudioNode;
@@ -43,9 +52,11 @@ export class Reverb {
     this.input = context.createGain();
     this._output = context.destination;
     this._ready = createDattorroReverbEffect(context).then((reverb) => {
-      this.input.connect(reverb);
-      reverb.connect(this._output);
-      this._effect = reverb;
+      if (reverb) {
+        this.input.connect(reverb);
+        reverb.connect(this._output);
+        this._effect = reverb;
+      }
       return this;
     });
   }
@@ -55,7 +66,7 @@ export class Reverb {
   }
 
   getParam(name: (typeof PARAMS)[number]): AudioParam | undefined {
-    return this._effect?.parameters.get("preDelay");
+    return this._effect?.parameters.get(name);
   }
 
   get isReady(): boolean {
@@ -74,3 +85,6 @@ export class Reverb {
     this._output = output;
   }
 }
+
+export const Reverb = asConstructable(ReverbImpl);
+export type Reverb = ReturnType<typeof Reverb>;

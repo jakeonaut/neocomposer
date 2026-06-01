@@ -1,11 +1,5 @@
-import { RegionPlayer, RegionPlayerOptions } from "./player/region-player";
-import {
-  RegionGroup,
-  SampleRegion,
-  SampleStart,
-  SampleStop,
-  SamplerInstrument,
-} from "./player/types";
+import { Instrument } from "./smplr";
+import { SmplrGroup, SmplrPreset } from "./smplr/types";
 
 type Sf2 = {
   instruments: Sf2Instrument[];
@@ -37,112 +31,110 @@ type Sf2Sample = {
   };
 };
 
-export type Soundfont2Options = Partial<RegionPlayerOptions> & {
+export type Soundfont2Options = {
   data: Uint8Array;
   createSoundfont: (data: Uint8Array) => Sf2;
+  destination?: AudioNode;
+  volume?: number;
+  /** Stereo pan position (-1 = full left, 0 = centre, +1 = full right). */
+  pan?: number;
+  velocity?: number;
 };
 
-export class Soundfont2Sampler {
-  player: RegionPlayer;
-  soundfont: Sf2 | undefined;
-  load: this;
-  _instrumentNames: string[] = [];
+export function sf2InstrumentToPreset(
+  sf2Instrument: Sf2Instrument,
+  context: BaseAudioContext,
+): { json: SmplrPreset; buffers: Map<string, AudioBuffer> } {
+  const buffers = new Map<string, AudioBuffer>();
+  const regions: SmplrGroup["regions"] = [];
 
-  constructor(
-    public readonly context: AudioContext,
-    public readonly options: Soundfont2Options
-  ) {
-    this.player = new RegionPlayer(context, options);
-    this.load = (() => {
-      const soundfont = loadSoundfont(options);
-      this.soundfont = soundfont;
-      this._instrumentNames = soundfont.instruments.map(
-        (instrument) => instrument.header.name
-      );
-      return this;
-    })();
-  }
+  for (const zone of sf2Instrument.zones) {
+    const { sample, keyRange } = zone;
+    const { header } = sample;
+    const sampleName = header.name;
 
-  get instrumentNames() {
-    return this._instrumentNames;
-  }
-
-  loadInstrument(instrumentName: string) {
-    const sf2instrument = this.soundfont?.instruments.find(
-      (inst) => inst.header.name === instrumentName
+    const float32 = new Float32Array(sample.data.length);
+    for (let i = 0; i < sample.data.length; i++)
+      float32[i] = sample.data[i] / 32768;
+    const audioBuffer = context.createBuffer(
+      1,
+      float32.length,
+      header.sampleRate,
     );
-    if (!sf2instrument) return;
+    audioBuffer.getChannelData(0).set(float32);
+    buffers.set(sampleName, audioBuffer);
 
-    const buffers = this.player.buffers;
-    const group: RegionGroup = {
-      regions: [],
-    };
+    const hasLoop = header.startLoop >= 0 && header.endLoop > header.startLoop;
 
-    for (const zone of sf2instrument.zones) {
-      const sample = zone.sample;
-      const header = sample.header;
-      const buffer = getAudioBufferFromSample(this.context, sample);
-      let region: SampleRegion = {
-        sampleName: sample.header.name,
-        midiPitch: sample.header.originalPitch,
-        midiLow: zone.keyRange?.lo,
-        midiHigh: zone.keyRange?.hi,
-        sample: {
-          loop: header.startLoop >= 0 && header.endLoop > header.startLoop,
-          loopStart: header.startLoop / header.sampleRate,
-          loopEnd: header.endLoop / header.sampleRate,
-        },
-      };
-      group.regions.push(region);
-      buffers[region.sampleName] = buffer;
-    }
-
-    const instrument: SamplerInstrument = {
-      groups: [group],
-      options: this.options,
-    };
-
-    this.player.instrument = instrument;
-
-    return [instrument, buffers];
+    regions.push({
+      sample: sampleName,
+      pitch: header.originalPitch,
+      ...(keyRange && {
+        keyRange: [keyRange.lo, keyRange.hi] as [number, number],
+      }),
+      ...(hasLoop && {
+        loop: true,
+        loopStart: header.startLoop / header.sampleRate,
+        loopEnd: header.endLoop / header.sampleRate,
+      }),
+    });
   }
 
-  get output() {
-    return this.player.output;
-  }
-
-  start(sample: SampleStart | string | number) {
-    return this.player.start(sample);
-  }
-
-  stop(sample?: SampleStop | string | number) {
-    return this.player.stop(sample);
-  }
-
-  disconnect(): void {
-    this.player.disconnect();
-  }
+  return {
+    json: { samples: { baseUrl: "", formats: [] }, groups: [{ regions }] },
+    buffers,
+  };
 }
 
-function getAudioBufferFromSample(
-  context: AudioContext,
-  sample: Sf2Sample
-): AudioBuffer {
-  const { header, data: int16 } = sample;
-  const float32 = new Float32Array(int16.length);
-  for (let i = 0; i < int16.length; i++) {
-    float32[i] = int16[i] / 32768;
-  }
-  const audioBuffer = context.createBuffer(
-    1,
-    float32.length,
-    header.sampleRate
-  );
-  const channelData = audioBuffer.getChannelData(0);
-  channelData.set(float32);
-  return audioBuffer;
-}
+type Soundfont2SamplerExtras = {
+  readonly instrumentNames: string[];
+  loadInstrument(instrumentName: string): Promise<void> | undefined;
+};
 
-function loadSoundfont(options: Soundfont2Options) {
+export const Soundfont2 = Instrument(
+  (ctx: BaseAudioContext, options: Soundfont2Options, smplr) => {
+    // Mutable closure state — extras read these; parse promise populates them.
+    let soundfont: Sf2 | undefined = undefined;
+    let instrumentNamesList: string[] = [];
+
+    // Capture the base `loadInstrument(json, buffers)` *before* the extras
+    // below shadow it on the instance — otherwise the call inside the
+    // override would recurse into itself with the wrong arity.
+    const baseLoadInstrument = smplr.loadInstrument.bind(smplr);
+
+    const extras: Soundfont2SamplerExtras = {
+      get instrumentNames(): string[] {
+        return instrumentNamesList;
+      },
+      loadInstrument(instrumentName) {
+        const sf2inst = soundfont?.instruments.find(
+          (inst: Sf2Instrument) => inst.header.name === instrumentName,
+        );
+        if (!sf2inst) return undefined;
+        const { json, buffers } = sf2InstrumentToPreset(sf2inst, ctx);
+        return baseLoadInstrument(json, buffers);
+      },
+    };
+
+    const ready = loadSoundfont(options).then((sf2) => {
+      soundfont = sf2;
+      instrumentNamesList = sf2.instruments.map(
+        (inst: Sf2Instrument) => inst.header.name,
+      );
+    });
+
+    return { extras, ready };
+  },
+);
+
+/** Instance type returned by the {@link Soundfont2} factory. */
+export type Soundfont2 = ReturnType<typeof Soundfont2>;
+
+/** @deprecated Use `Soundfont2` instead. */
+export const Soundfont2Sampler = Soundfont2;
+/** @deprecated Use `Soundfont2` instead. */
+export type Soundfont2Sampler = Soundfont2;
+
+async function loadSoundfont(options: Soundfont2Options) {
   return options.createSoundfont(options.data);
 }

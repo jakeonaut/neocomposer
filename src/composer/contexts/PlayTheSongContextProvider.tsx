@@ -158,14 +158,14 @@ export function PlayTheSongContextProvider({
     setIsLooping(false);
   }, [setIsLooping]);
 
-  const handleClearComposition = useCallback(() => {
+  const handleClearComposition = useCallback(async () => {
     const shouldDelete = window.confirm(
       "Are you sure you want to destroy your creation?"
     );
     if (!shouldDelete) return;
     handleStopComposition();
     setUserInstrumentIndex(0);
-    setUserInstruments([getNewUserInstrument(audioContext, 0)]);
+    setUserInstruments([await getNewUserInstrument(audioContext, 0)]);
     setHowManyInstrumentsIEverMade(1);
     setPlayheadPosX(0);
     setFarthestRightNoteEnd(1);

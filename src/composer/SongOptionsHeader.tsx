@@ -11,8 +11,6 @@ import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
 import { BabyDanceFrameContext, PlayTheSongContext } from './contexts/PlayTheSongContextProvider';
 import { PlayheadPosXContext } from './contexts/PlayheadPosXContextProvider';
 import { CompositionActionsContext } from './contexts/CompositionActionsContextProvider';
-import { Soundfont2Sampler, SplendidGrandPiano } from '../smplr';
-import { SoundFont2 } from 'soundfont2';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -105,25 +103,27 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   //   },
   //   []
   // );
-  const handleLoadCompositionFromFileJson = useCallback((jsonObj: SongJsonExport) => {
+  const handleLoadCompositionFromFileJson = useCallback(async (jsonObj: SongJsonExport) => {
     setSongName(jsonObj.songName);
     setTempo(jsonObj.tempo);
-    const newUserInstruments: UserInstrument[] = [...jsonObj.userInstruments.map((jsonInstrument, index) => {
-      // TODO(jaketrower): handle save/load with different .sf2s then the default !
-      const sf2Sampler = getNewUserInstrument(audioContext, index).sf2Sampler;
-      sf2Sampler?.loadInstrument(jsonInstrument.sf2InstrumentName!);
-      return {
-        name: `ins${index+1}`,
-        color: getNewInstrumentColor(index),
-        // TODO(jaketrower): handle save/load with different .sf2s then the default !
-        sf2InstrumentName: sf2Sampler?.instrumentNames[0],
-        volume: DEFAULT_VOLUME,
-        visible: true, 
-        solo: false,
-        ...jsonInstrument,
-        sf2Sampler,
-      }
-    })];
+    const newUserInstruments: UserInstrument[] = await Promise.all(
+      [...jsonObj.userInstruments.map(
+        async (jsonInstrument, index) => {
+          // TODO(jaketrower): handle save/load with different .sf2s then the default !
+          const sf2Sampler = (await getNewUserInstrument(audioContext, index)).sf2Sampler;
+          sf2Sampler?.loadInstrument(jsonInstrument.sf2InstrumentName!);
+          return {
+            name: `ins${index+1}`,
+            color: getNewInstrumentColor(index),
+            // TODO(jaketrower): handle save/load with different .sf2s then the default !
+            sf2InstrumentName: sf2Sampler?.instrumentNames[0],
+            volume: DEFAULT_VOLUME,
+            visible: true, 
+            solo: false,
+            ...jsonInstrument,
+            sf2Sampler,
+          }
+    })]);
     setTimeSignature(jsonObj.timeSignature || TimeSignature.ts4_4);
     setUserInstrumentIndex(0);
     setUserInstruments(newUserInstruments);
@@ -180,15 +180,15 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   const handleExportSongToWav = useCallback(async () => {
     try {
       const renderedOfflineAudioResult = await renderOffline(async (audioContext) => {
-        const offlineSf2Samplers = userInstrumentsRef.current.map((userInstrument, index) => {
+        const offlineSf2Samplers = await Promise.all(userInstrumentsRef.current.map(async (userInstrument, index) => {
           // TODO(jaketrower): This will need to be modified to handle multiple sf2s as well...
-          const { sf2Sampler } = createUserInstrument(audioContext, 0, defaultSoundfontBuffer);
-          sf2Sampler!.player.output.setVolume(userInstrument.volume);
+          const { sf2Sampler } = await createUserInstrument(audioContext, 0, defaultSoundfontBuffer);
+          sf2Sampler!.output.volume = userInstrument.volume;
           if (userInstrument.sf2InstrumentName) {
             sf2Sampler!.loadInstrument(userInstrument.sf2InstrumentName);
           }
           return sf2Sampler!;
-        });
+        }));
         const compositionByInstrument = convertCompositionToCompositionByInstrument(compositionRef.current);
         const beatLengthInSeconds = getBeatLengthInMs(tempoRef.current) / 1000;
         Object.keys(compositionByInstrument).forEach((userInstrumentIdxStr: string) => {

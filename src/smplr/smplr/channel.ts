@@ -1,11 +1,12 @@
 import { AudioInsert, connectSerial } from "./connect";
-import { createControl } from "./signals";
+import { Control, createControl } from "./signals";
 import { midiVelToGain } from "./volume";
 
 export type ChannelConfig = {
   destination: AudioNode;
   volume: number;
   volumeToGain: (volume: number) => number;
+  pan?: number;
 };
 
 export type OutputChannel = Omit<Channel, "input">;
@@ -21,41 +22,65 @@ type Send = {
  * @private
  */
 export class Channel {
+  /** @deprecated Use `output.volume = n` instead. */
   public readonly setVolume: (vol: number) => void;
   public readonly input: AudioNode;
 
   _volume: GainNode;
+  _panner: StereoPannerNode;
   _sends?: Send[];
   _inserts?: (AudioNode | AudioInsert)[];
   _disconnect: () => void;
   _unsubscribe: () => void;
   _config: Readonly<ChannelConfig>;
+  _volumeControl: Control<number>;
   _disconnected = false;
 
   constructor(
     public readonly context: BaseAudioContext,
-    options?: Partial<ChannelConfig>
+    options?: Partial<ChannelConfig>,
   ) {
     this._config = {
       destination: options?.destination ?? context.destination,
       volume: options?.volume ?? 100,
       volumeToGain: options?.volumeToGain ?? midiVelToGain,
+      pan: options?.pan ?? 0,
     };
 
     this.input = context.createGain();
     this._volume = context.createGain();
+    this._panner = context.createStereoPanner();
+    this._panner.pan.value = this._config.pan!;
 
     this._disconnect = connectSerial([
       this.input,
       this._volume,
+      this._panner,
       this._config.destination,
     ]);
 
     const volume = createControl(this._config.volume);
+    this._volumeControl = volume;
     this.setVolume = volume.set;
     this._unsubscribe = volume.subscribe((volume) => {
       this._volume.gain.value = this._config.volumeToGain(volume);
     });
+  }
+
+  get volume(): number {
+    return this._volumeControl.get();
+  }
+
+  set volume(value: number) {
+    this._volumeControl.set(value);
+  }
+
+  get pan(): number {
+    return this._panner.pan.value;
+  }
+
+  set pan(value: number) {
+    this._panner.pan.value = value;
   }
 
   addInsert(effect: AudioNode | AudioInsert) {
@@ -69,6 +94,7 @@ export class Channel {
       this.input,
       ...this._inserts,
       this._volume,
+      this._panner,
       this._config.destination,
     ]);
   }
@@ -76,7 +102,7 @@ export class Channel {
   addEffect(
     name: string,
     effect: AudioNode | { input: AudioNode },
-    mixValue: number
+    mixValue: number,
   ) {
     if (this._disconnected) {
       throw Error("Can't add effect to disconnected channel");
@@ -90,7 +116,7 @@ export class Channel {
     this._sends.push({ name, mix, disconnect });
   }
 
-  sendEffect(name: string, mix: number) {
+  setEffectMix(name: string, mix: number) {
     if (this._disconnected) {
       throw Error("Can't send effect to disconnected channel");
     }
@@ -101,6 +127,11 @@ export class Channel {
     } else {
       console.warn("Send bus not found: " + name);
     }
+  }
+
+  /** @deprecated Use `setEffectMix(name, mix)` instead. */
+  sendEffect(name: string, mix: number) {
+    this.setEffectMix(name, mix);
   }
 
   disconnect() {

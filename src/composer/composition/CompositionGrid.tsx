@@ -1,7 +1,7 @@
 import React, { UIEvent, useCallback, useContext, useEffect, useMemo } from "react";
 import { getRelativeBeatWidth, lightColor, mediumColor, MidiBeat, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature, veryLightColor } from "../consts";
 import styled, { CSSProperties } from "styled-components";
-import { toMidi } from "../../smplr/player/midi";
+import { toMidi } from "../../smplr/smplr/midi";
 import { CellComponentProps, Grid, useGridCallbackRef } from "react-window";
 import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
 import { TimeSignatureContext } from "../contexts/TimeSignatureContextProvider";

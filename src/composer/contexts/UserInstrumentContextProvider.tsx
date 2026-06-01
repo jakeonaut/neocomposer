@@ -14,24 +14,24 @@ export const UserInstrumentContext = createContext<{
   setUserInstrumentIndex: (userInstrumentIndex: number) => void,
   howManyInstrumentsIEverMade: number,
   setHowManyInstrumentsIEverMade: (num: number) => void,
-  getNewUserInstrument: (audioContext: AudioContext, index: number) => UserInstrument,
+  getNewUserInstrument: (audioContext: AudioContext, index: number) => Promise<UserInstrument>,
   userInstrumentColorInputRef: React.RefObject<HTMLInputElement | null>,
   userInstrumentNameInputRef: React.RefObject<HTMLInputElement | null>,
   userInstrumentVolumeInputRef: React.RefObject<HTMLInputElement | null>,
 } | undefined>(undefined);
 
-export function createUserInstrument(audioContext: AudioContext, index: number, arrayBuffer?: Uint8Array): UserInstrument {
+export async function createUserInstrument(audioContext: BaseAudioContext, index: number, arrayBuffer?: Uint8Array): Promise<UserInstrument> {
   const volume = DEFAULT_VOLUME;
-  const { sampler: sf2Sampler, randomInstrumentIdx } = (() => {
+  const { sampler: sf2Sampler, randomInstrumentIdx } = await (async () => {
     if (arrayBuffer) {
       const soundfont2Sampler = new Soundfont2Sampler(audioContext, {
         data: arrayBuffer,
         createSoundfont: (data) => new SoundFont2(data),
-      })
-      const sampler = soundfont2Sampler.load;
-      const randomInstrumentIdx = Math.floor(Math.random() * sampler.instrumentNames.length);
-      sampler.loadInstrument(sampler.instrumentNames[randomInstrumentIdx]);
-      return { sampler, randomInstrumentIdx };
+      });
+      await soundfont2Sampler.ready;
+      const randomInstrumentIdx = Math.floor(Math.random() * soundfont2Sampler.instrumentNames.length);
+      soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[randomInstrumentIdx]);
+      return { sampler: soundfont2Sampler, randomInstrumentIdx };
     } else {
       return { sampler: undefined, randomInstrumentIdx: undefined };
     }
@@ -51,7 +51,7 @@ export function createUserInstrument(audioContext: AudioContext, index: number, 
 
 export function UserInstrumentContextProvider({ children } : { children: React.ReactNode}) {
   const audioContext = useContext(AudioContextContext)!;
-  const [_userInstruments, _setUserInstruments] = useState<UserInstrument[]>([createUserInstrument(audioContext, 0)]);
+  const [_userInstruments, _setUserInstruments] = useState<UserInstrument[]>([]);
   const [_userInstrumentIndex, _setUserInstrumentIndex] = useState(0);
   const [howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade] = useState(1);
   const [defaultSoundfontBuffer, setDefaultSoundfontBuffer] = useState<Uint8Array | undefined>(undefined);
@@ -87,6 +87,9 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
 
   useEffect(() => {
     const fetchAndSetDefaultSoundFontInstrument = async () => {
+      const userInstrument = await createUserInstrument(audioContext, 0);
+      _setUserInstruments([userInstrument]);
+
       const response = await fetch("microgm.sf2");
       const arrayBuffer = await response.arrayBuffer();
       const soundfontBuffer = new Uint8Array(arrayBuffer);
@@ -95,19 +98,19 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
         data: soundfontBuffer,
         createSoundfont: (data) => new SoundFont2(data),
       })
-      const sampler = await soundfont2Sampler.load;
-      sampler.player.output.setVolume(userInstrumentsRef.current[0].volume);
-      const randomInstrumentIdx = Math.floor(Math.random() * sampler.instrumentNames.length);
-      sampler.loadInstrument(sampler.instrumentNames[randomInstrumentIdx]);
+      await soundfont2Sampler.ready;
+      soundfont2Sampler.output.volume = userInstrument.volume;
+      const randomInstrumentIdx = Math.floor(Math.random() * soundfont2Sampler.instrumentNames.length);
+      soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[randomInstrumentIdx]);
       setUserInstruments([{
-        ...userInstrumentsRef.current[0],
-        sf2Sampler: sampler,
-        sf2InstrumentName: sampler.instrumentNames[randomInstrumentIdx],
+        ...userInstrument,
+        sf2Sampler: soundfont2Sampler,
+        sf2InstrumentName: soundfont2Sampler.instrumentNames[randomInstrumentIdx],
       }])
     }
     fetchAndSetDefaultSoundFontInstrument();
   }, [audioContext, setUserInstruments]);
-  const getNewUserInstrument = useCallback((audioContext: AudioContext, index: number): UserInstrument => {
+  const getNewUserInstrument = useCallback(async (audioContext: AudioContext, index: number): Promise<UserInstrument> => {
     return createUserInstrument(audioContext, index, defaultSoundfontBuffer);
   }, [defaultSoundfontBuffer]);
   return (

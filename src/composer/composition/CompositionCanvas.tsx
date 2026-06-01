@@ -17,7 +17,7 @@ import {
   getEndOfMeasureFromBeat,
 } from "../consts";
 import styled from "styled-components";
-import { toMidi } from "../../smplr/player/midi";
+import { toMidi } from "../../smplr/smplr/midi";
 import { UserInstrumentContext } from "../contexts/UserInstrumentContextProvider";
 import _ from "lodash";
 import { CompositionGrid } from "./CompositionGrid";

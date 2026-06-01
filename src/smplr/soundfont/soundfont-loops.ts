@@ -1,4 +1,4 @@
-import { toMidi } from "../player/midi";
+import { toMidi } from "../smplr/midi";
 
 export type LoopData = Record<number, [number, number]>;
 
@@ -14,7 +14,7 @@ export function getGoldstSoundfontLoopsUrl(instrument: string, kit: string) {
  */
 export async function fetchSoundfontLoopData(
   url?: string,
-  sampleRate = 44100
+  sampleRate = 44100,
 ): Promise<LoopData | undefined> {
   if (!url) return undefined;
   try {
@@ -25,10 +25,9 @@ export async function fetchSoundfontLoopData(
     const loopData: LoopData = {};
     Object.keys(raw).forEach((key) => {
       const midi = toMidi(key);
-      if (midi) {
-        const offsets = raw[key];
-        loopData[midi] = [offsets[0] / sampleRate, offsets[1] / sampleRate];
-      }
+      if (midi === undefined) return;
+      const offsets = raw[key];
+      loopData[midi] = [offsets[0] / sampleRate, offsets[1] / sampleRate];
     });
     return loopData;
   } catch (err) {

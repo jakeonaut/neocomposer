@@ -20,7 +20,7 @@ export function useUploadSf2({
 
     const reader = new FileReader();
     reader.readAsArrayBuffer(file);
-    reader.onload = readerEvent => {
+    reader.onload = async (readerEvent) => {
       const arrayBuffer = readerEvent.target?.result;
       if (!(arrayBuffer instanceof ArrayBuffer)) {
         console.log("Failed to parse file.");
@@ -32,9 +32,9 @@ export function useUploadSf2({
         data: buffer,
         createSoundfont: (data) => new SoundFont2(data),
       })
-      const sampler = soundfont2Sampler.load;
-      sampler.loadInstrument(sampler.instrumentNames[0]);
-      onLoadSuccess(sampler, sampler.instrumentNames[0]);
+      await soundfont2Sampler.ready;
+      soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[0]);
+      onLoadSuccess(soundfont2Sampler, soundfont2Sampler.instrumentNames[0]);
     }
   }, [audioContext, onLoadSuccess]);
   return handleUploadSf2;
