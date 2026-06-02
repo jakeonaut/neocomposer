@@ -2,7 +2,7 @@ import React, { MouseEvent, useCallback, useContext, useEffect, useMemo } from '
 import styled from 'styled-components'
 import { useUploadSf2 } from './hooks/useUploadSf2';
 import { Soundfont2Sampler } from '../smplr/soundfont2';
-import { AudioContextContext, getARandomNote, sf2DefaultColours } from './consts';
+import { AudioContextContext, getARandomNote, MAX_USER_INSTRUMENTS, sf2DefaultColours } from './consts';
 import { UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
 import { useThrottledCallback } from "use-debounce";
 import { ClipboardContext } from './contexts/ClipboardContextProvider';
@@ -38,7 +38,7 @@ const UserInstrumentSelector = styled.div`
   display: flex;
   margin: 0px 0px 4px 28px;
 `;
-const UserInstrumentTab = styled.div`
+const UserInstrumentTab = styled.div<{ $disabled: boolean }>`
   display: flex;
   justify-content: center;
   min-width: 18px;
@@ -49,9 +49,9 @@ const UserInstrumentTab = styled.div`
   user-select: none;
   margin-left: 2px;
   margin-top: 1px;
-  cursor: pointer;
+  cursor: ${({ $disabled }) => $disabled ? "default" : "pointer"};
   &:hover {
-    border: 1px inset #d7d5d5;
+    border: ${({ $disabled }) => $disabled ? "1px solid black" : "1px inset #d7d5d5"};
   }
 `;
 
@@ -90,14 +90,16 @@ export function UserInstrumentsHeader() {
   const _selectedSf2InstOption = useMemo(() => {
     return _userInstruments.length >   0 ? _userInstruments[_userInstrumentIndex].sf2InstrumentName : undefined
   }, [_userInstruments, _userInstrumentIndex]);
+  const canAddNewInstrument = useMemo(() => _userInstruments.length < MAX_USER_INSTRUMENTS, [_userInstruments.length]);
 
   const onAddNewUserInstrument = useCallback(async () => {
+    if (!canAddNewInstrument) return;
     const newInstrument = await getNewUserInstrument(audioContext, howManyInstrumentsIEverMade);
     setHowManyInstrumentsIEverMade(howManyInstrumentsIEverMade + 1);
     setUserInstruments([...userInstrumentsRef.current, newInstrument]);
     setUserInstrumentIndex(userInstrumentsRef.current.length - 1);
     newInstrument.sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
-  }, [getNewUserInstrument, audioContext, howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade, setUserInstruments, userInstrumentsRef, setUserInstrumentIndex]);
+  }, [canAddNewInstrument, getNewUserInstrument, audioContext, howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade, setUserInstruments, userInstrumentsRef, setUserInstrumentIndex]);
 
   const onSf2UploadSuccess = useCallback((sampler: Soundfont2Sampler, sf2InstrumentName: string) => {
     const newUserInstruments = [ ...userInstrumentsRef.current ];
@@ -247,6 +249,7 @@ export function UserInstrumentsHeader() {
           selectNotesByInstrument(index, compositionByInstructionIdRef.current);
         }
       }}
+      $disabled={false}
     >
         {userInstrument?.name ?? index}
       </UserInstrumentTab>
@@ -376,7 +379,7 @@ export function UserInstrumentsHeader() {
       </SoundfontHeader>
       <UserInstrumentSelector>
         {userInstrumentTabs}
-        <UserInstrumentTab onClick={onAddNewUserInstrument}>+</UserInstrumentTab>
+        <UserInstrumentTab onClick={onAddNewUserInstrument} $disabled={canAddNewInstrument}>+</UserInstrumentTab>
       </UserInstrumentSelector>
     </>
   );

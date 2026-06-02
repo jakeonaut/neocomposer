@@ -86,7 +86,7 @@ export function sf2InstrumentToPreset(
   };
 }
 
-type Soundfont2SamplerExtras = {
+export type Soundfont2SamplerExtras = {
   readonly instrumentNames: string[];
   loadInstrument(instrumentName: string): Promise<void> | undefined;
 };

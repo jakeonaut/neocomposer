@@ -33,7 +33,7 @@ export async function createUserInstrument(audioContext: BaseAudioContext, index
       soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[randomInstrumentIdx]);
       return { sampler: soundfont2Sampler, randomInstrumentIdx };
     } else {
-      return { sampler: undefined, randomInstrumentIdx: undefined };
+      return { sampler: undefined, randomInstrumentIdx: -1 };
     }
   })();
   // const randomEmojis = randomEmoji.random({count: 2});
@@ -43,6 +43,7 @@ export async function createUserInstrument(audioContext: BaseAudioContext, index
     color: getNewInstrumentColor(index),
     sf2Sampler: sf2Sampler,
     sf2InstrumentName: sf2Sampler?.instrumentNames[randomInstrumentIdx],
+    sf2InstrumentIndex: randomInstrumentIdx,
     volume,
     visible: true,
     solo: false,

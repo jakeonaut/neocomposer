@@ -13,6 +13,17 @@ function noteNameToMidi(note: string): number | undefined {
   return [0, 2, 4, 5, 7, 9, 11][step] + alt + 12 * (oct + 1);
 }
 
+export function midiPitchStringFromNumber(midi: number) {
+  const pitches = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  return `${pitches[midi % pitches.length]}${Math.floor(midi / pitches.length) - 1}`;
+  // 24 => C1
+  // 25 => C#1
+  // 26 => D1
+  // 101 => F7
+  // 100 => E7
+  // 99 => D#7
+}
+
 /** @internal Not part of the public 1.0 API surface. */
 export function toMidi(note: string | number | undefined): number | undefined {
   return note === undefined

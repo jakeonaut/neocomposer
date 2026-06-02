@@ -3,6 +3,7 @@ import { Soundfont2Sampler } from "../smplr/soundfont2";
 import { globals } from "./globals";
 
 export const DEFAULT_VOLUME = 50;
+export const MAX_USER_INSTRUMENTS = 16;
 
 export const zIndex_placedNote = 1;
 export const zIndex_selectedNote = 2;
@@ -154,6 +155,7 @@ export type UserInstrument = {
   color: string;
   sf2Sampler: Soundfont2Sampler | undefined;
   sf2InstrumentName: string | undefined;
+  sf2InstrumentIndex: number;
   volume: number;
   visible: boolean;
   solo: boolean;
