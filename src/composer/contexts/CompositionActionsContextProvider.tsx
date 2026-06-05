@@ -69,7 +69,7 @@ export function CompositionActionsContextProvider({
       if (Object.keys(newComposition[midiBeat]).length === 0) {
         delete newComposition[midiBeat];
       }
-      // delete compositionByInstructionIdRef.current[noteId];
+      delete compositionByInstructionIdRef.current[noteId];
       if (farthestRightNoteEndRef.current <= instrumentInstruction.midiBeat + instrumentInstruction.noteWidth) {
         manuallyUpdateFarthestRightNoteEnd();
       }
