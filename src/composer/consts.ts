@@ -2,6 +2,7 @@ import { createContext } from "react";
 import { Soundfont2Sampler } from "../smplr/soundfont2";
 import { globals } from "./globals";
 
+export const DOUBLE_CLICK_SECOND_BUFFER = 0.2;
 export const DEFAULT_VOLUME = 50;
 export const MAX_USER_INSTRUMENTS = 16;
 

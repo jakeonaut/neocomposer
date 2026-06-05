@@ -9,6 +9,7 @@ const StyledNote = styled.div<{
   $left: number,
   $bgColor: string,
   $visible: boolean,
+  $shouldMouseIgnoreMe: boolean | undefined,
   $isClickedNote?: boolean,
   $isNoteSelected?: boolean,
 }>`
@@ -34,7 +35,6 @@ const StyledNote = styled.div<{
       : $isClickedNote ? ', 2px 2px 0px 0px black' : ''
   }` };
   opacity: ${({ $visible }) => `${$visible ? '1.0' : '0.5'}`};
-  pointer-events: ${({ $visible }) => `${$visible ? 'auto' : 'none'}`};
 `;
 
 export function PlacedNote({
@@ -89,6 +89,7 @@ export function PlacedNote({
     <StyledNote
       $bgColor={bgColor}
       $visible={visible}
+      $shouldMouseIgnoreMe={shouldMouseIgnoreMe}
       $isNoteSelected={isNoteSelected}
       $top={top}
       $left={left}

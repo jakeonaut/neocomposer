@@ -15,6 +15,7 @@ import {
   zIndex_resetPlayheadButton,
   getStartOfMeasureFromBeat,
   getEndOfMeasureFromBeat,
+  DOUBLE_CLICK_SECOND_BUFFER,
 } from "../consts";
 import styled from "styled-components";
 import { toMidi } from "../../smplr/smplr/midi";
@@ -155,7 +156,11 @@ export function CompositionCanvas({
           && Object.values(selectedNotesRef.current).length > 0
           && (!clickedNoteRef.current || !isNoteSelected(clickedNoteRef.current))) {
         setSelectedNotes({});
-        return false  ;
+        return false;
+      }
+      const secondsSince = (Date.now() - whenWasMouseDownedRef.current) / 1000.0;
+      if (secondsSince < DOUBLE_CLICK_SECOND_BUFFER) {
+        return false;
       }
       setIsMouseDown(true);
       setCursorPosition({ midiNote, midiBeat: midiBeat - cursorXOffsetRef.current });
@@ -262,7 +267,7 @@ export function CompositionCanvas({
             }
           } else if (clickedNoteRef.current && !hasMouseMovedRef.current) {
             const secondsSince = (Date.now() - whenWasMouseDownedRef.current) / 1000.0;
-            if (secondsSince < 0.2) {
+            if (secondsSince < DOUBLE_CLICK_SECOND_BUFFER) {
               removeCompositionNotes([clickedNoteRef.current.toString()]);
               removeCompositionNotes(Object.keys(selectedNotesRef.current));
               setSelectedNotes({});
@@ -324,7 +329,7 @@ export function CompositionCanvas({
       // TODO(jaketrower): do this with the window documnet too like handleKeyDown
       return false;
     },
-    [isMouseDownRef, setClickedNote, setIsMouseDown, setCursorPosition, setStartingCursorPos, onCompositionMouseUpRef, setCursorXOffset, inputModeRef, clickedNoteRef, setPristine, subdivisionTypeRef, addCompositionNotes, userInstrumentIndexRef, compositionByInstructionIdRef, removeCompositionNotes, selectedNotesRef, setSelectedNotes, whenWasMouseDownedRef, compositionRef, setUserInstrumentIndex, setInputMode]
+    [isMouseDownRef, setClickedNote, setIsMouseDown, setCursorPosition, setStartingCursorPos, onCompositionMouseUpRef, setCursorXOffset, inputModeRef, clickedNoteRef, setPristine, subdivisionTypeRef, addCompositionNotes, userInstrumentIndexRef, compositionByInstructionIdRef, removeCompositionNotes, selectedNotesRef, whenWasMouseDownedRef, setSelectedNotes, compositionRef, userInstrumentsRef, setUserInstrumentIndex, setInputMode]
   );
   const handleMouseMove = useCallback(
     (
