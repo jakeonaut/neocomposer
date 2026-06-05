@@ -259,7 +259,7 @@ export function UserInstrumentsHeader() {
   return (
     <>
       <SoundfontHeader $color={currColor}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <ColorPicker>
             <label htmlFor="instrument-color" style={{
               background: `url('./toolicons1x.png') repeat scroll  0  -126px transparent`,

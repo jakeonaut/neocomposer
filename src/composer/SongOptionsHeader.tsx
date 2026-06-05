@@ -1,10 +1,10 @@
-import React, { useCallback, useContext, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useState } from 'react';
 import styled from 'styled-components'
 import { renderOffline } from "../offline";
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtonFooter';
 import { createUserInstrument, UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
-import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getBeatLengthInMs, getInstrumentInstructionFromNoteData, getNewInstrumentColor, JsonNoteData, SongJsonExport, SubdivisionType, TimeSignature, UserInstrument } from './consts';
+import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getBeatLengthInMs, getEndOfMeasureToLoopAtBeat, getInstrumentInstructionFromNoteData, getNewInstrumentColor, JsonNoteData, SongJsonExport, SubdivisionType, TimeSignature, UserInstrument } from './consts';
 import { PristineContext } from './contexts/PristineContextProvider';
 import { generate } from "random-words";
 import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
@@ -16,6 +16,7 @@ import { Soundfont2SamplerExtras } from '../smplr';
 import MidiWriter from 'midi-writer-js';
 import { midiPitchStringFromNumber } from '../smplr/smplr/midi';
 import { Track } from 'midi-writer-js/build/types/chunks/track';
+import { CompositionContext } from './contexts/CompositionContextProvider';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -52,6 +53,7 @@ const DivButton = styled.div`
   padding: 2px;
   border: 1px solid black;
   cursor: pointer;
+  user-select: none;
 `;
 const FileInputLabel = styled.label`
   background: white;
@@ -70,7 +72,7 @@ const ShuffleButton = styled.div`
 
 export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   const audioContext = useContext(AudioContextContext)!;
-  const { timeSignatureRef, setTimeSignature } = useContext(TimeSignatureContext)!;
+  const { _timeSignature, timeSignatureRef, setTimeSignature } = useContext(TimeSignatureContext)!;
   const {
     songName,
     setSongName,
@@ -81,6 +83,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   } = useContext(SongSettingsContext)!;
   const { babyDanceFrame } = useContext(BabyDanceFrameContext)!;
   const { incrementBabyDanceFrame } = useContext(PlayTheSongContext)!;
+  const { _farthestRightNoteEnd } = useContext(CompositionContext)!;
   const { setPlayheadPosX } = useContext(PlayheadPosXContext)!;
   const { setPristine } = useContext(PristineContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
@@ -101,6 +104,10 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     getNewUserInstrument,
     setHowManyInstrumentsIEverMade,
   } = useContext(UserInstrumentContext)!;
+
+  const endOfMeasureToLoopAtBeat = useMemo(() => {
+    return getEndOfMeasureToLoopAtBeat(_farthestRightNoteEnd, _timeSignature, undefined);
+  }, [_farthestRightNoteEnd, _timeSignature]);
 
   // const onMasterVolumeChange = useCallback(
   //   (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -186,6 +193,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
 
   const handleExportSongToWav = useCallback(async () => {
     try {
+      const beatLengthInSeconds = getBeatLengthInMs(tempoRef.current) / 1000;
       const renderedOfflineAudioResult = await renderOffline(async (audioContext) => {
         const offlineSf2Samplers: InstrumentInstance<Soundfont2SamplerExtras>[] = await Promise.all(userInstrumentsRef.current.map(
           async (userInstrument, index) => {
@@ -198,7 +206,6 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
             return sf2Sampler!;
         }));
         const compositionByInstrument = convertCompositionToCompositionByInstrument(compositionRef.current);
-        const beatLengthInSeconds = getBeatLengthInMs(tempoRef.current) / 1000;
         Object.keys(compositionByInstrument).forEach((userInstrumentIdxStr: string) => {
           const userInstrumentIdx = Number.parseInt(userInstrumentIdxStr);
           const sf2Sampler = offlineSf2Samplers[userInstrumentIdx];
@@ -220,7 +227,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
           });
         });
       }, {
-        // duration: 10, // TODO(jaketrower): Should find the longest duration + midiBeat... should rely on coda repeat!!
+        duration: endOfMeasureToLoopAtBeat * beatLengthInSeconds,
       });
 
       renderedOfflineAudioResult.downloadWav(`${songName}.wav`);
@@ -228,7 +235,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
       console.log(e);
       alert("We tried, but failed, to export the song as wav! See console for more details.");
     }
-  }, [compositionRef, defaultSoundfontBuffer, songName, tempoRef, userInstrumentsRef]);
+  }, [compositionRef, defaultSoundfontBuffer, endOfMeasureToLoopAtBeat, songName, tempoRef, userInstrumentsRef]);
 
   const handleSaveCompositionToMidiFile = useCallback(async () => {
     try {
@@ -326,29 +333,24 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
             />
           </div> */}
         </div>
-        <ActionButtonsContainer style={{ flexGrow: 1, marginRight: 8, justifyContent: 'end', }}>
+        <ActionButtonsContainer style={{ flexGrow: 1, marginRight: 4, justifyContent: 'end', }}>
           <DivButton onClick={() => {
             handleClearComposition();
             setSongName((generate(2) as string[]).join(' '));
           }}>💣 New</DivButton>
-          <DivButton onClick={() => {setIsSaveModalOpen((prev) => !prev);}} style={{position: "relative"}}>💾 Save{isSaveModalOpen && (
+          <DivButton onClick={handleSaveCompositionToFile} style={{
+            position: "relative", minWidth: "56px", 
+          }}>💾 Save</DivButton>
+          <FileInputLabel htmlFor={`song-to-load`}>📂 Load</FileInputLabel>
+          <DivButton onClick={() => {setIsSaveModalOpen((prev) => !prev);}} style={{
+            position: "relative", minWidth: "56px", userSelect: "none", background: isSaveModalOpen ? "lightgray" : "white", color: isSaveModalOpen ? "black" : "black",
+          }}>{isSaveModalOpen ? "🗑️ Cancel" : "📤 Export"}{isSaveModalOpen && (
             <>
-              <div style={{position: "absolute", display: "flex", flexDirection: "column", top: "4px", zIndex: 999, left: "4px", width: "100px"}}>
-                <DivButton onClick={() => {
-                  handleSaveCompositionToFile();
-                }} style={{ padding: 8 }}>
-                  Save as JSON 
-                </DivButton>
-                <DivButton onClick={() => {
-                  handleSaveCompositionToMidiFile()
-                }} style={{ padding: 8 }}>
-                  Save as MIDI 
-                </DivButton>
-                <DivButton onClick={handleExportSongToWav}>Save as WAV</DivButton>
-                <DivButton style={{padding: 8}}>Nevermind!!</DivButton>
+              <div style={{position: "absolute", display: "flex", flexDirection: "column", top: "23px", zIndex: 999, left: "-1px", width: "82px", gap: "1px", textAlign: "left", color: "black"}}>
+                <DivButton onClick={handleSaveCompositionToMidiFile} style={{ padding: 2 }}>as 🎼 MIDI </DivButton>
+                <DivButton onClick={handleExportSongToWav} style={{ padding: 2 }}>as 🔊 WAV</DivButton>
               </div>
             </>)}</DivButton>
-          <FileInputLabel htmlFor={`song-to-load`}>📥 Load</FileInputLabel>
           <input id={`song-to-load`} type="file" accept=".json" onChange={onLoadSongJson} style={{ display: 'none' }} />
         </ActionButtonsContainer>
       </SongHeaderContainer>

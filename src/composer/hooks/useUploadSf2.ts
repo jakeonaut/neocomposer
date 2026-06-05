@@ -30,7 +30,7 @@ export function useUploadSf2({
 
       const soundfont2Sampler = new Soundfont2Sampler(audioContext, {
         data: buffer,
-        createSoundfont: (data) => new SoundFont2(data),
+        createSoundfont: (data: Uint8Array) => new SoundFont2(data),
       })
       await soundfont2Sampler.ready;
       await soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[0]);

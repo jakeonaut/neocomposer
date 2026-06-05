@@ -26,7 +26,7 @@ export async function createUserInstrument(audioContext: BaseAudioContext, index
     if (arrayBuffer) {
       const soundfont2Sampler = new Soundfont2Sampler(audioContext, {
         data: arrayBuffer,
-        createSoundfont: (data) => new SoundFont2(data),
+        createSoundfont: (data: Uint8Array) => new SoundFont2(data),
       });
       await soundfont2Sampler.ready;
       const randomInstrumentIdx = Math.floor(Math.random() * soundfont2Sampler.instrumentNames.length);

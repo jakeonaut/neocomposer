@@ -14,7 +14,7 @@ import { ClickedSelectedNotesContext } from './contexts/ClickedSelectedNotesCont
 export const ActionButtonsContainer = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 `;
 
 export const ActionButton = styled.div`
@@ -237,7 +237,7 @@ function TempoInput() {
         max="200"
         value={_tempo}
         onChange={onTempoChange}
-        style={{width: "100px"}}
+        style={{width: "70px"}}
       />
     </>
   );
