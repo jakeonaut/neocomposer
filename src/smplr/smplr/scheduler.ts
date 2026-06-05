@@ -57,6 +57,9 @@ class SchedulerImpl implements Scheduler {
   constructor(context: BaseAudioContext, options?: SchedulerOptions) {
     this._context = context;
     this._lookaheadSec = (options?.lookaheadMs ?? LOOKAHEAD_MS_DEFAULT) / 1000;
+    if (this._context instanceof OfflineAudioContext) {
+      this._lookaheadSec = 9999;
+    }
     this._intervalMs = options?.intervalMs ?? INTERVAL_MS_DEFAULT;
     this._queue = new SortedQueue<QueueItem>((a, b) => a.time - b.time);
   }

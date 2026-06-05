@@ -30,7 +30,7 @@ export async function createUserInstrument(audioContext: BaseAudioContext, index
       });
       await soundfont2Sampler.ready;
       const randomInstrumentIdx = Math.floor(Math.random() * soundfont2Sampler.instrumentNames.length);
-      soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[randomInstrumentIdx]);
+      await soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[randomInstrumentIdx]);
       return { sampler: soundfont2Sampler, randomInstrumentIdx };
     } else {
       return { sampler: undefined, randomInstrumentIdx: -1 };
@@ -102,7 +102,7 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
       await soundfont2Sampler.ready;
       soundfont2Sampler.output.volume = userInstrument.volume;
       const randomInstrumentIdx = Math.floor(Math.random() * soundfont2Sampler.instrumentNames.length);
-      soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[randomInstrumentIdx]);
+      await soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[randomInstrumentIdx]);
       setUserInstruments([{
         ...userInstrument,
         sf2Sampler: soundfont2Sampler,

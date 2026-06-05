@@ -124,12 +124,12 @@ export function UserInstrumentsHeader() {
     onLoadSuccess: onSf2UploadSuccess,
   });
 
-  const onSf2InstrumentSelect = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+  const onSf2InstrumentSelect = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const instrumentName = e.target.value;
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
     if (userInstrument.sf2Sampler) {
       if (audioContext.state === "suspended") { audioContext.resume(); }
-      userInstrument.sf2Sampler.loadInstrument(instrumentName);
+      await userInstrument.sf2Sampler.loadInstrument(instrumentName);
       userInstrument.sf2Sampler.start({ note: getARandomNote(), duration: 0.25 });
     }
     userInstrument.sf2InstrumentName = instrumentName;
@@ -138,13 +138,13 @@ export function UserInstrumentsHeader() {
     setUserInstruments(newUserInstruments);
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, audioContext]);
 
-  const randomizeSf2Instrument = useCallback(() => {
+  const randomizeSf2Instrument = useCallback(async () => {
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
     if (userInstrument.sf2Sampler) {
       if (audioContext.state === "suspended") { audioContext.resume(); }
       const randomInstrumentIdx = Math.floor(Math.random() * userInstrument.sf2Sampler.instrumentNames.length);
       const instrumentName = userInstrument.sf2Sampler.instrumentNames[randomInstrumentIdx];
-      userInstrument.sf2Sampler.loadInstrument(instrumentName);
+      await userInstrument.sf2Sampler.loadInstrument(instrumentName);
       userInstrument.sf2Sampler.start({ note: getARandomNote(), duration: 0.25 });
       userInstrument.sf2InstrumentName = instrumentName;
       const newUserInstruments = [ ...userInstrumentsRef.current];

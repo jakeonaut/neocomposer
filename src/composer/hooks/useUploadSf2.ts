@@ -33,7 +33,7 @@ export function useUploadSf2({
         createSoundfont: (data) => new SoundFont2(data),
       })
       await soundfont2Sampler.ready;
-      soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[0]);
+      await soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[0]);
       onLoadSuccess(soundfont2Sampler, soundfont2Sampler.instrumentNames[0]);
     }
   }, [audioContext, onLoadSuccess]);

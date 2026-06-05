@@ -14,7 +14,7 @@ import { CompositionActionsContext } from './contexts/CompositionActionsContextP
 import { InstrumentInstance } from '../smplr/smplr/instrument';
 import { Soundfont2SamplerExtras } from '../smplr';
 import MidiWriter from 'midi-writer-js';
-import { midiPitchStringFromNumber, toMidi } from '../smplr/smplr/midi';
+import { midiPitchStringFromNumber } from '../smplr/smplr/midi';
 import { Track } from 'midi-writer-js/build/types/chunks/track';
 
 const SongHeaderContainer = styled.div`
@@ -117,7 +117,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
           // TODO(jaketrower): handle save/load with different .sf2s then the default !
           const sf2Sampler = (await getNewUserInstrument(audioContext, index)).sf2Sampler;
           const sf2InstrumentName = jsonInstrument.sf2InstrumentName ?? sf2Sampler?.instrumentNames[0];
-          sf2Sampler?.loadInstrument(sf2InstrumentName!);
+          await sf2Sampler?.loadInstrument(sf2InstrumentName!);
           const sf2InstrumentIndex = sf2Sampler?.instrumentNames.findIndex((name) => name === sf2InstrumentName) ?? -1;
           return {
             name: jsonInstrument.name ?? `ins${index+1}`,
@@ -193,7 +193,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
             const { sf2Sampler } = await createUserInstrument(audioContext, 0, defaultSoundfontBuffer);
             sf2Sampler!.output.volume = userInstrument.volume;
             if (userInstrument.sf2InstrumentName) {
-              sf2Sampler!.loadInstrument(userInstrument.sf2InstrumentName);
+              await sf2Sampler!.loadInstrument(userInstrument.sf2InstrumentName);
             }
             return sf2Sampler!;
         }));
@@ -220,7 +220,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
           });
         });
       }, {
-        duration: 10, // TODO(jaketrower): Should find the longest duration + midiBeat... can rely on coda repeat??
+        // duration: 10, // TODO(jaketrower): Should find the longest duration + midiBeat... should rely on coda repeat!!
       });
 
       renderedOfflineAudioResult.downloadWav(`${songName}.wav`);
@@ -238,7 +238,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
       Object.keys(compositionByInstrument).forEach((userInstrumentIdxStr: string) => {
         const midiTrack = new MidiWriter.Track();
         const userInstrumentIdx = Number.parseInt(userInstrumentIdxStr);
-        const midiTrackChannel = userInstrumentIdx as Midi.MidiChannel;
+        const midiTrackChannel = userInstrumentIdx;
         const userInstrument = userInstrumentsRef.current[userInstrumentIdx];
         const notesToPlay = compositionByInstrument[userInstrumentIdx];
         midiTrack.addTrackName(userInstrument.name);
@@ -337,19 +337,19 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
                 <DivButton onClick={() => {
                   handleSaveCompositionToFile();
                 }} style={{ padding: 8 }}>
-                  Save to JSON 
+                  Save as JSON 
                 </DivButton>
                 <DivButton onClick={() => {
                   handleSaveCompositionToMidiFile()
                 }} style={{ padding: 8 }}>
-                  Save to MIDI 
+                  Save as MIDI 
                 </DivButton>
+                <DivButton onClick={handleExportSongToWav}>Save as WAV</DivButton>
                 <DivButton style={{padding: 8}}>Nevermind!!</DivButton>
               </div>
             </>)}</DivButton>
           <FileInputLabel htmlFor={`song-to-load`}>📥 Load</FileInputLabel>
           <input id={`song-to-load`} type="file" accept=".json" onChange={onLoadSongJson} style={{ display: 'none' }} />
-          {/* <DivButton onClick={handleExportSongToWav}>💾 Export as .Wav</DivButton> */}
         </ActionButtonsContainer>
       </SongHeaderContainer>
     </>
