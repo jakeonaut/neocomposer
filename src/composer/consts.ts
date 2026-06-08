@@ -161,6 +161,21 @@ export type UserInstrument = {
   visible: boolean;
   solo: boolean;
 };
+// Is instrument equal for the purposes of undo/redo.
+// So, we don't care about some of the params here
+export function isInstrumentEqual(a: UserInstrument, b: UserInstrument) {
+  return ( 
+    // a.name === b.name &&
+    // a.color === b.color &&
+    a.sf2Sampler === b.sf2Sampler &&
+    a.sf2InstrumentName === b.sf2InstrumentName &&
+    a.sf2InstrumentIndex === b.sf2InstrumentIndex // &&
+    // a.volume === b.volume // &&
+    // a.visible === b.visible &&
+    // a.solo === b.solo
+  );
+}
+
 export type OptionalUserInstrument = {
   name?: string;
   color?: string;

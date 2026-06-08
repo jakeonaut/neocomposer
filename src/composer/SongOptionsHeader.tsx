@@ -4,7 +4,7 @@ import { renderOffline } from "../offline";
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtonFooter';
 import { createUserInstrument, UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
-import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getBeatLengthInMs, getEndOfMeasureToLoopAtBeat, getInstrumentInstructionFromNoteData, getNewInstrumentColor, JsonNoteData, SongJsonExport, SubdivisionType, TimeSignature, UserInstrument } from './consts';
+import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getARandomNote, getBeatLengthInMs, getEndOfMeasureToLoopAtBeat, getInstrumentInstructionFromNoteData, getNewInstrumentColor, JsonNoteData, SongJsonExport, SubdivisionType, TimeSignature, UserInstrument } from './consts';
 import { PristineContext } from './contexts/PristineContextProvider';
 import { generate } from "random-words";
 import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
@@ -99,6 +99,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   const {
     defaultSoundfontBuffer,
     userInstrumentsRef,
+    userInstrumentIndexRef,
     setUserInstruments,
     setUserInstrumentIndex,
     getNewUserInstrument,
@@ -142,7 +143,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     setUserInstrumentIndex(0);
     setUserInstruments(newUserInstruments);
     setHowManyInstrumentsIEverMade(newUserInstruments.length);
-    setComposition(convertCompositionByInstrumentToComposition(jsonObj.composition));
+    setComposition(convertCompositionByInstrumentToComposition(jsonObj.composition), true);
     setPlayheadPosX(0);
     manuallyUpdateFarthestRightNoteEnd();
     setPristine(true);
@@ -304,7 +305,10 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
         {/* <div><TinySpriteImg src="trans.png" $frame={tinySpriteFrame} onClick={() => {
           incrementTinySpriteFrame();
         }}/></div> */}
-        <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={incrementBabyDanceFrame}/></div>
+        <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={() => {
+          incrementBabyDanceFrame(); 
+          userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
+        }}/></div>
         <div style={{ display: 'flex', flexDirection: 'column', }}>
           <div style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 2 }}>
             <b style={{ marginLeft: 2}}>Song Name:</b>

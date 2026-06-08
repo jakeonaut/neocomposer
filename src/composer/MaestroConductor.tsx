@@ -38,16 +38,17 @@ export function MaestroConductor() {
       _inputMode={_inputMode}
       setInputMode={setInputMode}
       trySetInputMode={trySetInputMode}
-      renderChildren={(footer: React.ReactElement) => (
+      renderChildren={(footer: React.ReactElement, undoRedoButtons: React.ReactElement) => (
         <MaestroContainer>
           <Header>
             <SongOptionsHeader footer={footer} />
-            {/* <div style={{display: "flex"}}>
-              <div> */}
-                <UserInstrumentsHeader />
+            <div style={{display: "flex"}}>
+              {/* <div> */}
+              <UserInstrumentsHeader />
+              {undoRedoButtons}
               {/* </div>
-              <TodoList />
-            </div> */}
+              <TodoList /> */}
+            </div>
           </Header>
           {/* TODO(jaketrower): Can I refactor this now after the ref refactors? */}
           {/* Pass setInputMode in directly since we are firing it at the end of a handleMouseUp callback and
@@ -55,6 +56,17 @@ export function MaestroConductor() {
           <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode}>
             <PlayheadNode _inputMode={_inputMode} inputModeRef={inputModeRef} />
           </CompositionCanvas>
+          <p style={{textAlign: "left", marginTop: "-8px"}}>
+            <h4>### okay it's still being kind of weird with the undo / redo. bugs I found:</h4>
+            <ul>
+              <li>cmd+a then delete, undo doesn't restore :(</li>
+              <li>click and drag (selection or not), undo seems to just delete the note(s) initially</li>
+              <li>UNDO after instrument CREATION just throws an error..</li>
+              <li>UNDO/REDO with instruments should ALWAYS try to update the selected instrument??? got an error when placing a note</li>
+              <li>UNDO after clicking "NEW" throws an error, when it should maybe just restore the song ?</li>
+              <li>UNDO after picking/randomizing an instrument from soundfont doesnt work</li>
+            </ul>
+          </p>
         </MaestroContainer>
       )} />
   );

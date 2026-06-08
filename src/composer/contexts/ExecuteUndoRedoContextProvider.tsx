@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useRef, useState } from "react";
-import { InstrumentInstruction, isNoteEqual } from "../consts";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, } from "react";
 import { CompositionActionsContext } from "./CompositionActionsContextProvider";
-import { HistoryFrame, HistoryFrameType, UndoRedoHistoryContext } from "./UndoRedoHistoryContextProvider";
+import { UndoMemory, UndoRedoContext } from "./UndoRedoContextProvider";
 import { globals } from "../globals";
+import { UserInstrumentContext } from "./UserInstrumentContextProvider";
+import { UserInstrument } from "../consts";
 
 export function ExecuteUndoRedoContextProvider({
   children,
@@ -14,69 +15,77 @@ export function ExecuteUndoRedoContextProvider({
     removeCompositionNotes,
   } = useContext(CompositionActionsContext)!;
   const {
+    userInstrumentsRef,
+    setUserInstruments,
+    userInstrumentIndexRef,
+    setUserInstrumentIndex,
+  } = useContext(UserInstrumentContext)!;
+  const {
     undoHistoryRef,
     historyIndexRef,
-    setUndoHistory,
     setHistoryIndex,
-  } = useContext(UndoRedoHistoryContext)!;
+  } = useContext(UndoRedoContext)!;
 
-  const getHistoryFrameInverse = useCallback((frameToInvert: HistoryFrame) => {
-    switch (frameToInvert.type) {
-      case HistoryFrameType.COMPOSITION_DIFF:
-        return {
-          type: HistoryFrameType.COMPOSITION_DIFF,
-          addedNotes: frameToInvert.removedNotes,
-          removedNotes: frameToInvert.addedNotes,
-        };
-      case HistoryFrameType.USER_INSTRUMENT_DIFF: {
-        alert("need to implement!!! for USER_INSTRUMENT_DIFF")
-        return frameToInvert;
-      }
-      default: {
-        const exhaustiveCheck: never = frameToInvert;
-        throw new Error(`I don't know how to inverse ${exhaustiveCheck}`);
-      }
+  const getUndoMemoryInverse = useCallback((undoMemory: UndoMemory) => {
+    return {
+      addedNotes: undoMemory.removedNotes,
+      removedNotes: undoMemory.addedNotes,
+      addedInstruments: undoMemory.removedInstruments,
+      removedInstruments: undoMemory.addedInstruments,
     }
   }, []);
 
-  const executeHistoryFrameForwards = useCallback((undoHistoryFrame: HistoryFrame) => {
+  const executeUndoOrRedoMemory = useCallback((memory: UndoMemory) => {
     globals.isExecutingUndoRedo = true;
-    switch (undoHistoryFrame.type) {
-      case HistoryFrameType.COMPOSITION_DIFF: {
-        removeCompositionNotes(Object.values(undoHistoryFrame.removedNotes).map((note) => note.noteId.toString()));
-        addCompositionNotes(Object.values(undoHistoryFrame.addedNotes));
-        break;
+    
+    // ===================== EXECUTING NOTE COMPOSITION MODIFICATION =================
+    removeCompositionNotes(
+      Object.values(memory.removedNotes).map((note) => note.noteId.toString()),
+      false, /* shouldAddToUndoStack */
+    );
+    addCompositionNotes(Object.values(memory.addedNotes), false, /* shouldAddToUndoStack */);
+
+    // ===================== EXECUTING USER INSTRUMENT MODIFICATION =================
+    const newUserInstruments: (UserInstrument | undefined)[] = [...userInstrumentsRef.current];
+    Object.keys(memory.removedInstruments).forEach((idxStr: string) => {
+      const idx = Number.parseInt(idxStr);
+      if (idx < newUserInstruments.length) {
+        newUserInstruments[idx] = undefined;
       }
-      case HistoryFrameType.USER_INSTRUMENT_DIFF: {
-        alert("need to implement EXECUTION!!! for USER_INSTRUMENT_DIFF");
-        break;
+    });
+    Object.keys(memory.addedInstruments).forEach((idxStr: string) => {
+      const idx = Number.parseInt(idxStr);
+      const addedInstrument = memory.addedInstruments[idxStr];
+      if (idx < newUserInstruments.length) {
+        newUserInstruments[idx] = addedInstrument;
+      } else {
+        newUserInstruments.push(addedInstrument);
       }
-      default: {
-        const exhaustiveCheck: never = undoHistoryFrame;
-        throw new Error(`I don't know how to execute: ${exhaustiveCheck}`);
-      }
+    });
+    setUserInstruments([...newUserInstruments.filter((inst) => inst !== undefined)] as UserInstrument[]);
+    if (userInstrumentIndexRef.current >= newUserInstruments.length) {
+      setUserInstrumentIndex(userInstrumentIndexRef.current - 1);
     }
+
     globals.isExecutingUndoRedo = false;
-  }, [addCompositionNotes, removeCompositionNotes]);
+  }, [addCompositionNotes, removeCompositionNotes, setUserInstrumentIndex, setUserInstruments, userInstrumentIndexRef, userInstrumentsRef]);
 
   const handleUndo = useCallback(() => {
     const undoHistoryFrame = undoHistoryRef.current[historyIndexRef.current];
     if (!undoHistoryFrame) return;
-    executeHistoryFrameForwards(getHistoryFrameInverse(undoHistoryFrame));
+    executeUndoOrRedoMemory(getUndoMemoryInverse(undoHistoryFrame));
     setHistoryIndex(historyIndexRef.current - 1);
-  }, [executeHistoryFrameForwards, getHistoryFrameInverse, historyIndexRef, setHistoryIndex, undoHistoryRef]);
+  }, [executeUndoOrRedoMemory, getUndoMemoryInverse, historyIndexRef, setHistoryIndex, undoHistoryRef]);
 
   const handleRedo = useCallback(() => {
-    const redoHistoryFrame = undoHistoryRef.current[historyIndexRef.current + 1];
-    if (!redoHistoryFrame) return;
-    executeHistoryFrameForwards(redoHistoryFrame);
+    const redoMemory = undoHistoryRef.current[historyIndexRef.current + 1];
+    if (!redoMemory) return;
+    executeUndoOrRedoMemory(redoMemory);
     setHistoryIndex(historyIndexRef.current + 1);
-  }, [executeHistoryFrameForwards, historyIndexRef, setHistoryIndex, undoHistoryRef]);
+  }, [executeUndoOrRedoMemory, historyIndexRef, setHistoryIndex, undoHistoryRef]);
 
   return (
     <ExecuteUndoRedoContext value={{
-      historyIndexRef,
-      undoHistoryRef,
       handleUndo,
       handleRedo,
     }}>
@@ -86,8 +95,6 @@ export function ExecuteUndoRedoContextProvider({
 }
 
 export const ExecuteUndoRedoContext = createContext<{
-  historyIndexRef: React.RefObject<number>,
-  undoHistoryRef: React.RefObject<HistoryFrame[]>,
   handleUndo: () => void,
   handleRedo: () => void,
 } | undefined>(undefined);

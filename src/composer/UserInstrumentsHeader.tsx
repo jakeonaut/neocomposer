@@ -9,6 +9,7 @@ import { ClipboardContext } from './contexts/ClipboardContextProvider';
 import { PlayTheSongContext } from './contexts/PlayTheSongContextProvider';
 import { CompositionActionsContext } from './contexts/CompositionActionsContextProvider';
 import { ClickedSelectedNotesContext } from './contexts/ClickedSelectedNotesContextProvider';
+import { UndoRedoContext } from './contexts/UndoRedoContextProvider';
 
 const SoundfontHeader = styled.div<{ $color: string }>`
   height: 28px;
@@ -70,6 +71,7 @@ export function UserInstrumentsHeader() {
   const { incrementBabyDanceFrame } = useContext(PlayTheSongContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const { removeInstrumentFromComposition } = useContext(CompositionActionsContext)!;
+  const { addToUndoStack } = useContext(UndoRedoContext)!;
   const { removeInstrumentFromCopiedNotes } = useContext(ClipboardContext)!;
   const {
     _userInstruments,
@@ -96,17 +98,27 @@ export function UserInstrumentsHeader() {
     if (!canAddNewInstrument) return;
     const newInstrument = await getNewUserInstrument(audioContext, howManyInstrumentsIEverMade);
     setHowManyInstrumentsIEverMade(howManyInstrumentsIEverMade + 1);
+    const prevUserInstruments = [...userInstrumentsRef.current];
     setUserInstruments([...userInstrumentsRef.current, newInstrument]);
     setUserInstrumentIndex(userInstrumentsRef.current.length - 1);
     newInstrument.sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
-  }, [canAddNewInstrument, getNewUserInstrument, audioContext, howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade, setUserInstruments, userInstrumentsRef, setUserInstrumentIndex]);
+    addToUndoStack({
+      newState: { instruments: [...userInstrumentsRef.current] },
+      oldState: { instruments: prevUserInstruments }
+    });
+  }, [canAddNewInstrument, getNewUserInstrument, audioContext, howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade, userInstrumentsRef, setUserInstruments, setUserInstrumentIndex, addToUndoStack]);
 
   const onSf2UploadSuccess = useCallback((sampler: Soundfont2Sampler, sf2InstrumentName: string) => {
+    const oldUserInstruments = [ ...userInstrumentsRef.current ];
     const newUserInstruments = [ ...userInstrumentsRef.current ];
     newUserInstruments[userInstrumentIndexRef.current]!.sf2Sampler = sampler;
     newUserInstruments[userInstrumentIndexRef.current]!.sf2InstrumentName = sf2InstrumentName;
     sampler.output.volume = newUserInstruments[userInstrumentIndexRef.current].volume;
     setUserInstruments([...newUserInstruments]);
+    addToUndoStack({
+      newState: { instruments: [...newUserInstruments] },
+      oldState: { instruments: oldUserInstruments }
+    });
     const now = audioContext.currentTime;
     ["C4", "G4"].forEach((note, i) => {
       sampler.start({
@@ -118,13 +130,14 @@ export function UserInstrumentsHeader() {
     });
     // weird. https://stackoverflow.com/questions/12030686/html-input-file-selection-event-not-firing-upon-selecting-the-same-file
     (document.getElementById(`sf-uploader-${userInstrumentIndexRef.current}`) as HTMLInputElement)!.value = null as unknown as string;
-  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, audioContext.currentTime, incrementBabyDanceFrame]);
+  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, addToUndoStack, audioContext.currentTime, incrementBabyDanceFrame]);
   const onUploadSf2 = useUploadSf2({
     audioContext,
     onLoadSuccess: onSf2UploadSuccess,
   });
 
   const onSf2InstrumentSelect = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const prevUserInstruments = [...userInstrumentsRef.current];
     const instrumentName = e.target.value;
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
     if (userInstrument.sf2Sampler) {
@@ -136,9 +149,14 @@ export function UserInstrumentsHeader() {
     const newUserInstruments = [ ...userInstrumentsRef.current];
     newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
     setUserInstruments(newUserInstruments);
-  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, audioContext]);
+    addToUndoStack({
+      newState: { instruments: [...newUserInstruments] },
+      oldState: { instruments: prevUserInstruments }
+    });
+  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, addToUndoStack, audioContext]);
 
   const randomizeSf2Instrument = useCallback(async () => {
+    const prevUserInstruments = [...userInstrumentsRef.current];
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
     if (userInstrument.sf2Sampler) {
       if (audioContext.state === "suspended") { audioContext.resume(); }
@@ -150,10 +168,15 @@ export function UserInstrumentsHeader() {
       const newUserInstruments = [ ...userInstrumentsRef.current];
       newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
       setUserInstruments(newUserInstruments);
+      addToUndoStack({
+        newState: { instruments: [...newUserInstruments] },
+        oldState: { instruments: prevUserInstruments }
+      });
     }
-  }, [audioContext, setUserInstruments, userInstrumentIndexRef, userInstrumentsRef]);
+  }, [addToUndoStack, audioContext, setUserInstruments, userInstrumentIndexRef, userInstrumentsRef]);
 
   const _onUserInstrumentVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // const prevUserInstruments = [...userInstrumentsRef.current];
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
     const volume = parseInt(e.target.value);
     if (userInstrument.sf2Sampler) {
@@ -165,6 +188,10 @@ export function UserInstrumentsHeader() {
     const newUserInstruments = [...userInstrumentsRef.current];
     newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
     setUserInstruments(newUserInstruments);
+    // addToUndoStack({
+    //   newState: { instruments: [...newUserInstruments] },
+    //   oldState: { instruments: prevUserInstruments }
+    // });
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
   const onUserInstrumentVolumeChange = useThrottledCallback(_onUserInstrumentVolumeChange, 100);
   const onUserInstrumentSoloToggle = useCallback(() => {
@@ -199,18 +226,28 @@ export function UserInstrumentsHeader() {
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
 
   const _onColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // const prevUserInstruments = [...userInstrumentsRef.current];
     const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
     userInstrument.color = e.target.value;
     const newUserInstruments = [...userInstrumentsRef.current];
     newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
     setUserInstruments(newUserInstruments);
+    // addToUndoStack({
+    //   newState: { instruments: [...newUserInstruments] },
+    //   oldState: { instruments: prevUserInstruments }
+    // });
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
   const onColorChange = useThrottledCallback(_onColorChange, 100);
 
   const _onNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    // const prevUserInstruments = [...userInstrumentsRef.current];
     const newUserInstruments = [...userInstrumentsRef.current];
     newUserInstruments[userInstrumentIndexRef.current].name = e.target.value;
     setUserInstruments(newUserInstruments);
+    // addToUndoStack({
+    //   newState: { instruments: [...newUserInstruments] },
+    //   oldState: { instruments: prevUserInstruments }
+    // });
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
   const onNameChange = useThrottledCallback(_onNameChange, 100);
 
@@ -218,7 +255,13 @@ export function UserInstrumentsHeader() {
     if (userInstrumentsRef.current.length <= 1) return;
     const confirmed = window.confirm('Really delete ❌ the instrument? 🎷 All corresponding notes 🎶 will be deleted 🚯 too!!! 😱');
     if (!confirmed) return;
-    removeInstrumentFromComposition(userInstrumentIndexRef.current);
+    const prevUserInstruments = [...userInstrumentsRef.current];
+    const prevCompositionByInstructionId = {...compositionByInstructionIdRef.current};
+    removeInstrumentFromComposition(
+      userInstrumentIndexRef.current,
+      // We're about to do that at the end of this function, so don't do it here
+      false, /* shouldAddToUndoStack */
+    );
     removeInstrumentFromCopiedNotes(userInstrumentIndexRef.current);
     const newUserInstruments = [...userInstrumentsRef.current];
     newUserInstruments.splice(userInstrumentIndexRef.current, 1);
@@ -226,7 +269,17 @@ export function UserInstrumentsHeader() {
       setUserInstrumentIndex(userInstrumentIndexRef.current - 1);
     }
     setUserInstruments(newUserInstruments);
-  }, [userInstrumentsRef, removeInstrumentFromComposition, userInstrumentIndexRef, removeInstrumentFromCopiedNotes, setUserInstruments, setUserInstrumentIndex]);
+    addToUndoStack({
+      newState: {
+        composition: { ...compositionByInstructionIdRef.current },
+        instruments: [...newUserInstruments]
+      },
+      oldState: {
+        composition: { ...prevCompositionByInstructionId },
+        instruments: prevUserInstruments
+      }
+    });
+  }, [userInstrumentsRef, compositionByInstructionIdRef, removeInstrumentFromComposition, userInstrumentIndexRef, addToUndoStack, removeInstrumentFromCopiedNotes, setUserInstruments, setUserInstrumentIndex]);
 
   const sf2InstOptions = useMemo(() =>(_userInstruments.length > 0
       ? _userInstruments[_userInstrumentIndex].sf2Sampler?.instrumentNames.map(
@@ -257,7 +310,7 @@ export function UserInstrumentsHeader() {
   
   const currColor = _userInstruments[_userInstrumentIndex]?.color ?? sf2DefaultColours[0];
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column"}}>
       <SoundfontHeader $color={currColor}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <ColorPicker>
@@ -381,6 +434,6 @@ export function UserInstrumentsHeader() {
         {userInstrumentTabs}
         <UserInstrumentTab onClick={onAddNewUserInstrument} $disabled={canAddNewInstrument}>+</UserInstrumentTab>
       </UserInstrumentSelector>
-    </>
+    </div>
   );
 }

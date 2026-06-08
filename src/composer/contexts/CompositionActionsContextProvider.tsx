@@ -3,7 +3,7 @@ import { Composition, InstrumentInstruction, NoteId } from "../consts";
 import _ from "lodash";
 import { globals } from "../globals";
 import { CompositionContext } from "./CompositionContextProvider";
-import { UndoRedoHistoryContext } from "./UndoRedoHistoryContextProvider";
+import { UndoRedoContext } from "./UndoRedoContextProvider";
 
 export function CompositionActionsContextProvider({
   children,
@@ -16,7 +16,7 @@ export function CompositionActionsContextProvider({
     _farthestRightNoteEnd,
     _setFarthestRightNoteEnd,
   } = useContext(CompositionContext)!;
-  const { handleAddToUndoStack, getHistoryFrameFromCompositionDiff } = useContext(UndoRedoHistoryContext)!;
+  const { addToUndoStack } = useContext(UndoRedoContext)!;
   
   const farthestRightNoteEndRef = useRef(_farthestRightNoteEnd);
   const compositionRef = useRef(_composition);
@@ -36,7 +36,7 @@ export function CompositionActionsContextProvider({
     setFarthestRightNoteEnd(newFarthestRightNoteEnd);
   }, [setFarthestRightNoteEnd]);
 
-  const setComposition = useCallback((newComposition: Composition) => {
+  const setComposition = useCallback((newComposition: Composition, shouldAddToUndoStack: boolean) => {
     const prevCompositionByInstructionId = { ...compositionByInstructionIdRef.current };
     compositionByInstructionIdRef.current = {};
     Object.values(newComposition).forEach((row) => {
@@ -47,14 +47,19 @@ export function CompositionActionsContextProvider({
       });
     });
     compositionRef.current = newComposition;
-    handleAddToUndoStack(getHistoryFrameFromCompositionDiff(
-      { ...compositionByInstructionIdRef.current },
-      { ...prevCompositionByInstructionId }
-    ));
+    if (shouldAddToUndoStack) {
+      addToUndoStack({
+        newState: { composition: { ...compositionByInstructionIdRef.current }},
+        oldState: { composition: {...prevCompositionByInstructionId}},
+      })
+    }
     _setComposition(newComposition);
-  }, [_setComposition, handleAddToUndoStack, getHistoryFrameFromCompositionDiff]);
+  }, [_setComposition, addToUndoStack]);
 
-  const removeCompositionNotes = useCallback((idsToRemove: string[]) => {
+  const removeCompositionNotes = useCallback((
+    idsToRemove: string[], 
+    shouldAddToUndoStack: boolean,
+  ) => {
     const removedInstrumentInstructions: Record<NoteId, InstrumentInstruction> = {};
     const newComposition = { ...compositionRef.current };
     idsToRemove.forEach((id) => {
@@ -73,11 +78,14 @@ export function CompositionActionsContextProvider({
       if (farthestRightNoteEndRef.current <= instrumentInstruction.midiBeat + instrumentInstruction.noteWidth) {
         manuallyUpdateFarthestRightNoteEnd();
       }
-    })
-    setComposition(newComposition);
+    });
+    setComposition(newComposition, shouldAddToUndoStack);
     return removedInstrumentInstructions;
   }, [manuallyUpdateFarthestRightNoteEnd, setComposition]);
-  const removeInstrumentFromComposition = useCallback((userInstrumentIndexToDelete: number) => {
+  const removeInstrumentFromComposition = useCallback((
+    userInstrumentIndexToDelete: number,
+    shouldAddToUndoStack: boolean,
+  ) => {
     const newComposition = { ...compositionRef.current };
     Object.entries(newComposition).forEach(([midiBeatStr, column]) => {
       Object.entries(column).forEach(([midiNoteStr, row]) => {
@@ -99,11 +107,14 @@ export function CompositionActionsContextProvider({
         });
       });
     });
-    setComposition(newComposition);
+    setComposition(newComposition, shouldAddToUndoStack);
     manuallyUpdateFarthestRightNoteEnd();
   }, [manuallyUpdateFarthestRightNoteEnd, setComposition]);
   const addCompositionNotes = useCallback(
-    (notesToAdd: (Omit<InstrumentInstruction, 'noteId'> & { noteId?: number })[]): InstrumentInstruction[] => {
+    (
+      notesToAdd: (Omit<InstrumentInstruction, 'noteId'> & { noteId?: number })[],
+      shouldAddToUndoStack: boolean
+    ): InstrumentInstruction[] => {
       const newComposition = { ...compositionRef.current };
       const addedNotes = notesToAdd.map((noteToAdd) => {
         const { midiBeat, midiNote, noteWidth } = noteToAdd;
@@ -120,7 +131,7 @@ export function CompositionActionsContextProvider({
         newComposition[midiBeat][midiNote][noteId] = newInstrumentInstruction;
         return newInstrumentInstruction;
       });
-      setComposition(newComposition);
+      setComposition(newComposition, shouldAddToUndoStack);
       return addedNotes;
     },
     [setComposition, setFarthestRightNoteEnd]
@@ -146,13 +157,13 @@ export function CompositionActionsContextProvider({
 export const CompositionActionsContext = createContext<{
   compositionByInstructionIdRef: React.RefObject<Record<string, InstrumentInstruction>>,
   compositionRef: React.RefObject<Composition>,
-  setComposition: (composition: Composition) => void,
-  addCompositionNotes: (notesToAdd: (
-    Omit<InstrumentInstruction, "noteId"> & {
-      noteId?: NoteId;
-    })[]) => InstrumentInstruction[],
-  removeCompositionNotes: (noteIdsToRemove: string[]) => Record<NoteId, InstrumentInstruction>,
-  removeInstrumentFromComposition: (userInstrumentIndex: number) => void,
+  setComposition: (composition: Composition, shouldAddToUndoStack: boolean) => void,
+  addCompositionNotes: (
+    notesToAdd: (Omit<InstrumentInstruction, "noteId"> & {noteId?: NoteId;})[],
+    shouldAddToUndoStack: boolean
+  ) => InstrumentInstruction[],
+  removeCompositionNotes: (noteIdsToRemove: string[], shouldAddToUndoStack: boolean) => Record<NoteId, InstrumentInstruction>,
+  removeInstrumentFromComposition: (userInstrumentIndex: number, shouldAddToUndoStack: boolean) => void,
   farthestRightNoteEndRef: React.RefObject<number>,
   setFarthestRightNoteEnd: (newFarthestRightNoteEnd: number) => void,
   manuallyUpdateFarthestRightNoteEnd: () => void,

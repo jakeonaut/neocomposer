@@ -15,7 +15,7 @@ import { MaestroConductor } from './composer/MaestroConductor';
 import { MouseDownContextProvider } from './composer/contexts/MouseDownContextProvider';
 import { ClickedSelectedNotesContextProvider } from './composer/contexts/ClickedSelectedNotesContextProvider';
 import { CompositionActionsContextProvider } from './composer/contexts/CompositionActionsContextProvider';
-import { UndoRedoHistoryContextProvider } from './composer/contexts/UndoRedoHistoryContextProvider';
+import { UndoRedoContextProvider } from './composer/contexts/UndoRedoContextProvider';
 import { ExecuteUndoRedoContextProvider } from './composer/contexts/ExecuteUndoRedoContextProvider';
 import { BeatSizeContextProvider } from './composer/contexts/BeatSizeContextProvider';
 
@@ -33,7 +33,7 @@ function App() {
                     <TimeSignatureContextProvider>
                       <SubdivisionTypeContextProvider>
                         <ClipboardContextProvider>
-                          <UndoRedoHistoryContextProvider>
+                          <UndoRedoContextProvider>
                             <CompositionContextProvider>
                               <CompositionActionsContextProvider>
                                 <ExecuteUndoRedoContextProvider>
@@ -47,7 +47,7 @@ function App() {
                                 </ExecuteUndoRedoContextProvider>
                               </CompositionActionsContextProvider>
                             </CompositionContextProvider>
-                          </UndoRedoHistoryContextProvider>
+                          </UndoRedoContextProvider>
                         </ClipboardContextProvider>
                       </SubdivisionTypeContextProvider>
                     </TimeSignatureContextProvider>

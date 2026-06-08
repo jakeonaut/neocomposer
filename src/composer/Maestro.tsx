@@ -2,7 +2,7 @@ import React, { useCallback, useContext, useEffect, useMemo } from "react";
 import styled from "styled-components";
 import { AudioContextContext, getARandomNote, InputMode, increaseKeyboardPianoOctaveShift, decreaseKeyboardPianoOctaveShift, getKeyboardPianoKey, NoteIdWithOffset, SubdivisionType, TimeSignature } from "./consts";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
-import { ActionButtonFooter } from "./ActionButtonFooter";
+import { ActionButton, ActionButtonFooter } from "./ActionButtonFooter";
 import { SubdivisionTypeContext } from "./contexts/SubdivisionTypeContextProvider";
 import { PristineContext } from "./contexts/PristineContextProvider";
 import { ClipboardContext } from "./contexts/ClipboardContextProvider";
@@ -12,6 +12,7 @@ import { MouseDownContext } from "./contexts/MouseDownContextProvider";
 import { ClickedSelectedNotesContext } from "./contexts/ClickedSelectedNotesContextProvider";
 import { CompositionActionsContext } from "./contexts/CompositionActionsContextProvider";
 import { ExecuteUndoRedoContext } from "./contexts/ExecuteUndoRedoContextProvider";
+import { UndoRedoContext } from "./contexts/UndoRedoContextProvider";
 
 const Footer = styled.div`
   max-width: 960px;
@@ -25,7 +26,7 @@ export function Maestro({
   setInputMode,
   trySetInputMode,
 } : {
-  renderChildren: (footer: React.ReactElement) => React.ReactElement,
+  renderChildren: (footer: React.ReactElement, undoRedoButtons: React.ReactElement) => React.ReactElement,
   _inputMode: InputMode,
   setInputMode: (newInputMode: InputMode) => void,
   trySetInputMode: (newInputMode: InputMode, isMouseDown: boolean) => void,
@@ -66,6 +67,7 @@ export function Maestro({
     setHeldPianoKeys,
   } = useContext(ClickedSelectedNotesContext)!;
   const { copiedNotesRef, setCopiedNotes, copiedNotesOffsetRef } = useContext(ClipboardContext)!;
+  const { debouncedAddToUndoStack, canUndo, canRedo } = useContext(UndoRedoContext)!;
   const { handleUndo, handleRedo } = useContext(ExecuteUndoRedoContext)!;
   const {
     handleStopComposition,
@@ -73,6 +75,7 @@ export function Maestro({
   } = useContext(PlayTheSongContext)!;
   const {
     compositionByInstructionIdRef,
+    compositionRef,
     addCompositionNotes,
     removeCompositionNotes,
   } = useContext(CompositionActionsContext)!;
@@ -125,11 +128,11 @@ export function Maestro({
       setIsCompositionMouseDown(false);
     }
     if (Object.keys(selectedNotesRef.current).length > 0) {
-      removeCompositionNotes(Object.keys(selectedNotesRef.current));
+      removeCompositionNotes(Object.keys(selectedNotesRef.current), true /* shouldAddToUndoStack */);
       setSelectedNotes({});
       setClickedNote(undefined);
     } else if (clickedNoteRef.current) {
-      removeCompositionNotes([clickedNoteRef.current.toString()]);
+      removeCompositionNotes([clickedNoteRef.current.toString()], true /* shouldAddToUndoStack */);
       setClickedNote(undefined);
     }
   }, [clickedNoteRef, isCompositionMouseDownRef, removeCompositionNotes, selectedNotesRef, setClickedNote, setIsCompositionMouseDown, setSelectedNotes]);
@@ -158,7 +161,7 @@ export function Maestro({
         ...(newUserInstrumentIndex >= 0 ? { userInstrumentIndex: newUserInstrumentIndex } : {}),
       }
     });
-    const pastedNotes = addCompositionNotes(notesToPaste);
+    const pastedNotes = addCompositionNotes(notesToPaste, true /* shouldAddToUndoStack */);
     // setIsCompositionMouseDown(true);
     // setClickedNote(topLeftmostCopiedNote.noteId);
     setSelectedNotes(pastedNotes.reduce((acc, note) => {
@@ -179,9 +182,9 @@ export function Maestro({
       }
       if (e.key === "z" && (e.metaKey || e.ctrlKey)) {
         if (e.shiftKey) {
-          handleRedo();
+          if (canRedo) handleRedo();
         } else {
-          handleUndo();
+          if (canUndo) handleUndo();
         }
       }
       if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -194,29 +197,39 @@ export function Maestro({
           return false;
         } else if (Object.entries(selectedNotesRef.current).length > 0) {
           const selectedNoteIds = Object.keys(selectedNotesRef.current);
-          const removedNoteToShift = Object.values(removeCompositionNotes(selectedNoteIds));
-          addCompositionNotes([
-            ...removedNoteToShift.map((noteToShift) => {
-              if (e.key === "ArrowDown") {
-                if (e.shiftKey) { noteToShift.midiNote -= 4; }
-                else { noteToShift.midiNote -= 1; }
-              }
-              if (e.key === "ArrowUp") {
-                if (e.shiftKey) { noteToShift.midiNote += 4; }
-                else { noteToShift.midiNote += 1; }
-              }
-              if (e.key === "ArrowLeft") {
-                // TODO(jaketrower): should take into account subdivision type?
-                if (e.shiftKey) { noteToShift.midiBeat -= 4; }
-                else { noteToShift.midiBeat -= 1; }
-              }
-              if (e.key === "ArrowRight") {
-                if (e.shiftKey) { noteToShift.midiBeat += 4; }
-                else { noteToShift.midiBeat += 1; }
-              }
-              return { ...noteToShift };
-            })
-          ])
+          const prevComposition = {...compositionByInstructionIdRef.current};
+          const removedNoteToShift = Object.values(removeCompositionNotes(
+            selectedNoteIds,
+            false, /* shouldAddToUndoStack */
+          ));
+          addCompositionNotes(
+            [
+              ...removedNoteToShift.map((noteToShift) => {
+                if (e.key === "ArrowDown") {
+                  if (e.shiftKey) { noteToShift.midiNote -= 4; }
+                  else { noteToShift.midiNote -= 1; }
+                }
+                if (e.key === "ArrowUp") {
+                  if (e.shiftKey) { noteToShift.midiNote += 4; }
+                  else { noteToShift.midiNote += 1; }
+                }
+                if (e.key === "ArrowLeft") {
+                  // TODO(jaketrower): should take into account subdivision type?
+                  if (e.shiftKey) { noteToShift.midiBeat -= 4; }
+                  else { noteToShift.midiBeat -= 1; }
+                }
+                if (e.key === "ArrowRight") {
+                  if (e.shiftKey) { noteToShift.midiBeat += 4; }
+                  else { noteToShift.midiBeat += 1; }
+                }
+                return { ...noteToShift };
+              }),
+            ],
+            false, /* shouldAddToUndoStack */);
+          debouncedAddToUndoStack({
+            newState: { composition: {...compositionByInstructionIdRef.current}},
+            oldState: { composition: prevComposition},
+          });
           e.preventDefault();
           return false;
         }
@@ -334,7 +347,7 @@ export function Maestro({
       });
       incrementBabyDanceFrame();
     },
-    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, handleRedo, handleUndo, clickedNoteRef, selectedNotesRef, removeCompositionNotes, addCompositionNotes, setSelectedNotes, compositionByInstructionIdRef, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, selectNotesByInstrument, trySetInputMode, onCompositionMouseUpRef, setInputMode, _isPlaying, handleStopComposition, handlePlayComposition, isLoopingRef]
+    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, canRedo, handleRedo, canUndo, handleUndo, clickedNoteRef, selectedNotesRef, compositionByInstructionIdRef, removeCompositionNotes, addCompositionNotes, debouncedAddToUndoStack, setSelectedNotes, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, selectNotesByInstrument, trySetInputMode, onCompositionMouseUpRef, setInputMode, _isPlaying, handleStopComposition, handlePlayComposition, isLoopingRef]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {
@@ -394,6 +407,11 @@ export function Maestro({
       tryPasteCopiedNotes={tryPasteCopiedNotes}
     />
   </Footer>), [_inputMode, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, trySetInputMode]);
-  const renderedChildren = useMemo(() => renderChildren(footer), [footer, renderChildren]);
+  const undoRedoButtons = useMemo(() => (<div style={{display: "flex", height: "30px", gap: "4px", marginLeft: "4px"}}>
+    <ActionButton title="Undo (Ctrl+Z)" onClick={handleUndo} style={{ opacity: canUndo ? 1 : 0.5}}>↩️</ActionButton>
+    <ActionButton title="Redo (Ctrl+Shift+Z)" onClick={handleRedo} style={{ opacity: canRedo ? 1 : 0.5}}>↪️</ActionButton>
+  </div>), [handleUndo, canUndo, handleRedo, canRedo]);
+
+  const renderedChildren = useMemo(() => renderChildren(footer, undoRedoButtons), [footer, renderChildren, undoRedoButtons]);
   return renderedChildren;
 }

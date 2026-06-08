@@ -174,7 +174,7 @@ export function CompositionCanvas({
       hasMouseMovedRef.current = false;
       return false;
     },
-    [onCompositionMouseUpRef, inputModeRef, selectedNotesRef, clickedNoteRef, isNoteSelected, setIsMouseDown, setCursorPosition, setStartingCursorPos, setSelectedNotes, audioContext, userInstrumentsRef, userInstrumentIndexRef]
+    [onCompositionMouseUpRef, inputModeRef, selectedNotesRef, clickedNoteRef, isNoteSelected, whenWasMouseDownedRef, setIsMouseDown, setCursorPosition, setStartingCursorPos, setSelectedNotes, audioContext, userInstrumentsRef, userInstrumentIndexRef]
   );
   const handleDoubleClick = useCallback((
     e: React.MouseEvent<HTMLDivElement, MouseEvent>,
@@ -212,64 +212,73 @@ export function CompositionCanvas({
               const noteWidth = Math.abs(cursorPositionRef.current.midiBeat - startingCursorPosRef.current.midiBeat) + 1;
               const gridBeat = Math.min(cursorPositionRef.current.midiBeat, startingCursorPosRef.current.midiBeat);
               const midiBeat = getMidiBeatFromGridBeat(gridBeat, subdivisionTypeRef.current, subdivisionTypeRef.current);
-              addCompositionNotes([{
-                midiBeat,
-                midiNote,
-                noteWidth,
-                userInstrumentIndex: userInstrumentIndexRef.current,
-                subdivisionType: subdivisionTypeRef.current,
-              }]);
+              addCompositionNotes(
+                [{
+                  midiBeat,
+                  midiNote,
+                  noteWidth,
+                  userInstrumentIndex: userInstrumentIndexRef.current,
+                  subdivisionType: subdivisionTypeRef.current,
+                }],
+                true, /* shouldAddToUndoStack */
+              );
             } else {
               const clickedNote = compositionByInstructionIdRef.current[clickedNoteRef.current!.toString()];
               // TODO(jaketrower): !!!
-              const instrumentInstructionsById = removeCompositionNotes([
-                clickedNoteRef.current.toString(),
-                ...Object.keys(selectedNotesRef.current).filter((noteId) => noteId !== clickedNoteRef.current!.toString()),
-              ]);
+              const instrumentInstructionsById = removeCompositionNotes(
+                [
+                  clickedNoteRef.current.toString(),
+                  ...Object.keys(selectedNotesRef.current).filter((noteId) => noteId !== clickedNoteRef.current!.toString()),
+                ],
+                false, /* shouldAddToUndoStack */
+              );
               const gridBeat = cursorPositionRef.current.midiBeat + cursorXOffsetRef.current;
               const midiBeat = getMidiBeatFromGridBeat(gridBeat, subdivisionTypeRef.current, clickedNote.subdivisionType);
-              addCompositionNotes([
-                // Place the note that you were clicking and dragging
-                {
-                  noteId: clickedNoteRef.current,
-                  midiBeat,
-                  midiNote: toMidi(midiNote)!,
-                  noteWidth: clickedNote.noteWidth,
-                  userInstrumentIndex: clickedNote.userInstrumentIndex,
-                  subdivisionType: clickedNote.subdivisionType,
-                },
-                // Place all other notes that were currently selected
-                ...(Object.entries(selectedNotesRef.current).filter(
-                  ([noteId, _]) => noteId !== clickedNoteRef.current!.toString()
-                ).map(
-                  ([noteId, noteWithOffset]) => {
-                    const instrumentInstruction = instrumentInstructionsById[parseInt(noteId)];
-                    const offset = noteWithOffset.offset;
-                    const gridBeat = cursorPositionRef.current!.midiBeat + cursorXOffsetRef.current + offset.x;
-                    const newMidiBeat = getMidiBeatFromGridBeat(gridBeat, subdivisionTypeRef.current, instrumentInstruction.subdivisionType);
-                    const newMidiNote = toMidi(midiNote)! - offset.y;
-                    // Update the offset and midiBeat / midiNote for the selection too.....
-                    // globalSelectedNotes[noteId].instrumentInstruction.midiBeat = newMidiBeat;
-                    // globalSelectedNotes[noteId].instrumentInstruction.midiNote = newMidiNote;
-                    // globalSelectedNotes[noteId].offset = { x: 0, y: 0 };
-                    return {
-                      noteId: parseInt(noteId),
-                      midiBeat: newMidiBeat,
-                      midiNote: newMidiNote,
-                      noteWidth: instrumentInstruction.noteWidth,
-                      userInstrumentIndex: instrumentInstruction.userInstrumentIndex,
-                      subdivisionType: instrumentInstruction.subdivisionType,
-                    };
-                  }))
-              ]);
+              addCompositionNotes(
+                [
+                  // Place the note that you were clicking and dragging
+                  {
+                    noteId: clickedNoteRef.current,
+                    midiBeat,
+                    midiNote: toMidi(midiNote)!,
+                    noteWidth: clickedNote.noteWidth,
+                    userInstrumentIndex: clickedNote.userInstrumentIndex,
+                    subdivisionType: clickedNote.subdivisionType,
+                  },
+                  // Place all other notes that were currently selected
+                  ...(Object.entries(selectedNotesRef.current).filter(
+                    ([noteId, _]) => noteId !== clickedNoteRef.current!.toString()
+                  ).map(
+                    ([noteId, noteWithOffset]) => {
+                      const instrumentInstruction = instrumentInstructionsById[parseInt(noteId)];
+                      const offset = noteWithOffset.offset;
+                      const gridBeat = cursorPositionRef.current!.midiBeat + cursorXOffsetRef.current + offset.x;
+                      const newMidiBeat = getMidiBeatFromGridBeat(gridBeat, subdivisionTypeRef.current, instrumentInstruction.subdivisionType);
+                      const newMidiNote = toMidi(midiNote)! - offset.y;
+                      // Update the offset and midiBeat / midiNote for the selection too.....
+                      // globalSelectedNotes[noteId].instrumentInstruction.midiBeat = newMidiBeat;
+                      // globalSelectedNotes[noteId].instrumentInstruction.midiNote = newMidiNote;
+                      // globalSelectedNotes[noteId].offset = { x: 0, y: 0 };
+                      return {
+                        noteId: parseInt(noteId),
+                        midiBeat: newMidiBeat,
+                        midiNote: newMidiNote,
+                        noteWidth: instrumentInstruction.noteWidth,
+                        userInstrumentIndex: instrumentInstruction.userInstrumentIndex,
+                        subdivisionType: instrumentInstruction.subdivisionType,
+                      };
+                    }))
+                ],
+                true, /* shouldAddToUndoStack */
+              );
               // fuck it just clear the selected notes
               // setSelectedNotes({});
             }
           } else if (clickedNoteRef.current && !hasMouseMovedRef.current) {
             const secondsSince = (Date.now() - whenWasMouseDownedRef.current) / 1000.0;
             if (secondsSince < DOUBLE_CLICK_SECOND_BUFFER) {
-              removeCompositionNotes([clickedNoteRef.current.toString()]);
-              removeCompositionNotes(Object.keys(selectedNotesRef.current));
+              removeCompositionNotes([clickedNoteRef.current.toString()], false /* shouldAddToUndoStack */);
+              removeCompositionNotes(Object.keys(selectedNotesRef.current), true /* shouldAddToUndoStack */);
               setSelectedNotes({});
             }
             // const clickedNote = compositionByInstructionIdRef.current[clickedNoteRef.current.toString()];

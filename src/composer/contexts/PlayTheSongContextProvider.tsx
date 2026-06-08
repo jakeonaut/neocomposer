@@ -169,7 +169,7 @@ export function PlayTheSongContextProvider({
     setHowManyInstrumentsIEverMade(1);
     setPlayheadPosX(0);
     setFarthestRightNoteEnd(1);
-    setComposition({});
+    setComposition({}, true);
     setCopiedNotes([]);
   }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setFarthestRightNoteEnd, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments]);
 
