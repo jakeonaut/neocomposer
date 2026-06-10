@@ -4,11 +4,11 @@ import { PlayheadContext } from "./PlayheadContextProvider";
 import { AudioContextContext, getBeatLengthInMs, getEndOfMeasureToLoopAtBeat, playCompositionNotesAtBeat } from "../consts";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import { SongSettingsContext } from "./SongSettingsContextProvider";
-import { CompositionContext } from "./CompositionContextProvider";
 import { TimeSignatureContext } from "./TimeSignatureContextProvider";
 import { ClipboardContext } from "./ClipboardContextProvider";
 import { CompositionActionsContext } from "./CompositionActionsContextProvider";
 import { BeatSizeContext } from "./BeatSizeContextProvider";
+import { UndoRedoContext } from "./UndoRedoContextProvider";
 
 export function PlayTheSongContextProvider({
   children,
@@ -24,7 +24,7 @@ export function PlayTheSongContextProvider({
     getNewUserInstrument,
     setUserInstrumentIndex,
   } = useContext(UserInstrumentContext)!;
-  const { _beatWidth, beatWidthRef } = useContext(BeatSizeContext)!;
+  const { beatWidthRef } = useContext(BeatSizeContext)!;
   const { setCopiedNotes } = useContext(ClipboardContext)!;
   const { playheadPosXRef, setPlayheadPosX } = useContext(PlayheadPosXContext)!;
   const {
@@ -36,6 +36,7 @@ export function PlayTheSongContextProvider({
     setFarthestRightNoteEnd,
     setComposition,
   } = useContext(CompositionActionsContext)!;
+  const { clearUndoStack } = useContext(UndoRedoContext)!;
 
   const [babyDanceFrame, _setBabyDanceFrame] = useState(0);
   const incrementBabyDanceFrame = useCallback(
@@ -169,7 +170,8 @@ export function PlayTheSongContextProvider({
     setHowManyInstrumentsIEverMade(1);
     setPlayheadPosX(0);
     setFarthestRightNoteEnd(1);
-    setComposition({}, true);
+    setComposition({}, false /* shouldAddToUndoStack */);
+    clearUndoStack();
     setCopiedNotes([]);
   }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setFarthestRightNoteEnd, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments]);
 

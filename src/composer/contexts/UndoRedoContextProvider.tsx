@@ -6,7 +6,7 @@ export type UndoMemory = {
   addedNotes: Record<string, InstrumentInstruction>,
   removedNotes: Record<string, InstrumentInstruction>,
   // Even though we pass in UserInstrument[] as the input, the output will be
-  // a record keyed by the index, so we can easily parse which ones in order were changed or removed/added...
+  // a record keyed by the index, so we can easily parse which ones in order were changed or removed/added..
   // without storing the whole array.
   addedInstruments: Record<string, UserInstrument>,
   removedInstruments: Record<string, UserInstrument>,
@@ -42,6 +42,10 @@ export function UndoRedoContextProvider({
     undoHistoryRef.current = newUndoMemory;
     _setUndoHistory(newUndoMemory);
   }, []);
+
+  const clearUndoStack = useCallback(() => {
+    setUndoHistory([]);
+  }, [setUndoHistory]);
 
   const setHistoryIndex = useCallback((newHistoryIndex: number) => {
     historyIndexRef.current = newHistoryIndex;
@@ -180,6 +184,7 @@ export function UndoRedoContextProvider({
       setHistoryIndex,
       addToUndoStack,
       debouncedAddToUndoStack,
+      clearUndoStack,
       canUndo,
       canRedo,
     }}>
@@ -202,6 +207,7 @@ export const UndoRedoContext = createContext<{
       newState: HistoryFrame,
       oldState: HistoryFrame
     }) => void,
+  clearUndoStack: () => void,
   canUndo: boolean,
   canRedo: boolean
 } | undefined>(undefined);

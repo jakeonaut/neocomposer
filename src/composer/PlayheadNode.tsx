@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { PlayheadContext } from "./contexts/PlayheadContextProvider";
 import { CompositionContext } from "./contexts/CompositionContextProvider";
 import { TimeSignatureContext } from "./contexts/TimeSignatureContextProvider";
-import { AudioContextContext, getEndOfMeasureFromBeat, getEndOfMeasureToLoopAtBeat, getStartOfMeasureFromBeat, InputMode, InstrumentInstruction, mediumColor, NoteIdWithOffset, pianoRollBeats, pianoRollKeys, playCompositionNotesAtBeat, PlayheadBounds, zIndex_playhead } from "./consts";
+import { AudioContextContext, getEndOfMeasureFromBeat, getEndOfMeasureToLoopAtBeat, getStartOfMeasureFromBeat, InputMode, InstrumentInstruction, mediumColor, NoteIdWithOffset, pianoRollBeats, pianoRollKeys, playCompositionNotesAtBeat, zIndex_playhead } from "./consts";
 import { SongSettingsContext } from "./contexts/SongSettingsContextProvider";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
 import { PlayheadPosXContext } from "./contexts/PlayheadPosXContextProvider";
@@ -108,7 +108,7 @@ export function PlayheadNode({
   const { _beatWidth, beatWidthRef, _beatHeight } = useContext(BeatSizeContext)!;
   const { userInstrumentsRef } = useContext(UserInstrumentContext)!;
   const { _farthestRightNoteEnd } = useContext(CompositionContext)!;
-  const { compositionByInstructionIdRef, compositionRef } = useContext(CompositionActionsContext)!;
+  const { _compositionByInstructionIdRef, compositionRef } = useContext(CompositionActionsContext)!;
   const { _timeSignature, timeSignatureRef } = useContext(TimeSignatureContext)!;
   const { _playheadPosX, playheadPosXRef, setPlayheadPosX, } = useContext(PlayheadPosXContext)!;
   const { selectedNotesRef, setSelectedNotes } = useContext(ClickedSelectedNotesContext)!;
@@ -233,7 +233,7 @@ export function PlayheadNode({
     const startOfClickedMeasure = getStartOfMeasureFromBeat(cursorBeat, timeSignatureRef.current);
     const endOfClickedMeasure = getEndOfMeasureFromBeat(cursorBeat, timeSignatureRef.current);
     if (inputModeRef.current === InputMode.SELECT) {
-      selectNotesByMeasure(startOfClickedMeasure, endOfClickedMeasure, compositionByInstructionIdRef.current);
+      selectNotesByMeasure(startOfClickedMeasure, endOfClickedMeasure, _compositionByInstructionIdRef.current);
       return false;
     }
 
@@ -248,7 +248,7 @@ export function PlayheadNode({
         end: endOfClickedMeasure,
       });
     }
-  }, [beatWidthRef, compositionByInstructionIdRef, inputModeRef, selectNotesByMeasure, setUserPlayheadBounds, timeSignatureRef, userPlayheadBoundsRef]);
+  }, [beatWidthRef, _compositionByInstructionIdRef, inputModeRef, selectNotesByMeasure, setUserPlayheadBounds, timeSignatureRef, userPlayheadBoundsRef]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (inputModeRef.current === InputMode.SELECT) { return false; }

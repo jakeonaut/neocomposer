@@ -3,7 +3,7 @@ import { CompositionActionsContext } from "./CompositionActionsContextProvider";
 import { UndoMemory, UndoRedoContext } from "./UndoRedoContextProvider";
 import { globals } from "../globals";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
-import { UserInstrument } from "../consts";
+import { getARandomNote, UserInstrument } from "../consts";
 
 export function ExecuteUndoRedoContextProvider({
   children,
@@ -35,7 +35,7 @@ export function ExecuteUndoRedoContextProvider({
     }
   }, []);
 
-  const executeUndoOrRedoMemory = useCallback((memory: UndoMemory) => {
+  const executeUndoOrRedoMemory = useCallback(async (memory: UndoMemory) => {
     globals.isExecutingUndoRedo = true;
     
     // ===================== EXECUTING NOTE COMPOSITION MODIFICATION =================
@@ -53,15 +53,22 @@ export function ExecuteUndoRedoContextProvider({
         newUserInstruments[idx] = undefined;
       }
     });
-    Object.keys(memory.addedInstruments).forEach((idxStr: string) => {
+    const howManyAddedInstruments = Object.keys(memory.addedInstruments).length;
+    await Promise.all(Object.keys(memory.addedInstruments).map(async (idxStr: string) => {
       const idx = Number.parseInt(idxStr);
       const addedInstrument = memory.addedInstruments[idxStr];
+      if (addedInstrument.sf2Sampler && addedInstrument.sf2InstrumentName) { 
+        await addedInstrument.sf2Sampler.loadInstrument(addedInstrument.sf2InstrumentName);
+        if (howManyAddedInstruments === 1) {
+          addedInstrument.sf2Sampler.start({ note: getARandomNote(), duration: 0.25 });
+        }
+      }
       if (idx < newUserInstruments.length) {
         newUserInstruments[idx] = addedInstrument;
       } else {
         newUserInstruments.push(addedInstrument);
       }
-    });
+    }));
     setUserInstruments([...newUserInstruments.filter((inst) => inst !== undefined)] as UserInstrument[]);
     if (userInstrumentIndexRef.current >= newUserInstruments.length) {
       setUserInstrumentIndex(userInstrumentIndexRef.current - 1);
@@ -70,17 +77,17 @@ export function ExecuteUndoRedoContextProvider({
     globals.isExecutingUndoRedo = false;
   }, [addCompositionNotes, removeCompositionNotes, setUserInstrumentIndex, setUserInstruments, userInstrumentIndexRef, userInstrumentsRef]);
 
-  const handleUndo = useCallback(() => {
+  const handleUndo = useCallback(async () => {
     const undoHistoryFrame = undoHistoryRef.current[historyIndexRef.current];
     if (!undoHistoryFrame) return;
-    executeUndoOrRedoMemory(getUndoMemoryInverse(undoHistoryFrame));
+    await executeUndoOrRedoMemory(getUndoMemoryInverse(undoHistoryFrame));
     setHistoryIndex(historyIndexRef.current - 1);
   }, [executeUndoOrRedoMemory, getUndoMemoryInverse, historyIndexRef, setHistoryIndex, undoHistoryRef]);
 
-  const handleRedo = useCallback(() => {
+  const handleRedo = useCallback(async () => {
     const redoMemory = undoHistoryRef.current[historyIndexRef.current + 1];
     if (!redoMemory) return;
-    executeUndoOrRedoMemory(redoMemory);
+    await executeUndoOrRedoMemory(redoMemory);
     setHistoryIndex(historyIndexRef.current + 1);
   }, [executeUndoOrRedoMemory, historyIndexRef, setHistoryIndex, undoHistoryRef]);
 
@@ -95,6 +102,6 @@ export function ExecuteUndoRedoContextProvider({
 }
 
 export const ExecuteUndoRedoContext = createContext<{
-  handleUndo: () => void,
-  handleRedo: () => void,
+  handleUndo: () => Promise<void>,
+  handleRedo: () => Promise<void>,
 } | undefined>(undefined);

@@ -76,7 +76,7 @@ export function CompositionCanvas({
   const { setPristine } = useContext(PristineContext)!;
   const {
     compositionRef,
-    compositionByInstructionIdRef,
+    _compositionByInstructionIdRef,
   } = useContext(CompositionActionsContext)!;
   const { timeSignatureRef } = useContext(TimeSignatureContext)!;
   const {
@@ -186,7 +186,7 @@ export function CompositionCanvas({
     const endOfMeasure = getEndOfMeasureFromBeat(midiBeat, timeSignatureRef.current);
     setSelectedNotes({
       ...selectedNotesRef.current,
-      ...(Object.entries(compositionByInstructionIdRef.current).reduce((acc, [noteId, instrumentInstruction]) => {
+      ...(Object.entries(_compositionByInstructionIdRef.current).reduce((acc, [noteId, instrumentInstruction]) => {
         if (instrumentInstruction.midiBeat > startOfMeasure && instrumentInstruction.midiBeat <= endOfMeasure) {
           return {
             ...acc,
@@ -200,7 +200,7 @@ export function CompositionCanvas({
       }, {} as Record<string, NoteIdWithOffset>)),
     });
     return false;
-  }, [compositionByInstructionIdRef, inputModeRef, selectedNotesRef, setSelectedNotes, timeSignatureRef]);
+  }, [_compositionByInstructionIdRef, inputModeRef, selectedNotesRef, setSelectedNotes, timeSignatureRef]);
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
       if (isMouseDownRef.current && cursorPositionRef.current && startingCursorPosRef.current) {
@@ -223,7 +223,7 @@ export function CompositionCanvas({
                 true, /* shouldAddToUndoStack */
               );
             } else {
-              const clickedNote = compositionByInstructionIdRef.current[clickedNoteRef.current!.toString()];
+              const clickedNote = _compositionByInstructionIdRef.current[clickedNoteRef.current!.toString()];
               // TODO(jaketrower): !!!
               const instrumentInstructionsById = removeCompositionNotes(
                 [
@@ -255,7 +255,7 @@ export function CompositionCanvas({
                       const gridBeat = cursorPositionRef.current!.midiBeat + cursorXOffsetRef.current + offset.x;
                       const newMidiBeat = getMidiBeatFromGridBeat(gridBeat, subdivisionTypeRef.current, instrumentInstruction.subdivisionType);
                       const newMidiNote = toMidi(midiNote)! - offset.y;
-                      // Update the offset and midiBeat / midiNote for the selection too.....
+                      // Update the offset and midiBeat / midiNote for the selection too..,
                       // globalSelectedNotes[noteId].instrumentInstruction.midiBeat = newMidiBeat;
                       // globalSelectedNotes[noteId].instrumentInstruction.midiNote = newMidiNote;
                       // globalSelectedNotes[noteId].offset = { x: 0, y: 0 };
@@ -314,9 +314,9 @@ export function CompositionCanvas({
               ),
             };
 
-            let possibleUserInstrumentIndex = compositionByInstructionIdRef.current[Object.keys(newSelectedNotes)[0]].userInstrumentIndex;
+            let possibleUserInstrumentIndex = _compositionByInstructionIdRef.current[Object.keys(newSelectedNotes)[0]].userInstrumentIndex;
             if (Object.keys(newSelectedNotes).every(
-              (noteId) => compositionByInstructionIdRef.current[noteId].userInstrumentIndex === possibleUserInstrumentIndex)) {
+              (noteId) => _compositionByInstructionIdRef.current[noteId].userInstrumentIndex === possibleUserInstrumentIndex)) {
               setUserInstrumentIndex(possibleUserInstrumentIndex);
             }
           }
@@ -338,7 +338,7 @@ export function CompositionCanvas({
       // TODO(jaketrower): do this with the window documnet too like handleKeyDown
       return false;
     },
-    [isMouseDownRef, setClickedNote, setIsMouseDown, setCursorPosition, setStartingCursorPos, onCompositionMouseUpRef, setCursorXOffset, inputModeRef, clickedNoteRef, setPristine, subdivisionTypeRef, addCompositionNotes, userInstrumentIndexRef, compositionByInstructionIdRef, removeCompositionNotes, selectedNotesRef, whenWasMouseDownedRef, setSelectedNotes, compositionRef, userInstrumentsRef, setUserInstrumentIndex, setInputMode]
+    [isMouseDownRef, setClickedNote, setIsMouseDown, setCursorPosition, setStartingCursorPos, onCompositionMouseUpRef, setCursorXOffset, inputModeRef, clickedNoteRef, setPristine, subdivisionTypeRef, addCompositionNotes, userInstrumentIndexRef, _compositionByInstructionIdRef, removeCompositionNotes, selectedNotesRef, whenWasMouseDownedRef, setSelectedNotes, compositionRef, userInstrumentsRef, setUserInstrumentIndex, setInputMode]
   );
   const handleMouseMove = useCallback(
     (
@@ -386,12 +386,12 @@ export function CompositionCanvas({
       if (inputModeRef.current !== InputMode.DEFAULT) return;
       const clientRect = (e.target as Element).getBoundingClientRect();
       setCursorXOffset(-Math.floor((e.pageX - clientRect.left) / beatWidth));
-      const instrumentInstruction = compositionByInstructionIdRef.current[noteId];
+      const instrumentInstruction = _compositionByInstructionIdRef.current[noteId];
       if (isNoteSelected(noteId)) {
         setClickedNote(noteId);
         Object.entries(selectedNotesRef.current).forEach(([noteWithOffsetId, noteWithOffset]) => {
           if (noteWithOffsetId === noteId.toString()) return;
-          const instrumentInstructionWithOffset = compositionByInstructionIdRef.current[noteWithOffsetId];
+          const instrumentInstructionWithOffset = _compositionByInstructionIdRef.current[noteWithOffsetId];
           // offset: { }
           noteWithOffset.offset = {
             x: instrumentInstructionWithOffset.midiBeat - instrumentInstruction.midiBeat,
@@ -412,7 +412,7 @@ export function CompositionCanvas({
         instrumentInstruction.midiNote
       );
     },
-    [inputModeRef, setCursorXOffset, beatWidth, compositionByInstructionIdRef, isNoteSelected, userInstrumentsRef, setSubdivisionType, handleMouseDown, setClickedNote, selectedNotesRef, setSelectedNotes]
+    [inputModeRef, setCursorXOffset, beatWidth, _compositionByInstructionIdRef, isNoteSelected, userInstrumentsRef, setSubdivisionType, handleMouseDown, setClickedNote, selectedNotesRef, setSelectedNotes]
   );
 
   const resetUserPlayheadBounds = useCallback(() => {
@@ -503,7 +503,7 @@ export function CompositionCanvas({
         ))}
       </PianoRollKeysSubContainer>
     </PianoRollKeysContainer>
-  ), [_beatHeight, pianoRollKeyStyle, pianoRollKeysContainerStyle])
+  ), [_beatHeight, pianoRollKeyStyle, pianoRollKeysContainerStyle, userInstrumentIndexRef, userInstrumentsRef])
 
   const allRenderedNotes = useMemo(() => (
     <AllRenderedNotes

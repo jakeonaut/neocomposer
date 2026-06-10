@@ -17,6 +17,7 @@ import MidiWriter from 'midi-writer-js';
 import { midiPitchStringFromNumber } from '../smplr/smplr/midi';
 import { Track } from 'midi-writer-js/build/types/chunks/track';
 import { CompositionContext } from './contexts/CompositionContextProvider';
+import { UndoRedoContext } from './contexts/UndoRedoContextProvider';
 
 const SongHeaderContainer = styled.div`
   background-color: white;
@@ -86,6 +87,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   const { _farthestRightNoteEnd } = useContext(CompositionContext)!;
   const { setPlayheadPosX } = useContext(PlayheadPosXContext)!;
   const { setPristine } = useContext(PristineContext)!;
+  const { clearUndoStack } = useContext(UndoRedoContext)!;
   // TODO(jaketrower): https://blog.allaroundjavascript.com/prevent-unnecessary-re-renders-of-components-when-using-usecontext-with-react
   const { 
     compositionRef,
@@ -147,7 +149,8 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     setPlayheadPosX(0);
     manuallyUpdateFarthestRightNoteEnd();
     setPristine(true);
-  }, [audioContext, getNewUserInstrument, manuallyUpdateFarthestRightNoteEnd, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setPristine, setSongName, setTempo, setTimeSignature, setUserInstrumentIndex, setUserInstruments]);
+    clearUndoStack();
+  }, [audioContext, clearUndoStack, getNewUserInstrument, manuallyUpdateFarthestRightNoteEnd, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setPristine, setSongName, setTempo, setTimeSignature, setUserInstrumentIndex, setUserInstruments]);
   const handleSaveCompositionToFile = useCallback(() => {
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([JSON.stringify({
@@ -198,7 +201,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
       const renderedOfflineAudioResult = await renderOffline(async (audioContext) => {
         const offlineSf2Samplers: InstrumentInstance<Soundfont2SamplerExtras>[] = await Promise.all(userInstrumentsRef.current.map(
           async (userInstrument, index) => {
-            // TODO(jaketrower): This will need to be modified to handle multiple sf2s as well...
+            // TODO(jaketrower): This will need to be modified to handle multiple sf2s as well..
             const { sf2Sampler } = await createUserInstrument(audioContext, 0, defaultSoundfontBuffer);
             sf2Sampler!.output.volume = userInstrument.volume;
             if (userInstrument.sf2InstrumentName) {

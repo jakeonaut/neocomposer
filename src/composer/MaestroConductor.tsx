@@ -6,7 +6,6 @@ import { SongOptionsHeader } from "./SongOptionsHeader";
 import { UserInstrumentsHeader } from "./UserInstrumentsHeader";
 import { CompositionCanvas } from "./composition/CompositionCanvas";
 import { PlayheadNode } from "./PlayheadNode";
-import { TodoList } from "../TodoList";
 
 const MaestroContainer = styled.div`
   display: flex;
@@ -56,17 +55,15 @@ export function MaestroConductor() {
           <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode}>
             <PlayheadNode _inputMode={_inputMode} inputModeRef={inputModeRef} />
           </CompositionCanvas>
-          <p style={{textAlign: "left", marginTop: "-8px"}}>
+          <div style={{textAlign: "left", marginTop: "-8px"}}>
             <h4>### okay it's still being kind of weird with the undo / redo. bugs I found:</h4>
             <ul>
-              <li>cmd+a then delete, undo doesn't restore :(</li>
+              <li>when saving/loading instruments with non-default soundfonts, need to mark them on save, and prompt you to load those sf2s when you load</li>
               <li>click and drag (selection or not), undo seems to just delete the note(s) initially</li>
               <li>UNDO after instrument CREATION just throws an error..</li>
-              <li>UNDO/REDO with instruments should ALWAYS try to update the selected instrument??? got an error when placing a note</li>
-              <li>UNDO after clicking "NEW" throws an error, when it should maybe just restore the song ?</li>
-              <li>UNDO after picking/randomizing an instrument from soundfont doesnt work</li>
+              <li>UNDO/REDO with instruments should ALWAYS try to update the selected instrument index??? got an error when placing a note</li>
             </ul>
-          </p>
+          </div>
         </MaestroContainer>
       )} />
   );

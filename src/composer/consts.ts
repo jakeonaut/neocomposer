@@ -195,8 +195,8 @@ export enum TimeSignature { ts4_4 = '4_4', ts3_4 = '3_4' };
 export type InstrumentInstruction = {
   noteId: number;
   userInstrumentIndex: number;
-  noteWidth: number; // NoteWidth is in units of SubdivisionType...
-  midiBeat: MidiBeat; // MidiBeat is in units of SubdivisionType...
+  noteWidth: number; // NoteWidth is in units of SubdivisionType..
+  midiBeat: MidiBeat; // MidiBeat is in units of SubdivisionType..
   midiNote: MidiNoteNum;
   subdivisionType: SubdivisionType,
 };
@@ -441,7 +441,7 @@ export function playCompositionNotesAtBeat({
       Object.values(midiNoteInstructions).forEach((instrumentInstruction) => {
         const { midiNote } = instrumentInstruction;
         // TODO(jaketrower): in order to achieve ^^, will need playhead to instantiate sampler play at runtime,
-        // rather than preprogram them all at PLAY button press...
+        // rather than preprogram them all at PLAY button press..
         const userInstrumentToPlay =
           userInstruments[instrumentInstruction.userInstrumentIndex];
         if (!userInstrumentToPlay?.visible) return;

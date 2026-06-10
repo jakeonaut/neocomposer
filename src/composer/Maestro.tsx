@@ -74,7 +74,7 @@ export function Maestro({
     handlePlayComposition,
   } = useContext(PlayTheSongContext)!;
   const {
-    compositionByInstructionIdRef,
+    _compositionByInstructionIdRef,
     compositionRef,
     addCompositionNotes,
     removeCompositionNotes,
@@ -102,7 +102,7 @@ export function Maestro({
       let leftmostMidiBeat = 99999;
       let rightmostMidiBeat = -99999;
       const newlyCopiedNotes = Object.keys(selectedNotesRef.current).map((noteId) => {
-        const selectedNote = compositionByInstructionIdRef.current[noteId];
+        const selectedNote = _compositionByInstructionIdRef.current[noteId];
         const { midiBeat, noteWidth } = selectedNote;
         if (midiBeat < leftmostMidiBeat) leftmostMidiBeat = midiBeat;
         if (midiBeat + noteWidth > rightmostMidiBeat) rightmostMidiBeat = midiBeat + noteWidth;
@@ -114,14 +114,14 @@ export function Maestro({
       setCopiedNotes(newlyCopiedNotes);
       copiedNotesOffsetRef.current = rightmostMidiBeat - leftmostMidiBeat;
     } else if (clickedNoteRef.current) {
-      const clickedNote = compositionByInstructionIdRef.current[clickedNoteRef.current];
+      const clickedNote = _compositionByInstructionIdRef.current[clickedNoteRef.current];
       setCopiedNotes([{
         ...clickedNote,
         noteId: -1,
       }]);
       copiedNotesOffsetRef.current = clickedNote.noteWidth;
     }
-  }, [clickedNoteRef, compositionByInstructionIdRef, copiedNotesOffsetRef, selectedNotesRef, setCopiedNotes]);
+  }, [clickedNoteRef, _compositionByInstructionIdRef, copiedNotesOffsetRef, selectedNotesRef, setCopiedNotes]);
 
   const tryDeleteSelectedNotes = useCallback(() => {
     if (isCompositionMouseDownRef.current) {
@@ -173,7 +173,7 @@ export function Maestro({
   }, [addCompositionNotes, copiedNotesOffsetRef, copiedNotesRef, setSelectedNotes, userInstrumentIndexRef]);
 
   const handleKeyDown = useCallback(
-    (e: KeyboardEvent) => {
+    async (e: KeyboardEvent) => {
       if (e.repeat) {
         return;
       }
@@ -182,9 +182,9 @@ export function Maestro({
       }
       if (e.key === "z" && (e.metaKey || e.ctrlKey)) {
         if (e.shiftKey) {
-          if (canRedo) handleRedo();
+          if (canRedo) await handleRedo();
         } else {
-          if (canUndo) handleUndo();
+          if (canUndo) await handleUndo();
         }
       }
       if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "ArrowRight") {
@@ -197,7 +197,7 @@ export function Maestro({
           return false;
         } else if (Object.entries(selectedNotesRef.current).length > 0) {
           const selectedNoteIds = Object.keys(selectedNotesRef.current);
-          const prevComposition = {...compositionByInstructionIdRef.current};
+          const prevComposition = {..._compositionByInstructionIdRef.current};
           const removedNoteToShift = Object.values(removeCompositionNotes(
             selectedNoteIds,
             false, /* shouldAddToUndoStack */
@@ -227,7 +227,7 @@ export function Maestro({
             ],
             false, /* shouldAddToUndoStack */);
           debouncedAddToUndoStack({
-            newState: { composition: {...compositionByInstructionIdRef.current}},
+            newState: { composition: {..._compositionByInstructionIdRef.current}},
             oldState: { composition: prevComposition},
           });
           e.preventDefault();
@@ -236,7 +236,7 @@ export function Maestro({
       }
       if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
         setSelectedNotes({
-          ...(Object.entries(compositionByInstructionIdRef.current).reduce((acc, [noteId, _]) => ({
+          ...(Object.entries(_compositionByInstructionIdRef.current).reduce((acc, [noteId, _]) => ({
             ...acc,
             [noteId]: {
               noteId: parseInt(noteId),
@@ -294,7 +294,7 @@ export function Maestro({
           userInstrumentsRef.current[shiftedNumberIndex].sf2Sampler?.start({
             note: getARandomNote(), duration: 0.25,
           });
-          selectNotesByInstrument(shiftedNumberIndex, compositionByInstructionIdRef.current);
+          selectNotesByInstrument(shiftedNumberIndex, _compositionByInstructionIdRef.current);
         }
         return false;
       }
@@ -347,7 +347,7 @@ export function Maestro({
       });
       incrementBabyDanceFrame();
     },
-    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, canRedo, handleRedo, canUndo, handleUndo, clickedNoteRef, selectedNotesRef, compositionByInstructionIdRef, removeCompositionNotes, addCompositionNotes, debouncedAddToUndoStack, setSelectedNotes, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, selectNotesByInstrument, trySetInputMode, onCompositionMouseUpRef, setInputMode, _isPlaying, handleStopComposition, handlePlayComposition, isLoopingRef]
+    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, canRedo, handleRedo, canUndo, handleUndo, clickedNoteRef, selectedNotesRef, _compositionByInstructionIdRef, removeCompositionNotes, addCompositionNotes, debouncedAddToUndoStack, setSelectedNotes, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, selectNotesByInstrument, trySetInputMode, onCompositionMouseUpRef, setInputMode, _isPlaying, handleStopComposition, handlePlayComposition, isLoopingRef]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {

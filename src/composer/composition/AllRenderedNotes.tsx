@@ -41,15 +41,15 @@ function StaticPlacedNotes({
     _composition,
   } = useContext(CompositionContext)!;
   const {
-    compositionByInstructionIdRef,
+    _compositionByInstructionIdRef,
   } = useContext(CompositionActionsContext)!;
   const {
     _clickedNote,
     _selectedNotes,
   } = useContext(ClickedSelectedNotesContext)!;
   const clickedNote = useMemo(
-    () => _clickedNote ? compositionByInstructionIdRef.current[_clickedNote.toString()] : undefined,
-    [_clickedNote, compositionByInstructionIdRef]);
+    () => _clickedNote ? _compositionByInstructionIdRef.current[_clickedNote.toString()] : undefined,
+    [_clickedNote, _compositionByInstructionIdRef]);
   const topmostMidiNote = useMemo(() => toMidi(pianoRollKeys[0])!, []);
 
   const isNoteSelected = useCallback((noteId: NoteId) => {
@@ -136,7 +136,7 @@ function DraggingExistingNote({
 }) {
   const { _userInstruments } = useContext(UserInstrumentContext)!;
   const {
-    compositionByInstructionIdRef,
+    _compositionByInstructionIdRef,
   } = useContext(CompositionActionsContext)!;
   const {
     _clickedNote,
@@ -146,8 +146,8 @@ function DraggingExistingNote({
     _subdivisionType,
   } = useContext(SubdivisionTypeContext)!;
   const clickedNote = useMemo(
-    () => _clickedNote ? compositionByInstructionIdRef.current[_clickedNote.toString()] : undefined,
-    [_clickedNote, compositionByInstructionIdRef]);
+    () => _clickedNote ? _compositionByInstructionIdRef.current[_clickedNote.toString()] : undefined,
+    [_clickedNote, _compositionByInstructionIdRef]);
   const topmostMidiNote = useMemo(() => toMidi(pianoRollKeys[0])!, []);
 
   const isNoteSelected = useCallback((noteId: NoteId) => {
@@ -181,7 +181,7 @@ function DraggingExistingNote({
             isClickedNote
           />
           {Object.entries(_selectedNotes).map(([noteId, noteWithOffset]) => {
-            const instrumentInstructionWithOffset = compositionByInstructionIdRef.current[noteId];
+            const instrumentInstructionWithOffset = _compositionByInstructionIdRef.current[noteId];
             const userInstrument = _userInstruments[instrumentInstructionWithOffset.userInstrumentIndex];
             return (noteId !== clickedNote.toString()
             && (<PlacedNote

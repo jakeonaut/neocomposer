@@ -88,7 +88,7 @@ export function UserInstrumentsHeader() {
     userInstrumentVolumeInputRef,
   } = useContext(UserInstrumentContext)!;
   const { selectNotesByInstrument } = useContext(ClickedSelectedNotesContext)!;
-  const { compositionByInstructionIdRef } = useContext(CompositionActionsContext)!;
+  const { _compositionByInstructionIdRef } = useContext(CompositionActionsContext)!;
   const _selectedSf2InstOption = useMemo(() => {
     return _userInstruments.length >   0 ? _userInstruments[_userInstrumentIndex].sf2InstrumentName : undefined
   }, [_userInstruments, _userInstrumentIndex]);
@@ -139,7 +139,7 @@ export function UserInstrumentsHeader() {
   const onSf2InstrumentSelect = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const prevUserInstruments = [...userInstrumentsRef.current];
     const instrumentName = e.target.value;
-    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    const userInstrument = {...userInstrumentsRef.current[userInstrumentIndexRef.current]};
     if (userInstrument.sf2Sampler) {
       if (audioContext.state === "suspended") { audioContext.resume(); }
       await userInstrument.sf2Sampler.loadInstrument(instrumentName);
@@ -147,7 +147,7 @@ export function UserInstrumentsHeader() {
     }
     userInstrument.sf2InstrumentName = instrumentName;
     const newUserInstruments = [ ...userInstrumentsRef.current];
-    newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+    newUserInstruments[userInstrumentIndexRef.current] = userInstrument;
     setUserInstruments(newUserInstruments);
     addToUndoStack({
       newState: { instruments: [...newUserInstruments] },
@@ -157,7 +157,7 @@ export function UserInstrumentsHeader() {
 
   const randomizeSf2Instrument = useCallback(async () => {
     const prevUserInstruments = [...userInstrumentsRef.current];
-    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    const userInstrument = {...userInstrumentsRef.current[userInstrumentIndexRef.current]};
     if (userInstrument.sf2Sampler) {
       if (audioContext.state === "suspended") { audioContext.resume(); }
       const randomInstrumentIdx = Math.floor(Math.random() * userInstrument.sf2Sampler.instrumentNames.length);
@@ -166,7 +166,7 @@ export function UserInstrumentsHeader() {
       userInstrument.sf2Sampler.start({ note: getARandomNote(), duration: 0.25 });
       userInstrument.sf2InstrumentName = instrumentName;
       const newUserInstruments = [ ...userInstrumentsRef.current];
-      newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+      newUserInstruments[userInstrumentIndexRef.current] = userInstrument;
       setUserInstruments(newUserInstruments);
       addToUndoStack({
         newState: { instruments: [...newUserInstruments] },
@@ -177,7 +177,7 @@ export function UserInstrumentsHeader() {
 
   const _onUserInstrumentVolumeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     // const prevUserInstruments = [...userInstrumentsRef.current];
-    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    const userInstrument = {...userInstrumentsRef.current[userInstrumentIndexRef.current]};
     const volume = parseInt(e.target.value);
     if (userInstrument.sf2Sampler) {
       userInstrument.sf2Sampler.output.volume = volume;
@@ -186,7 +186,7 @@ export function UserInstrumentsHeader() {
     }
     userInstrument.volume = volume;
     const newUserInstruments = [...userInstrumentsRef.current];
-    newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+    newUserInstruments[userInstrumentIndexRef.current] = userInstrument;
     setUserInstruments(newUserInstruments);
     // addToUndoStack({
     //   newState: { instruments: [...newUserInstruments] },
@@ -195,7 +195,7 @@ export function UserInstrumentsHeader() {
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
   const onUserInstrumentVolumeChange = useThrottledCallback(_onUserInstrumentVolumeChange, 100);
   const onUserInstrumentSoloToggle = useCallback(() => {
-    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    const userInstrument = {...userInstrumentsRef.current[userInstrumentIndexRef.current]};
     const solo = userInstrument.solo;
     const isBecomingSolo = !solo;
     if (isBecomingSolo) {
@@ -213,24 +213,24 @@ export function UserInstrumentsHeader() {
       userInstrument.solo = false;
     }
     const newUserInstruments = [...userInstrumentsRef.current];
-    newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+    newUserInstruments[userInstrumentIndexRef.current] = userInstrument;
     setUserInstruments(newUserInstruments);
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
   const onUserInstrumentVisibilityToggle = useCallback(() => {
-    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    const userInstrument = {...userInstrumentsRef.current[userInstrumentIndexRef.current]};
     const visible = userInstrument.visible;
     userInstrument.visible = !visible;
     const newUserInstruments = [...userInstrumentsRef.current];
-    newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+    newUserInstruments[userInstrumentIndexRef.current] = userInstrument;
     setUserInstruments(newUserInstruments);
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
 
   const _onColorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     // const prevUserInstruments = [...userInstrumentsRef.current];
-    const userInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+    const userInstrument = {...userInstrumentsRef.current[userInstrumentIndexRef.current]};
     userInstrument.color = e.target.value;
     const newUserInstruments = [...userInstrumentsRef.current];
-    newUserInstruments[userInstrumentIndexRef.current] = { ...userInstrument };
+    newUserInstruments[userInstrumentIndexRef.current] = userInstrument;
     setUserInstruments(newUserInstruments);
     // addToUndoStack({
     //   newState: { instruments: [...newUserInstruments] },
@@ -256,7 +256,7 @@ export function UserInstrumentsHeader() {
     const confirmed = window.confirm('Really delete ❌ the instrument? 🎷 All corresponding notes 🎶 will be deleted 🚯 too!!! 😱');
     if (!confirmed) return;
     const prevUserInstruments = [...userInstrumentsRef.current];
-    const prevCompositionByInstructionId = {...compositionByInstructionIdRef.current};
+    const prevCompositionByInstructionId = {..._compositionByInstructionIdRef.current};
     removeInstrumentFromComposition(
       userInstrumentIndexRef.current,
       // We're about to do that at the end of this function, so don't do it here
@@ -271,7 +271,7 @@ export function UserInstrumentsHeader() {
     setUserInstruments(newUserInstruments);
     addToUndoStack({
       newState: {
-        composition: { ...compositionByInstructionIdRef.current },
+        composition: { ..._compositionByInstructionIdRef.current },
         instruments: [...newUserInstruments]
       },
       oldState: {
@@ -279,7 +279,7 @@ export function UserInstrumentsHeader() {
         instruments: prevUserInstruments
       }
     });
-  }, [userInstrumentsRef, compositionByInstructionIdRef, removeInstrumentFromComposition, userInstrumentIndexRef, addToUndoStack, removeInstrumentFromCopiedNotes, setUserInstruments, setUserInstrumentIndex]);
+  }, [userInstrumentsRef, _compositionByInstructionIdRef, removeInstrumentFromComposition, userInstrumentIndexRef, addToUndoStack, removeInstrumentFromCopiedNotes, setUserInstruments, setUserInstrumentIndex]);
 
   const sf2InstOptions = useMemo(() =>(_userInstruments.length > 0
       ? _userInstruments[_userInstrumentIndex].sf2Sampler?.instrumentNames.map(
@@ -299,14 +299,14 @@ export function UserInstrumentsHeader() {
         setUserInstrumentIndex(index);
         _userInstruments[index].sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
         if (e.shiftKey) {
-          selectNotesByInstrument(index, compositionByInstructionIdRef.current);
+          selectNotesByInstrument(index, _compositionByInstructionIdRef.current);
         }
       }}
       $disabled={false}
     >
         {userInstrument?.name ?? index}
       </UserInstrumentTab>
-  )), [_userInstruments, _userInstrumentIndex, setUserInstrumentIndex, selectNotesByInstrument, compositionByInstructionIdRef]);
+  )), [_userInstruments, _userInstrumentIndex, setUserInstrumentIndex, selectNotesByInstrument, _compositionByInstructionIdRef]);
   
   const currColor = _userInstruments[_userInstrumentIndex]?.color ?? sf2DefaultColours[0];
   return (
