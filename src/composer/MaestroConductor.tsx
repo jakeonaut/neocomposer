@@ -55,15 +55,11 @@ export function MaestroConductor() {
           <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode}>
             <PlayheadNode _inputMode={_inputMode} inputModeRef={inputModeRef} />
           </CompositionCanvas>
-          <div style={{textAlign: "left", marginTop: "-8px"}}>
-            <h4>### okay it's still being kind of weird with the undo / redo. bugs I found:</h4>
+          {/* <div style={{textAlign: "left", marginTop: "-8px"}}>
             <ul>
               <li>when saving/loading instruments with non-default soundfonts, need to mark them on save, and prompt you to load those sf2s when you load</li>
-              <li>click and drag (selection or not), undo seems to just delete the note(s) initially</li>
-              <li>UNDO after instrument CREATION just throws an error..</li>
-              <li>UNDO/REDO with instruments should ALWAYS try to update the selected instrument index??? got an error when placing a note</li>
             </ul>
-          </div>
+          </div> */}
         </MaestroContainer>
       )} />
   );

@@ -4,6 +4,7 @@
   "private": true,
   "homepage": "./",
   "dependencies": {
+    "@breezystack/lamejs": "^1.2.7",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
@@ -16,7 +17,6 @@
     "chroma-js": "^3.2.0",
     "color-palette-creator": "^0.0.7",
     "jszip": "^3.10.1",
-    "lamejs": "^1.2.1",
     "lodash": "^4.17.21",
     "midi-writer-js": "^3.2.1",
     "node-fetch": "^3.3.2",

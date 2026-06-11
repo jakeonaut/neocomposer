@@ -32,6 +32,7 @@ import { CompositionActionsContext } from "../contexts/CompositionActionsContext
 import { useThrottledCallback } from "use-debounce";
 import { BeatSizeContext } from "../contexts/BeatSizeContextProvider";
 import { TimeSignatureContext } from "../contexts/TimeSignatureContextProvider";
+import { UndoRedoContext } from "../contexts/UndoRedoContextProvider";
 
 const CompositionContainer = styled.div`
   display: flex; 
@@ -103,6 +104,7 @@ export function CompositionCanvas({
     userPlayheadBoundsRef,
     setUserPlayheadBounds,
   } = useContext(PlayheadContext)!;
+  const { addToUndoStack } = useContext(UndoRedoContext)!;
   const { _beatWidth, _beatHeight } = useContext(BeatSizeContext)!;
   const pianoKeyWidth = 30;
   const beatWidth = useMemo(() => getRelativeBeatWidth(_subdivisionType, _beatWidth), [_subdivisionType, _beatWidth]);
@@ -224,12 +226,13 @@ export function CompositionCanvas({
               );
             } else {
               const clickedNote = _compositionByInstructionIdRef.current[clickedNoteRef.current!.toString()];
-              // TODO(jaketrower): !!!
+              const prevCompositionByInstructionId = {..._compositionByInstructionIdRef.current};
               const instrumentInstructionsById = removeCompositionNotes(
                 [
                   clickedNoteRef.current.toString(),
                   ...Object.keys(selectedNotesRef.current).filter((noteId) => noteId !== clickedNoteRef.current!.toString()),
                 ],
+                // We're about to do that at the end of this function, so don't do it here
                 false, /* shouldAddToUndoStack */
               );
               const gridBeat = cursorPositionRef.current.midiBeat + cursorXOffsetRef.current;
@@ -269,8 +272,13 @@ export function CompositionCanvas({
                       };
                     }))
                 ],
-                true, /* shouldAddToUndoStack */
+                // We're about to do that at the end of this function, so don't do it here
+                false, /* shouldAddToUndoStack */
               );
+              addToUndoStack({
+                newState: {composition: {..._compositionByInstructionIdRef.current}},
+                oldState: {composition: {...prevCompositionByInstructionId}},
+              });
               // fuck it just clear the selected notes
               // setSelectedNotes({});
             }

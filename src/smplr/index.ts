@@ -1,4 +1,3 @@
-export * from "./offline";
 export * from "./smplr";
 export * from "./reverb/reverb";
 export * from "./soundfont/soundfont";

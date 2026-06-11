@@ -75,7 +75,6 @@ export function Maestro({
   } = useContext(PlayTheSongContext)!;
   const {
     _compositionByInstructionIdRef,
-    compositionRef,
     addCompositionNotes,
     removeCompositionNotes,
   } = useContext(CompositionActionsContext)!;
@@ -197,9 +196,11 @@ export function Maestro({
           return false;
         } else if (Object.entries(selectedNotesRef.current).length > 0) {
           const selectedNoteIds = Object.keys(selectedNotesRef.current);
-          const prevComposition = {..._compositionByInstructionIdRef.current};
+          const prevCompositionByInstructionId = {..._compositionByInstructionIdRef.current};
+          debugger;
           const removedNoteToShift = Object.values(removeCompositionNotes(
             selectedNoteIds,
+            // We're about to do that below, so don't do it here
             false, /* shouldAddToUndoStack */
           ));
           addCompositionNotes(
@@ -225,10 +226,11 @@ export function Maestro({
                 return { ...noteToShift };
               }),
             ],
+            // We're about to do that below, so don't do it here
             false, /* shouldAddToUndoStack */);
           debouncedAddToUndoStack({
+            oldState: { composition: prevCompositionByInstructionId},
             newState: { composition: {..._compositionByInstructionIdRef.current}},
-            oldState: { composition: prevComposition},
           });
           e.preventDefault();
           return false;

@@ -100,13 +100,12 @@ export function UserInstrumentsHeader() {
     setHowManyInstrumentsIEverMade(howManyInstrumentsIEverMade + 1);
     const prevUserInstruments = [...userInstrumentsRef.current];
     setUserInstruments([...userInstrumentsRef.current, newInstrument]);
-    setUserInstrumentIndex(userInstrumentsRef.current.length - 1);
     newInstrument.sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
     addToUndoStack({
       newState: { instruments: [...userInstrumentsRef.current] },
       oldState: { instruments: prevUserInstruments }
     });
-  }, [canAddNewInstrument, getNewUserInstrument, audioContext, howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade, userInstrumentsRef, setUserInstruments, setUserInstrumentIndex, addToUndoStack]);
+  }, [canAddNewInstrument, getNewUserInstrument, audioContext, howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade, userInstrumentsRef, setUserInstruments, addToUndoStack]);
 
   const onSf2UploadSuccess = useCallback((sampler: Soundfont2Sampler, sf2InstrumentName: string) => {
     const oldUserInstruments = [ ...userInstrumentsRef.current ];
@@ -265,9 +264,6 @@ export function UserInstrumentsHeader() {
     removeInstrumentFromCopiedNotes(userInstrumentIndexRef.current);
     const newUserInstruments = [...userInstrumentsRef.current];
     newUserInstruments.splice(userInstrumentIndexRef.current, 1);
-    if (userInstrumentIndexRef.current >= newUserInstruments.length) {
-      setUserInstrumentIndex(userInstrumentIndexRef.current - 1);
-    }
     setUserInstruments(newUserInstruments);
     addToUndoStack({
       newState: {
@@ -279,7 +275,7 @@ export function UserInstrumentsHeader() {
         instruments: prevUserInstruments
       }
     });
-  }, [userInstrumentsRef, _compositionByInstructionIdRef, removeInstrumentFromComposition, userInstrumentIndexRef, addToUndoStack, removeInstrumentFromCopiedNotes, setUserInstruments, setUserInstrumentIndex]);
+  }, [userInstrumentsRef, _compositionByInstructionIdRef, removeInstrumentFromComposition, userInstrumentIndexRef, addToUndoStack, removeInstrumentFromCopiedNotes, setUserInstruments]);
 
   const sf2InstOptions = useMemo(() =>(_userInstruments.length > 0
       ? _userInstruments[_userInstrumentIndex].sf2Sampler?.instrumentNames.map(

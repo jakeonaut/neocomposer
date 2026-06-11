@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState, } from "react";
+import React, { createContext, useCallback, useContext } from "react";
 import { CompositionActionsContext } from "./CompositionActionsContextProvider";
 import { UndoMemory, UndoRedoContext } from "./UndoRedoContextProvider";
 import { globals } from "../globals";
@@ -24,6 +24,7 @@ export function ExecuteUndoRedoContextProvider({
     undoHistoryRef,
     historyIndexRef,
     setHistoryIndex,
+    _debouncedAddToUndoStackFlush,
   } = useContext(UndoRedoContext)!;
 
   const getUndoMemoryInverse = useCallback((undoMemory: UndoMemory) => {
@@ -70,26 +71,26 @@ export function ExecuteUndoRedoContextProvider({
       }
     }));
     setUserInstruments([...newUserInstruments.filter((inst) => inst !== undefined)] as UserInstrument[]);
-    if (userInstrumentIndexRef.current >= newUserInstruments.length) {
-      setUserInstrumentIndex(userInstrumentIndexRef.current - 1);
-    }
 
     globals.isExecutingUndoRedo = false;
-  }, [addCompositionNotes, removeCompositionNotes, setUserInstrumentIndex, setUserInstruments, userInstrumentIndexRef, userInstrumentsRef]);
+  }, [addCompositionNotes, removeCompositionNotes, setUserInstruments, userInstrumentsRef]);
 
   const handleUndo = useCallback(async () => {
+    debugger;
+    _debouncedAddToUndoStackFlush();
     const undoHistoryFrame = undoHistoryRef.current[historyIndexRef.current];
     if (!undoHistoryFrame) return;
     await executeUndoOrRedoMemory(getUndoMemoryInverse(undoHistoryFrame));
     setHistoryIndex(historyIndexRef.current - 1);
-  }, [executeUndoOrRedoMemory, getUndoMemoryInverse, historyIndexRef, setHistoryIndex, undoHistoryRef]);
+  }, [_debouncedAddToUndoStackFlush, executeUndoOrRedoMemory, getUndoMemoryInverse, historyIndexRef, setHistoryIndex, undoHistoryRef]);
 
   const handleRedo = useCallback(async () => {
+    _debouncedAddToUndoStackFlush();
     const redoMemory = undoHistoryRef.current[historyIndexRef.current + 1];
     if (!redoMemory) return;
     await executeUndoOrRedoMemory(redoMemory);
     setHistoryIndex(historyIndexRef.current + 1);
-  }, [executeUndoOrRedoMemory, historyIndexRef, setHistoryIndex, undoHistoryRef]);
+  }, [_debouncedAddToUndoStackFlush, executeUndoOrRedoMemory, historyIndexRef, setHistoryIndex, undoHistoryRef]);
 
   return (
     <ExecuteUndoRedoContext value={{

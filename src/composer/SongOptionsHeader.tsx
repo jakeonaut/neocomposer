@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useMemo, useState } from 'react';
 import styled from 'styled-components'
-import { renderOffline } from "../offline";
+import { renderOffline } from "../smplr/offline";
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtonFooter';
 import { createUserInstrument, UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
@@ -195,51 +195,62 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     }
   }, [handleLoadCompositionFromFileJson]);
 
-  const handleExportSongToWav = useCallback(async () => {
-    try {
-      const beatLengthInSeconds = getBeatLengthInMs(tempoRef.current) / 1000;
-      const renderedOfflineAudioResult = await renderOffline(async (audioContext) => {
-        const offlineSf2Samplers: InstrumentInstance<Soundfont2SamplerExtras>[] = await Promise.all(userInstrumentsRef.current.map(
-          async (userInstrument, index) => {
-            // TODO(jaketrower): This will need to be modified to handle multiple sf2s as well..
-            const { sf2Sampler } = await createUserInstrument(audioContext, 0, defaultSoundfontBuffer);
-            sf2Sampler!.output.volume = userInstrument.volume;
-            if (userInstrument.sf2InstrumentName) {
-              await sf2Sampler!.loadInstrument(userInstrument.sf2InstrumentName);
-            }
-            return sf2Sampler!;
-        }));
-        const compositionByInstrument = convertCompositionToCompositionByInstrument(compositionRef.current);
-        Object.keys(compositionByInstrument).forEach((userInstrumentIdxStr: string) => {
-          const userInstrumentIdx = Number.parseInt(userInstrumentIdxStr);
-          const sf2Sampler = offlineSf2Samplers[userInstrumentIdx];
-          const notesToPlay = compositionByInstrument[userInstrumentIdx];
-          notesToPlay.forEach((noteData: JsonNoteData) => {
-            // TODO(jaketrower): Would be nice to have some shared helper functions for this maybe, between here and playCompositionNotesAtBeat
-            const instrumentInstruction = getInstrumentInstructionFromNoteData(noteData, userInstrumentIdx);
-            const { midiNote, midiBeat } = instrumentInstruction;
-            const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
-            const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
-              ? 0
-              : ((midiBeat - 1) % 4) * beatLengthInSeconds * ((beatLengthInSeconds * 4.0) / 3.0);
-            console.log(`Play note ${midiNote} at time ${midiBeat * beatLengthInSeconds + tripletBeatOffsetInSeconds}s (aka beat: ${midiBeat}) for ${durationSec}s`);
-            sf2Sampler.start({
-              note: midiNote,
-              time: (midiBeat * beatLengthInSeconds) + tripletBeatOffsetInSeconds,
-              duration: durationSec,
-            });
+  const getRenderedOfflineAudioResult = useCallback(() => {
+    const beatLengthInSeconds = getBeatLengthInMs(tempoRef.current) / 1000;
+    return renderOffline(async (audioContext) => {
+      const offlineSf2Samplers: InstrumentInstance<Soundfont2SamplerExtras>[] = await Promise.all(userInstrumentsRef.current.map(
+        async (userInstrument, index) => {
+          // TODO(jaketrower): This will need to be modified to handle multiple sf2s as well..
+          const { sf2Sampler } = await createUserInstrument(audioContext, 0, defaultSoundfontBuffer);
+          sf2Sampler!.output.volume = userInstrument.volume;
+          if (userInstrument.sf2InstrumentName) {
+            await sf2Sampler!.loadInstrument(userInstrument.sf2InstrumentName);
+          }
+          return sf2Sampler!;
+      }));
+      const compositionByInstrument = convertCompositionToCompositionByInstrument(compositionRef.current);
+      Object.keys(compositionByInstrument).forEach((userInstrumentIdxStr: string) => {
+        const userInstrumentIdx = Number.parseInt(userInstrumentIdxStr);
+        const sf2Sampler = offlineSf2Samplers[userInstrumentIdx];
+        const notesToPlay = compositionByInstrument[userInstrumentIdx];
+        notesToPlay.forEach((noteData: JsonNoteData) => {
+          // TODO(jaketrower): Would be nice to have some shared helper functions for this maybe, between here and playCompositionNotesAtBeat
+          const instrumentInstruction = getInstrumentInstructionFromNoteData(noteData, userInstrumentIdx);
+          const { midiNote, midiBeat } = instrumentInstruction;
+          const durationSec = beatLengthInSeconds * instrumentInstruction.noteWidth;
+          const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
+            ? 0
+            : ((midiBeat - 1) % 4) * beatLengthInSeconds * ((beatLengthInSeconds * 4.0) / 3.0);
+          console.log(`Play note ${midiNote} at time ${midiBeat * beatLengthInSeconds + tripletBeatOffsetInSeconds}s (aka beat: ${midiBeat}) for ${durationSec}s`);
+          sf2Sampler.start({
+            note: midiNote,
+            time: (midiBeat * beatLengthInSeconds) + tripletBeatOffsetInSeconds,
+            duration: durationSec,
           });
         });
-      }, {
-        duration: endOfMeasureToLoopAtBeat * beatLengthInSeconds,
       });
+    }, {
+      duration: endOfMeasureToLoopAtBeat * beatLengthInSeconds,
+    });
+  }, [compositionRef, defaultSoundfontBuffer, endOfMeasureToLoopAtBeat, tempoRef, userInstrumentsRef]);
 
-      renderedOfflineAudioResult.downloadWav(`${songName}.wav`);
+  const handleExportSongToWav = useCallback(async () => {
+    try {
+      (await getRenderedOfflineAudioResult()).downloadWav(`${songName}.wav`);
     } catch (e) {
       console.log(e);
       alert("We tried, but failed, to export the song as wav! See console for more details.");
     }
-  }, [compositionRef, defaultSoundfontBuffer, endOfMeasureToLoopAtBeat, songName, tempoRef, userInstrumentsRef]);
+  }, [getRenderedOfflineAudioResult, songName]);
+
+  const handleExportSongToMp3 = useCallback(async () => {
+    try {
+      (await getRenderedOfflineAudioResult()).downloadMp3(`${songName}.mp3`);
+    } catch (e) {
+      console.log(e);
+      alert("We tried, but failed, to export the song as mp3! See console for more details.");
+    }
+  }, [getRenderedOfflineAudioResult, songName]);
 
   const handleSaveCompositionToMidiFile = useCallback(async () => {
     try {
@@ -356,6 +367,8 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
               <div style={{position: "absolute", display: "flex", flexDirection: "column", top: "23px", zIndex: 999, left: "-1px", width: "82px", gap: "1px", textAlign: "left", color: "black"}}>
                 <DivButton onClick={handleSaveCompositionToMidiFile} style={{ padding: 2 }}>as 🎼 MIDI </DivButton>
                 <DivButton onClick={handleExportSongToWav} style={{ padding: 2 }}>as 🔊 WAV</DivButton>
+                {/* Doesn't work yet... having problems with lamejs libraries. */}
+                {/* <DivButton onClick={handleExportSongToMp3} style={{ padding: 2 }}>as 💽 MP3</DivButton> */}
               </div>
             </>)}</DivButton>
           <input id={`song-to-load`} type="file" accept=".json" onChange={onLoadSongJson} style={{ display: 'none' }} />

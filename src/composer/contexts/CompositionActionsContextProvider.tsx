@@ -65,7 +65,7 @@ export function CompositionActionsContextProvider({
       const instrumentInstruction = _compositionByInstructionIdRef.current[noteIdToRemove];
       if (!instrumentInstruction) return;
       const { midiBeat, midiNote, noteId } = instrumentInstruction;
-      removedInstrumentInstructions[noteId] = instrumentInstruction;
+      removedInstrumentInstructions[noteId] = {...instrumentInstruction};
       delete newComposition[midiBeat][midiNote][noteId];
       if (Object.keys(newComposition[midiBeat][midiNote]).length === 0) {
         delete newComposition[midiBeat][midiNote];

@@ -1,4 +1,5 @@
 import { audioBufferToWav, audioBufferToWav16 } from "./wav-encoder";
+import { convertWavToMp3 } from "./mp3-encoder";
 
 /**
  * The result of an offline render. Provides the raw AudioBuffer and
@@ -11,6 +12,7 @@ export class RenderResult {
 
   _wavCache: Blob | undefined;
   _wav16Cache: Blob | undefined;
+  _mp3Cache: Blob | undefined;
 
   constructor(audioBuffer: AudioBuffer) {
     this.audioBuffer = audioBuffer;
@@ -34,6 +36,13 @@ export class RenderResult {
     return this._wav16Cache;
   }
 
+  async toMp3(): Promise<Blob> {
+    if (!this._mp3Cache) {
+      this._mp3Cache = await convertWavToMp3(this.toWav());
+    }
+    return this._mp3Cache;
+  }
+
   /** Download as 32-bit float WAV file. */
   downloadWav(filename = "render.wav"): void {
     downloadBlob(this.toWav(), filename);
@@ -42,6 +51,12 @@ export class RenderResult {
   /** Download as 16-bit integer WAV file. */
   downloadWav16(filename = "render.wav"): void {
     downloadBlob(this.toWav16(), filename);
+  }
+
+  /** Download as MP3 file */
+  async downloadMp3(filename = "render.wav"): Promise<void> {
+    const mp3Blob = await this.toMp3();
+    downloadBlob(mp3Blob, filename);
   }
 }
 

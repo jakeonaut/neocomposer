@@ -187,6 +187,7 @@ export function UndoRedoContextProvider({
       clearUndoStack,
       canUndo,
       canRedo,
+      _debouncedAddToUndoStackFlush,
     }}>
       {children}
     </UndoRedoContext>
@@ -209,5 +210,6 @@ export const UndoRedoContext = createContext<{
     }) => void,
   clearUndoStack: () => void,
   canUndo: boolean,
-  canRedo: boolean
+  canRedo: boolean,
+  _debouncedAddToUndoStackFlush: () => void,
 } | undefined>(undefined);

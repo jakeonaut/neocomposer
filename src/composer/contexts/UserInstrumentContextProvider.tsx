@@ -75,16 +75,24 @@ export function UserInstrumentContextProvider({ children } : { children: React.R
       userInstrumentVolumeInputRef.current.value = currInstrument.volume.toString();
     }
   }, []);
-  const setUserInstruments = useCallback((newUserInstruments: UserInstrument[]) => {
-    userInstrumentsRef.current = newUserInstruments;
-    updateInputRefValues();
-    _setUserInstruments(newUserInstruments);
-  }, [updateInputRefValues]);
   const setUserInstrumentIndex = useCallback((newUserInstrumentIndex: number) => {
     userInstrumentIndexRef.current = newUserInstrumentIndex;
     updateInputRefValues();
     _setUserInstrumentIndex(newUserInstrumentIndex);
   }, [updateInputRefValues]);
+  const setUserInstruments = useCallback((newUserInstruments: UserInstrument[]) => {
+    const oldLength = userInstrumentsRef.current.length;
+    userInstrumentsRef.current = newUserInstruments;
+    if (userInstrumentIndexRef.current >= newUserInstruments.length) {
+      setUserInstrumentIndex(newUserInstruments.length - 1);
+    } else if (oldLength < newUserInstruments.length) {
+      setUserInstrumentIndex(newUserInstruments.length - 1); 
+    } else {
+      // Do it in an else because setUserInstrumentIndex also calls updateInputRefValues
+      updateInputRefValues();
+    }
+    _setUserInstruments(newUserInstruments);
+  }, [setUserInstrumentIndex, updateInputRefValues]);
 
   useEffect(() => {
     const fetchAndSetDefaultSoundFontInstrument = async () => {
