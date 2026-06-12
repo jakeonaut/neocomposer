@@ -1,5 +1,5 @@
 import { audioBufferToWav, audioBufferToWav16 } from "./wav-encoder";
-import { convertWavToMp3 } from "./mp3-encoder";
+import { convertWav16ToMp3, encodeMp3 } from "./mp3-encoder";
 
 /**
  * The result of an offline render. Provides the raw AudioBuffer and
@@ -38,7 +38,7 @@ export class RenderResult {
 
   async toMp3(): Promise<Blob> {
     if (!this._mp3Cache) {
-      this._mp3Cache = await convertWavToMp3(this.toWav());
+      this._mp3Cache = await convertWav16ToMp3(this.toWav16());
     }
     return this._mp3Cache;
   }

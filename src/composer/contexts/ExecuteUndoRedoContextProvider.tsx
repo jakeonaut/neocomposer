@@ -76,7 +76,6 @@ export function ExecuteUndoRedoContextProvider({
   }, [addCompositionNotes, removeCompositionNotes, setUserInstruments, userInstrumentsRef]);
 
   const handleUndo = useCallback(async () => {
-    debugger;
     _debouncedAddToUndoStackFlush();
     const undoHistoryFrame = undoHistoryRef.current[historyIndexRef.current];
     if (!undoHistoryFrame) return;

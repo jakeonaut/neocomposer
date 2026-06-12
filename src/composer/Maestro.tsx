@@ -197,7 +197,6 @@ export function Maestro({
         } else if (Object.entries(selectedNotesRef.current).length > 0) {
           const selectedNoteIds = Object.keys(selectedNotesRef.current);
           const prevCompositionByInstructionId = {..._compositionByInstructionIdRef.current};
-          debugger;
           const removedNoteToShift = Object.values(removeCompositionNotes(
             selectedNoteIds,
             // We're about to do that below, so don't do it here

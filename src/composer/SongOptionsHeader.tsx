@@ -4,7 +4,7 @@ import { renderOffline } from "../smplr/offline";
 import { SongSettingsContext } from './contexts/SongSettingsContextProvider';
 import { ActionButtonsContainer } from './ActionButtonFooter';
 import { createUserInstrument, UserInstrumentContext } from './contexts/UserInstrumentContextProvider';
-import { AudioContextContext, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getARandomNote, getBeatLengthInMs, getEndOfMeasureToLoopAtBeat, getInstrumentInstructionFromNoteData, getNewInstrumentColor, JsonNoteData, SongJsonExport, SubdivisionType, TimeSignature, UserInstrument } from './consts';
+import { AudioContextContext, CompositionByInstrument, convertCompositionByInstrumentToComposition, convertCompositionToCompositionByInstrument, DEFAULT_VOLUME, getARandomNote, getBeatLengthInMs, getEndOfMeasureToLoopAtBeat, getInstrumentInstructionFromNoteData, getNewInstrumentColor, JsonNoteData, SongJsonExport, SubdivisionType, TimeSignature, UserInstrument } from './consts';
 import { PristineContext } from './contexts/PristineContextProvider';
 import { generate } from "random-words";
 import { TimeSignatureContext } from './contexts/TimeSignatureContextProvider';
@@ -14,6 +14,7 @@ import { CompositionActionsContext } from './contexts/CompositionActionsContextP
 import { InstrumentInstance } from '../smplr/smplr/instrument';
 import { Soundfont2SamplerExtras } from '../smplr';
 import MidiWriter from 'midi-writer-js';
+import MidiPlayer, { Player } from 'midi-player-js';
 import { midiPitchStringFromNumber } from '../smplr/smplr/midi';
 import { Track } from 'midi-writer-js/build/types/chunks/track';
 import { CompositionContext } from './contexts/CompositionContextProvider';
@@ -178,20 +179,23 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   }, [songName, tempoRef, userInstrumentsRef, compositionRef, setPristine, timeSignatureRef]);
 
   const onLoadSongJson = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target?.files?.[0]; 
-    if (!file) {
-      console.log("Failed to load file.");
-      return;
-    }
-    const reader = new FileReader();
-    reader.readAsText(file);
-    reader.onload = readerEvent => {
-      const jsonText = readerEvent.target?.result;
-      if (!(typeof jsonText === typeof '')) {
-        console.log("Failed to parse file.");
-        return;
+    try {
+      const file = e.target?.files?.[0]; 
+      if (!file) {
+        throw new Error("Failed to load file.");
       }
-      handleLoadCompositionFromFileJson(JSON.parse(jsonText as string));
+      const reader = new FileReader();
+      reader.readAsText(file);
+      reader.onload = readerEvent => {
+        const jsonText = readerEvent.target?.result;
+        if (typeof jsonText !== typeof '') {
+          throw new Error("Failed to parse file.");
+        }
+        handleLoadCompositionFromFileJson(JSON.parse(jsonText as string));
+      }
+    } catch (e) {
+      console.log(e);
+      alert("We tried, but failed, to import the midi file! See console for more details.");
     }
   }, [handleLoadCompositionFromFileJson]);
 
@@ -311,6 +315,97 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     }
   }, [compositionRef, songName, tempoRef, userInstrumentsRef]);
 
+  // Doesn't work yet, I got tired and it's complicated
+  const handleLoadCompositionFromFileMidi = useCallback(async (midiPlayer: Player) => {
+    const midiTracks = midiPlayer.tracks;
+    if (!midiTracks) {
+      throw new Error("Failed to parse midi tracks.");
+    }
+    setTempo(midiPlayer.tempo);
+    const compositionByInstrumentFromMidi: CompositionByInstrument = {};
+    const newUserInstruments: UserInstrument[] = await Promise.all(
+      [...midiTracks.map(
+        async (track, index) => {
+          const sf2Sampler = (await getNewUserInstrument(audioContext, index)).sf2Sampler;
+          const sf2InstrumentName = sf2Sampler?.instrumentNames[0];
+          await sf2Sampler?.loadInstrument(sf2InstrumentName!);
+          const sf2InstrumentIndex = sf2Sampler?.instrumentNames.findIndex((name) => name === sf2InstrumentName) ?? -1;
+
+          const notesForInstrument: JsonNoteData[] = [];
+          // parse track into compositionByInstrument
+          track.events.forEach((midiEvent) => {
+            // The (number | SubdivisionType)[] represents [measure, note, subdivision, midiNote, noteWidth]
+            notesForInstrument.push([
+
+            ]);
+            // const instrumentInstruction = getInstrumentInstructionFromNoteData(noteData, userInstrumentIdx);
+            // const { midiNote, midiBeat } = instrumentInstruction;
+            // const noteDuration = instrumentInstruction.noteWidth * TICKS_PER_BEAT;
+            // const noteTick = midiBeat * TICKS_PER_BEAT;
+            // const noteTripletTickOffset = instrumentInstruction.subdivisionType === SubdivisionType.q
+            //   ? 0
+            //   : ((midiBeat - 1) % 4) * TICKS_PER_BEAT * (43); // 43 is not exactly (128 / 4.0 * 4.0) / 3.0, but it's close enough.
+            // const midiTick = noteTick + noteTripletTickOffset;
+            // const midiNoteStr = midiPitchStringFromNumber(midiNote);
+            // // // console.log(`Play note ${midiNote} at time ${midiBeat * beatLengthInSeconds + tripletBeatOffsetInSeconds}s (aka beat: ${midiBeat}) for ${durationSec}s`);
+            // midiTrack.addEvent(new MidiWriter.NoteEvent({
+            //   pitch: midiNoteStr,
+            //   startTick: midiTick,
+            //   duration: `T${noteDuration}`,
+            //   channel: midiTrackChannel,
+            //   velocity: userInstrument.volume
+            // }));
+          });
+          compositionByInstrumentFromMidi[index] = notesForInstrument;
+
+          return {
+            name: `ins${index+1}`,
+            color: getNewInstrumentColor(index),
+            // TODO(jaketrower): handle save/load with different .sf2s then the default !
+            sf2InstrumentName,
+            sf2InstrumentIndex,
+            volume: DEFAULT_VOLUME,
+            visible: true, 
+            solo: false,
+            sf2Sampler,
+          }
+    })]);
+    setTimeSignature(TimeSignature.ts4_4);
+    setUserInstrumentIndex(0);
+    setUserInstruments(newUserInstruments);
+    setHowManyInstrumentsIEverMade(newUserInstruments.length);
+    setComposition(convertCompositionByInstrumentToComposition(compositionByInstrumentFromMidi), true);
+    setPlayheadPosX(0);
+    manuallyUpdateFarthestRightNoteEnd();
+    setPristine(true);
+    clearUndoStack();
+  }, [audioContext, clearUndoStack, getNewUserInstrument, manuallyUpdateFarthestRightNoteEnd, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setPristine, setTempo, setTimeSignature, setUserInstrumentIndex, setUserInstruments]);
+
+  const onLoadSongMidi = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const midiPlayer = new MidiPlayer.Player();
+      const file = e.target?.files?.[0]; 
+      if (!file) {
+        throw new Error("Failed to load file.");
+      }
+      setSongName(file.name);
+      const reader = new FileReader();
+      reader.readAsArrayBuffer(file);
+      reader.readAsText(file);
+      reader.onload = readerEvent => {
+        const arrayBuffer = readerEvent.target?.result;
+        if (!(arrayBuffer instanceof ArrayBuffer)) {
+          throw new Error("Failed to parse file.");
+        }
+        midiPlayer.loadArrayBuffer(arrayBuffer);
+        handleLoadCompositionFromFileMidi(midiPlayer);
+      }
+    } catch (e) {
+      console.log(e);
+      alert("We tried, but failed, to import the midi file! See console for more details.");
+    }
+  }, [handleLoadCompositionFromFileMidi, setSongName]);
+
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   return (
@@ -367,8 +462,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
               <div style={{position: "absolute", display: "flex", flexDirection: "column", top: "23px", zIndex: 999, left: "-1px", width: "82px", gap: "1px", textAlign: "left", color: "black"}}>
                 <DivButton onClick={handleSaveCompositionToMidiFile} style={{ padding: 2 }}>as 🎼 MIDI </DivButton>
                 <DivButton onClick={handleExportSongToWav} style={{ padding: 2 }}>as 🔊 WAV</DivButton>
-                {/* Doesn't work yet... having problems with lamejs libraries. */}
-                {/* <DivButton onClick={handleExportSongToMp3} style={{ padding: 2 }}>as 💽 MP3</DivButton> */}
+                <DivButton onClick={handleExportSongToMp3} style={{ padding: 2 }}>as 💽 MP3</DivButton>
               </div>
             </>)}</DivButton>
           <input id={`song-to-load`} type="file" accept=".json" onChange={onLoadSongJson} style={{ display: 'none' }} />

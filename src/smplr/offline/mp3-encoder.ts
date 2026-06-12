@@ -1,22 +1,24 @@
-import * as lamejs from '@breezystack/lamejs';
+import { Mp3Encoder, WavHeader } from "@breezystack/lamejs";
 
-export function convertWavToMp3(wavBlob: Blob) {
+export function convertWav16ToMp3(wavBlob: Blob) {
   return new Promise((resolve: (blob: Blob) => void, reject) => {
     const reader = new FileReader();
 
     reader.onload = function () {
-      debugger;
       const arrayBuffer = this.result;
+      if (arrayBuffer === null || typeof arrayBuffer === "string") {
+        reject("Result not found from file reader!");
+        return;
+      }
 
       // Create a WAV decoder
-      // @ts-expect-error - No idea
-      const wavDecoder = lamejs.WavHeader.readHeader(new DataView(arrayBuffer));
+      const wavDecoder = WavHeader.readHeader(new DataView(arrayBuffer));
 
       // Get the WAV audio data as an array of samples
       const wavSamples = new Int16Array(arrayBuffer as ArrayBuffer, wavDecoder.dataOffset, wavDecoder.dataLen / 2);
 
       // Create an MP3 encoder
-      const mp3Encoder = new lamejs.Mp3Encoder(wavDecoder.channels, wavDecoder.sampleRate, 128);
+      const mp3Encoder = new Mp3Encoder(1, wavDecoder.sampleRate * 2, 192);
 
       // Encode the WAV samples to MP3
       const mp3Buffer = mp3Encoder.encodeBuffer(wavSamples);
@@ -43,3 +45,24 @@ export function convertWavToMp3(wavBlob: Blob) {
     reader.readAsArrayBuffer(wavBlob);
   });
 }
+
+export function encodeMp3(audioBuffer: AudioBuffer) {
+  // Create an MP3 encoder
+  const mp3Encoder = new Mp3Encoder(audioBuffer.numberOfChannels, audioBuffer.sampleRate, 128);
+
+  const left = new Int16Array(audioBuffer.getChannelData(0));
+  const right = audioBuffer.numberOfChannels > 1 ? new Int16Array(audioBuffer.getChannelData(1)) : undefined;
+  // Encode the WAV samples to MP3
+  const mp3Buffer = mp3Encoder.encodeBuffer(left, right);
+
+  // Finalize the MP3 encoding
+  const mp3Data = mp3Encoder.flush();
+
+  // Combine the MP3 header and data into a new ArrayBuffer
+  const mp3BufferWithHeader = new Uint8Array(mp3Buffer.length + mp3Data.length);
+  mp3BufferWithHeader.set(mp3Buffer, 0);
+  mp3BufferWithHeader.set(mp3Data, mp3Buffer.length);
+
+  // Create a Blob from the ArrayBuffer
+  return new Blob([mp3BufferWithHeader], { type: 'audio/mp3' });
+};
