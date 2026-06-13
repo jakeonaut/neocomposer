@@ -15,7 +15,7 @@ import { InstrumentInstance } from '../smplr/smplr/instrument';
 import { Soundfont2SamplerExtras } from '../smplr';
 import MidiWriter from 'midi-writer-js';
 import MidiPlayer, { Player } from 'midi-player-js';
-import { midiPitchStringFromNumber } from '../smplr/smplr/midi';
+import { midiPitchStringFromNumber, noteNameToMidi } from '../smplr/smplr/midi';
 import { Track } from 'midi-writer-js/build/types/chunks/track';
 import { CompositionContext } from './contexts/CompositionContextProvider';
 import { UndoRedoContext } from './contexts/UndoRedoContextProvider';
@@ -129,6 +129,9 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
           const sf2Sampler = (await getNewUserInstrument(audioContext, index)).sf2Sampler;
           const sf2InstrumentName = jsonInstrument.sf2InstrumentName ?? sf2Sampler?.instrumentNames[0];
           await sf2Sampler?.loadInstrument(sf2InstrumentName!);
+          if (sf2Sampler) {
+            sf2Sampler.output.volume = jsonInstrument.volume ?? DEFAULT_VOLUME;
+          }
           const sf2InstrumentIndex = sf2Sampler?.instrumentNames.findIndex((name) => name === sf2InstrumentName) ?? -1;
           return {
             name: jsonInstrument.name ?? `ins${index+1}`,
@@ -177,27 +180,6 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     document.body.removeChild(a);
     setPristine(true);
   }, [songName, tempoRef, userInstrumentsRef, compositionRef, setPristine, timeSignatureRef]);
-
-  const onLoadSongJson = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const file = e.target?.files?.[0]; 
-      if (!file) {
-        throw new Error("Failed to load file.");
-      }
-      const reader = new FileReader();
-      reader.readAsText(file);
-      reader.onload = readerEvent => {
-        const jsonText = readerEvent.target?.result;
-        if (typeof jsonText !== typeof '') {
-          throw new Error("Failed to parse file.");
-        }
-        handleLoadCompositionFromFileJson(JSON.parse(jsonText as string));
-      }
-    } catch (e) {
-      console.log(e);
-      alert("We tried, but failed, to import the midi file! See console for more details.");
-    }
-  }, [handleLoadCompositionFromFileJson]);
 
   const getRenderedOfflineAudioResult = useCallback(() => {
     const beatLengthInSeconds = getBeatLengthInMs(tempoRef.current) / 1000;
@@ -292,7 +274,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
             pitch: midiNoteStr,
             startTick: midiTick,
             duration: `T${noteDuration}`,
-            channel: midiTrackChannel,
+            channel: Math.min(midiTrackChannel, 16),
             velocity: userInstrument.volume
           }));
         });
@@ -323,43 +305,70 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     }
     setTempo(midiPlayer.tempo);
     const compositionByInstrumentFromMidi: CompositionByInstrument = {};
+    const TICKS_PER_BEAT = 128 / 4;
     const newUserInstruments: UserInstrument[] = await Promise.all(
       [...midiTracks.map(
         async (track, index) => {
-          const sf2Sampler = (await getNewUserInstrument(audioContext, index)).sf2Sampler;
-          const sf2InstrumentName = sf2Sampler?.instrumentNames[0];
-          await sf2Sampler?.loadInstrument(sf2InstrumentName!);
-          const sf2InstrumentIndex = sf2Sampler?.instrumentNames.findIndex((name) => name === sf2InstrumentName) ?? -1;
-
+          const userInstrumentIndex = index;
+          const sf2Sampler = (await getNewUserInstrument(audioContext, userInstrumentIndex)).sf2Sampler;
+          let sf2InstrumentNameFromMidi: string | undefined;
+          let sf2InstrumentVolume = DEFAULT_VOLUME;
           const notesForInstrument: JsonNoteData[] = [];
+          const inProgressNotes: Record<number, JsonNoteData[]> = {}
+          let userInstrumentName;
           // parse track into compositionByInstrument
           track.events.forEach((midiEvent) => {
-            // The (number | SubdivisionType)[] represents [measure, note, subdivision, midiNote, noteWidth]
-            notesForInstrument.push([
-
-            ]);
-            // const instrumentInstruction = getInstrumentInstructionFromNoteData(noteData, userInstrumentIdx);
-            // const { midiNote, midiBeat } = instrumentInstruction;
-            // const noteDuration = instrumentInstruction.noteWidth * TICKS_PER_BEAT;
-            // const noteTick = midiBeat * TICKS_PER_BEAT;
-            // const noteTripletTickOffset = instrumentInstruction.subdivisionType === SubdivisionType.q
-            //   ? 0
-            //   : ((midiBeat - 1) % 4) * TICKS_PER_BEAT * (43); // 43 is not exactly (128 / 4.0 * 4.0) / 3.0, but it's close enough.
-            // const midiTick = noteTick + noteTripletTickOffset;
-            // const midiNoteStr = midiPitchStringFromNumber(midiNote);
-            // // // console.log(`Play note ${midiNote} at time ${midiBeat * beatLengthInSeconds + tripletBeatOffsetInSeconds}s (aka beat: ${midiBeat}) for ${durationSec}s`);
-            // midiTrack.addEvent(new MidiWriter.NoteEvent({
-            //   pitch: midiNoteStr,
-            //   startTick: midiTick,
-            //   duration: `T${noteDuration}`,
-            //   channel: midiTrackChannel,
-            //   velocity: userInstrument.volume
-            // }));
+            if (midiEvent.name === "Sequence/Track Name") {
+              userInstrumentName = midiEvent.string;
+            } else if (midiEvent.name === "Instrument Name") {
+              sf2InstrumentNameFromMidi = midiEvent.string;
+            } else if (midiEvent.name === "Set Tempo" && midiEvent.data) {
+              setTempo(midiEvent.data);
+            } else if (midiEvent.name === "Note on") {
+              if (midiEvent.velocity) {
+                sf2InstrumentVolume = midiEvent.velocity;
+              }
+              const midiNote = noteNameToMidi(midiEvent.noteName!)!;
+              const midiBeat = Math.floor(midiEvent.tick / TICKS_PER_BEAT);
+              const subdivisionType = midiEvent.tick % TICKS_PER_BEAT === 0 ? SubdivisionType.q : SubdivisionType.t;
+              const newInProgressNote = [midiBeat, midiNote, 1, subdivisionType];
+              if (midiNote in inProgressNotes) {
+                inProgressNotes[midiNote].push(newInProgressNote);
+              } else {
+                inProgressNotes[midiNote] = [newInProgressNote];
+              }
+            } else if (midiEvent.name === "Note off") {
+              const midiNote = noteNameToMidi(midiEvent.noteName!)!;
+              const endMidiBeat = Math.floor(midiEvent.tick / TICKS_PER_BEAT);
+              const subdivisionType = midiEvent.tick % TICKS_PER_BEAT === 0 ? SubdivisionType.q : SubdivisionType.t;
+              if (midiNote in inProgressNotes) {
+                // The (number | SubdivisionType)[] represents [midiBeat, midiNote, noteWidth, subdivision]
+                let finishedInProgressNote = inProgressNotes[midiNote].splice(0, 1)[0];
+                if (inProgressNotes[midiNote].length === 0) {
+                  delete inProgressNotes[midiNote];
+                }
+                finishedInProgressNote = [
+                  finishedInProgressNote[0], // start midiBeat, just copy over
+                  finishedInProgressNote[1], // midiNote, just copy over
+                  endMidiBeat - (finishedInProgressNote[0] as number), // noteWidth = end - start
+                  finishedInProgressNote[3] === SubdivisionType.t || subdivisionType === SubdivisionType.t
+                    ? SubdivisionType.t
+                    : SubdivisionType.q
+                ];
+                notesForInstrument.push(finishedInProgressNote);
+              } else {
+                // nothing to be done, trying to end a note that doesn't exist ???
+              }
+            }
           });
           compositionByInstrumentFromMidi[index] = notesForInstrument;
+          const sf2InstrumentIndex = sf2Sampler?.instrumentNames.findIndex((name) => name === sf2InstrumentNameFromMidi) ?? 0;
+          const sf2InstrumentName = sf2Sampler?.instrumentNames[sf2InstrumentIndex];
+          await sf2Sampler?.loadInstrument(sf2InstrumentName!);
+          sf2Sampler!.output.volume = sf2InstrumentVolume;
 
           return {
-            name: `ins${index+1}`,
+            name: userInstrumentName ?? `ins${index+1}`,
             color: getNewInstrumentColor(index),
             // TODO(jaketrower): handle save/load with different .sf2s then the default !
             sf2InstrumentName,
@@ -371,8 +380,8 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
           }
     })]);
     setTimeSignature(TimeSignature.ts4_4);
-    setUserInstrumentIndex(0);
     setUserInstruments(newUserInstruments);
+    setUserInstrumentIndex(0);
     setHowManyInstrumentsIEverMade(newUserInstruments.length);
     setComposition(convertCompositionByInstrumentToComposition(compositionByInstrumentFromMidi), true);
     setPlayheadPosX(0);
@@ -381,31 +390,40 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     clearUndoStack();
   }, [audioContext, clearUndoStack, getNewUserInstrument, manuallyUpdateFarthestRightNoteEnd, setComposition, setHowManyInstrumentsIEverMade, setPlayheadPosX, setPristine, setTempo, setTimeSignature, setUserInstrumentIndex, setUserInstruments]);
 
-  const onLoadSongMidi = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const onLoadSongFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     try {
-      const midiPlayer = new MidiPlayer.Player();
       const file = e.target?.files?.[0]; 
       if (!file) {
         throw new Error("Failed to load file.");
       }
-      setSongName(file.name);
       const reader = new FileReader();
-      reader.readAsArrayBuffer(file);
-      reader.readAsText(file);
-      reader.onload = readerEvent => {
-        const arrayBuffer = readerEvent.target?.result;
-        if (!(arrayBuffer instanceof ArrayBuffer)) {
-          throw new Error("Failed to parse file.");
+      if (file.name.includes(".json")) {
+        reader.readAsText(file);
+        reader.onload = readerEvent => {
+          const jsonText = readerEvent.target?.result;
+          if (typeof jsonText !== typeof '') {
+            throw new Error("Failed to parse json file.");
+          }
+          handleLoadCompositionFromFileJson(JSON.parse(jsonText as string));
         }
-        midiPlayer.loadArrayBuffer(arrayBuffer);
-        handleLoadCompositionFromFileMidi(midiPlayer);
+      } else if (file.name.includes(".mid")) {
+        const midiPlayer = new MidiPlayer.Player();
+        setSongName(file.name.split(".mid").slice(0, -1).join(""));
+        reader.readAsArrayBuffer(file);
+        reader.onload = readerEvent => {
+          const arrayBuffer = readerEvent.target?.result;
+          if (!(arrayBuffer instanceof ArrayBuffer)) {
+            throw new Error("Failed to parse file.");
+          }
+          midiPlayer.loadArrayBuffer(arrayBuffer);
+          handleLoadCompositionFromFileMidi(midiPlayer);
+        }
       }
     } catch (e) {
       console.log(e);
-      alert("We tried, but failed, to import the midi file! See console for more details.");
+      alert("We tried, but failed, to read the file! See console for more details.");
     }
-  }, [handleLoadCompositionFromFileMidi, setSongName]);
-
+  }, [handleLoadCompositionFromFileJson, handleLoadCompositionFromFileMidi, setSongName]);
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
 
   return (
@@ -465,7 +483,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
                 <DivButton onClick={handleExportSongToMp3} style={{ padding: 2 }}>as 💽 MP3</DivButton>
               </div>
             </>)}</DivButton>
-          <input id={`song-to-load`} type="file" accept=".json" onChange={onLoadSongJson} style={{ display: 'none' }} />
+          <input id={`song-to-load`} type="file" accept=".mid,.json" onChange={onLoadSongFile} style={{ display: 'none' }} />
         </ActionButtonsContainer>
       </SongHeaderContainer>
     </>
