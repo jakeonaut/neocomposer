@@ -239,6 +239,9 @@ function TempoInput() {
         onChange={onTempoChange}
         style={{width: "70px"}}
       />
+      <label htmlFor="tempo">
+        {_tempo}
+      </label>
     </>
   );
 }

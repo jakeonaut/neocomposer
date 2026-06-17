@@ -84,8 +84,13 @@ export function PlayTheSongContextProvider({
         ? (playheadPosXRef.current === userPlayheadBoundsRef.current.end * beatWidthRef.current)
         : (playheadPosXRef.current === endOfMeasureToLoopAtBeat * beatWidthRef.current)
     );
+    // const shouldStop = !isLoopingRef.current && (
+    //   userPlayheadBoundsRef.current?.end && playheadPosXRef.current === userPlayheadBoundsRef.current.end + 1
+    // );
     const shouldStop = !isLoopingRef.current && (
-      userPlayheadBoundsRef.current?.end && playheadPosXRef.current === userPlayheadBoundsRef.current.end + 1
+      userPlayheadBoundsRef.current?.end
+        ? (playheadPosXRef.current === userPlayheadBoundsRef.current.end * beatWidthRef.current)
+        : false
     );
     if (shouldLoop) {
       setPlayheadPosX(beatWidthRef.current * (userPlayheadBoundsRef.current?.start !== undefined ? userPlayheadBoundsRef.current.start + 1 : 1));
