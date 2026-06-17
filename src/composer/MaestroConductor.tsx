@@ -55,11 +55,6 @@ export function MaestroConductor() {
           <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode}>
             <PlayheadNode _inputMode={_inputMode} inputModeRef={inputModeRef} />
           </CompositionCanvas>
-          {/* <div style={{textAlign: "left", marginTop: "-8px"}}>
-            <ul>
-              <li>when saving/loading instruments with non-default soundfonts, need to mark them on save, and prompt you to load those sf2s when you load</li>
-            </ul>
-          </div> */}
         </MaestroContainer>
       )} />
   );

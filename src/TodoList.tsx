@@ -32,28 +32,18 @@ export function TodoList() {
       </div>
       {isExpanded && (
       <ul style={{color: "gray"}}>
-        <li>[ ] handle save/load with different .sf2s then the default !</li>
-<hr/>
-        <li>[ ] undo is saved weird when clicking and dragging notes (saves a weird in-between state)</li>
-        <li>[ ] this is similar but even worse with moving with arrow keys, </li>
-        <li>[ ] undo / redo when deleting an instrument ? (or creating an instrument?)</li>
-        <li>will have to have a max undo history though probably..</li>
-<hr/>
-        <li>[ ] moving notes with arrow keys should only save an undo state after the user changes (or removes) selection</li>
         <li>[ ] - :think: patterns????</li>
 <hr/>
-        <li><b>EXPORT TO MP3!!!!!: <a href="https://github.com/zhuker/lamejs">https://github.com/zhuker/lamejs</a></b></li>
+        <li>[ ] QOL - could remove notes from the selection that are reselected with shift (like a toggle... like Finder)</li>
         <li>[ ] make it play nicer in mobile</li>
         <li>[ ] Longer tracks</li>
 <hr/>
         <li>[ ] QOL - should we delete notes that were dragged off the left of the playhead? (when selected with an offset)</li>
-        <li>[ ] QOL - could remove notes from the selection that are reselected with shift (like a toggle... like Finder)</li>
         <li>clicking and dragging multiple triplet notes doesn't properly set their relative note offsets to each other</li>
         <li>same with clicking and dragging quarter notes when triplets are ALSO selected</li>
         <hr />
         <br/>
         <li>[ ] is there a way to change tempo dynamically in midi?</li>
-        <li>[ ] Record samples as instruments: <a href="https://developer.mozilla.org/en-US/docs/Web/API/MediaStream_Recording_API">https://developer.mozilla.org/en-US/docs/Web/API/MediaStream_Recording_API</a></li>
       </ul>
     )}
     </div>

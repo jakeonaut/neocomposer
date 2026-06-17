@@ -5,6 +5,7 @@ import { globals } from "./globals";
 export const DOUBLE_CLICK_SECOND_BUFFER = 0.2;
 export const DEFAULT_VOLUME = 50;
 export const MAX_USER_INSTRUMENTS = 16;
+export const DEFAULT_SOUNDFONT_FILE_NAME = "microgm.sf2";
 
 export const zIndex_placedNote = 1;
 export const zIndex_selectedNote = 2;
@@ -153,6 +154,7 @@ export function getARandomDischordantNote() {
 
 export type UserInstrument = {
   name: string;
+  fileName: string;
   color: string;
   sf2Sampler: Soundfont2Sampler | undefined;
   sf2InstrumentName: string | undefined;
@@ -178,6 +180,7 @@ export function isInstrumentEqual(a: UserInstrument, b: UserInstrument) {
 
 export type OptionalUserInstrument = {
   name?: string;
+  fileName?: string;
   color?: string;
   sf2InstrumentName?: string;
   volume?: number;

@@ -86,6 +86,9 @@ export function UserInstrumentsHeader() {
     userInstrumentColorInputRef,
     userInstrumentNameInputRef,
     userInstrumentVolumeInputRef,
+    defaultSoundfontBuffer,
+    setDefaultSoundfontBuffer,
+    setDefaultSoundfontFileName,
   } = useContext(UserInstrumentContext)!;
   const { selectNotesByInstrument } = useContext(ClickedSelectedNotesContext)!;
   const { _compositionByInstructionIdRef } = useContext(CompositionActionsContext)!;
@@ -107,9 +110,14 @@ export function UserInstrumentsHeader() {
     });
   }, [canAddNewInstrument, getNewUserInstrument, audioContext, howManyInstrumentsIEverMade, setHowManyInstrumentsIEverMade, userInstrumentsRef, setUserInstruments, addToUndoStack]);
 
-  const onSf2UploadSuccess = useCallback((sampler: Soundfont2Sampler, sf2InstrumentName: string) => {
+  const onSf2UploadSuccess = useCallback((sampler: Soundfont2Sampler, sf2InstrumentName: string, soundfontBuffer: Uint8Array, fileName: string) => {
+    if (defaultSoundfontBuffer === undefined) {
+      setDefaultSoundfontBuffer(soundfontBuffer);
+      setDefaultSoundfontFileName(fileName);
+    }
     const oldUserInstruments = [ ...userInstrumentsRef.current ];
     const newUserInstruments = [ ...userInstrumentsRef.current ];
+    newUserInstruments[userInstrumentIndexRef.current]!.fileName = fileName;
     newUserInstruments[userInstrumentIndexRef.current]!.sf2Sampler = sampler;
     newUserInstruments[userInstrumentIndexRef.current]!.sf2InstrumentName = sf2InstrumentName;
     sampler.output.volume = newUserInstruments[userInstrumentIndexRef.current].volume;
@@ -129,7 +137,7 @@ export function UserInstrumentsHeader() {
     });
     // weird. https://stackoverflow.com/questions/12030686/html-input-file-selection-event-not-firing-upon-selecting-the-same-file
     (document.getElementById(`sf-uploader-${userInstrumentIndexRef.current}`) as HTMLInputElement)!.value = null as unknown as string;
-  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, addToUndoStack, audioContext.currentTime, incrementBabyDanceFrame]);
+  }, [defaultSoundfontBuffer, userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, addToUndoStack, audioContext.currentTime, setDefaultSoundfontBuffer, incrementBabyDanceFrame]);
   const onUploadSf2 = useUploadSf2({
     audioContext,
     onLoadSuccess: onSf2UploadSuccess,

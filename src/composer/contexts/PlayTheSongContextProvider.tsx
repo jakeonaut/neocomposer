@@ -173,7 +173,7 @@ export function PlayTheSongContextProvider({
     setComposition({}, false /* shouldAddToUndoStack */);
     clearUndoStack();
     setCopiedNotes([]);
-  }, [audioContext, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setFarthestRightNoteEnd, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments]);
+  }, [audioContext, clearUndoStack, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setFarthestRightNoteEnd, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments]);
 
   const babyDanceFrameContextProvider = useMemo(() => (<BabyDanceFrameContext value={{ babyDanceFrame }}>
     {children}

@@ -7,7 +7,7 @@ export function useUploadSf2({
   onLoadSuccess,
 } : {
   audioContext: AudioContext,
-  onLoadSuccess: (sampler: Soundfont2Sampler, instrumentName: string) => void,
+  onLoadSuccess: (sampler: Soundfont2Sampler, instrumentName: string, soundfontBuffer: Uint8Array, fileName: string) => void,
 }) {
   const handleUploadSf2 = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target?.files?.[0]; 
@@ -34,7 +34,7 @@ export function useUploadSf2({
       })
       await soundfont2Sampler.ready;
       await soundfont2Sampler.loadInstrument(soundfont2Sampler.instrumentNames[0]);
-      onLoadSuccess(soundfont2Sampler, soundfont2Sampler.instrumentNames[0]);
+      onLoadSuccess(soundfont2Sampler, soundfont2Sampler.instrumentNames[0], buffer, file.name);
     }
   }, [audioContext, onLoadSuccess]);
   return handleUploadSf2;
