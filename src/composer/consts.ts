@@ -211,8 +211,8 @@ export function isNoteEqual(a: InstrumentInstruction, b: InstrumentInstruction) 
     && a.midiNote === b.midiNote
     && a.subdivisionType === b.subdivisionType;
 }
-export type Offset = { x: number, y: number };
-export type NoteIdWithOffset = { offset: Offset };
+export type Offset = { x: number; y: number };
+export type NoteIdWithOffset = { noteId: number; offset: Offset };
 export type InstrumentInstructionWithOffset = { instrumentInstruction: InstrumentInstruction, offset: Offset };
 export type Composition = {
   [id: MidiBeat]: {
@@ -356,13 +356,15 @@ export const DEFAULT_BEAT_HEIGHT = 15;
 export function getStartOfMeasureFromBeat(beat: MidiBeat, timeSignature: TimeSignature) {
   const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
   const measureBeatMultiplier = 4 * timeSignatureVal;
-  return Math.floor(beat / measureBeatMultiplier) * measureBeatMultiplier
+  // Beats are 1-indexed, hence the -1
+  return Math.floor((beat - 1) / measureBeatMultiplier) * measureBeatMultiplier
 }
 
 export function getEndOfMeasureFromBeat(beat: MidiBeat, timeSignature: TimeSignature) {
   const timeSignatureVal = timeSignature === TimeSignature.ts4_4 ? 4 : 3;
   const measureBeatMultiplier = 4 * timeSignatureVal;
-  return Math.ceil((beat + 1) / measureBeatMultiplier) * measureBeatMultiplier;
+  // Beats are 1-indexed, hence the -1
+  return Math.ceil((beat + 1 - 1) / measureBeatMultiplier) * measureBeatMultiplier;
 }
 
 export function getEndOfMeasureToLoopAtBeat(

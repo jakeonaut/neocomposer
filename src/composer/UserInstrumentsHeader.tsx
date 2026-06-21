@@ -137,7 +137,7 @@ export function UserInstrumentsHeader() {
     });
     // weird. https://stackoverflow.com/questions/12030686/html-input-file-selection-event-not-firing-upon-selecting-the-same-file
     (document.getElementById(`sf-uploader-${userInstrumentIndexRef.current}`) as HTMLInputElement)!.value = null as unknown as string;
-  }, [defaultSoundfontBuffer, userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, addToUndoStack, audioContext.currentTime, setDefaultSoundfontBuffer, incrementBabyDanceFrame]);
+  }, [defaultSoundfontBuffer, userInstrumentsRef, userInstrumentIndexRef, setUserInstruments, addToUndoStack, audioContext.currentTime, setDefaultSoundfontBuffer, setDefaultSoundfontFileName, incrementBabyDanceFrame]);
   const onUploadSf2 = useUploadSf2({
     audioContext,
     onLoadSuccess: onSf2UploadSuccess,

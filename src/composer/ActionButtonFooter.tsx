@@ -239,7 +239,7 @@ function TempoInput() {
         onChange={onTempoChange}
         style={{width: "70px"}}
       />
-      <label htmlFor="tempo">
+      <label htmlFor="tempo" style={{position: "relative", left: "-2px"}}>
         {_tempo}
       </label>
     </>
@@ -257,7 +257,7 @@ export function ActionButtonFooter({
   setInputMode: (inputMode: InputMode, isMouseDown: boolean) => void,
   tryCopySelectedNotes: () => void,
   tryCutSelectedNotes: () => void,
-  tryPasteCopiedNotes: () => void
+  tryPasteCopiedNotes: (e: MouseEvent | KeyboardEvent) => void
 }) {
   const containerStyle = useMemo(() => ({ marginTop: 1, justifyContent: 'center' }), []);
   return (

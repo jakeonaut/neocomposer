@@ -63,6 +63,7 @@ export function Maestro({
     selectedNotesRef,
     setSelectedNotes,
     selectNotesByInstrument,
+    toggleSelectionOnNoteSet,
     heldPianoKeys,
     setHeldPianoKeys,
   } = useContext(ClickedSelectedNotesContext)!;
@@ -142,7 +143,7 @@ export function Maestro({
     copiedNotesOffsetRef.current = 0;
   }, [copiedNotesOffsetRef, tryCopySelectedNotes, tryDeleteSelectedNotes]);
 
-  const tryPasteCopiedNotes = useCallback(() => {
+  const tryPasteCopiedNotes = useCallback((e: KeyboardEvent | MouseEvent) => {
     console.log("TODO: test this while dragging other selected notes...");
     console.log("TODO: need to test the midiBeat increase with different copied subdivision types?")
     const copiedNotes = Object.values(copiedNotesRef.current);
@@ -163,13 +164,24 @@ export function Maestro({
     const pastedNotes = addCompositionNotes(notesToPaste, true /* shouldAddToUndoStack */);
     // setIsCompositionMouseDown(true);
     // setClickedNote(topLeftmostCopiedNote.noteId);
-    setSelectedNotes(pastedNotes.reduce((acc, note) => {
+    const pastedNotesToSelect = pastedNotes.reduce((acc, note) => {
       return {
         ...acc,
-        [note.noteId]: { offset: { x: 0, y: 0 } }
+        [note.noteId]: {
+          noteId: note.noteId,
+          offset: { x: 0, y: 0 },
+        },
       };
-    }, {} as Record<string, NoteIdWithOffset>));
-  }, [addCompositionNotes, copiedNotesOffsetRef, copiedNotesRef, setSelectedNotes, userInstrumentIndexRef]);
+    }, {} as Record<string, NoteIdWithOffset>);
+    if (e.shiftKey) {
+      setSelectedNotes({
+        ...selectedNotesRef.current,
+        ...pastedNotesToSelect,
+      })
+    } else {
+      setSelectedNotes(pastedNotesToSelect);
+    }
+  }, [addCompositionNotes, copiedNotesOffsetRef, copiedNotesRef, selectedNotesRef, setSelectedNotes, userInstrumentIndexRef]);
 
   const handleKeyDown = useCallback(
     async (e: KeyboardEvent) => {
@@ -236,7 +248,7 @@ export function Maestro({
         }
       }
       if (e.key === "a" && (e.ctrlKey || e.metaKey)) {
-        setSelectedNotes({
+        const notesToSelect = {
           ...(Object.entries(_compositionByInstructionIdRef.current).reduce((acc, [noteId, _]) => ({
             ...acc,
             [noteId]: {
@@ -244,7 +256,12 @@ export function Maestro({
               offset: { x: 0, y: 0 },
             },
           }), {} as Record<string, NoteIdWithOffset>)),
-        });
+        };
+        if (e.shiftKey) {
+          toggleSelectionOnNoteSet(notesToSelect);
+        } else {
+          setSelectedNotes(notesToSelect);
+        }
         e.preventDefault();
         return false;
       }
@@ -257,7 +274,7 @@ export function Maestro({
         return false;
       }
       if (e.key === "v" && (e.ctrlKey || e.metaKey)) {
-        tryPasteCopiedNotes();
+        tryPasteCopiedNotes(e);
         return false;
       }
       if (e.key === "q") {
@@ -348,7 +365,7 @@ export function Maestro({
       });
       incrementBabyDanceFrame();
     },
-    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, canRedo, handleRedo, canUndo, handleUndo, clickedNoteRef, selectedNotesRef, _compositionByInstructionIdRef, removeCompositionNotes, addCompositionNotes, debouncedAddToUndoStack, setSelectedNotes, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setUserInstrumentIndex, selectNotesByInstrument, trySetInputMode, onCompositionMouseUpRef, setInputMode, _isPlaying, handleStopComposition, handlePlayComposition, isLoopingRef]
+    [heldPianoKeys, setHeldPianoKeys, userInstrumentsRef, userInstrumentIndexRef, audioContext.currentTime, incrementBabyDanceFrame, canRedo, handleRedo, canUndo, handleUndo, clickedNoteRef, selectedNotesRef, _compositionByInstructionIdRef, removeCompositionNotes, addCompositionNotes, debouncedAddToUndoStack, toggleSelectionOnNoteSet, tryCopySelectedNotes, tryCutSelectedNotes, tryPasteCopiedNotes, onToggleSubdivisionType, onToggleTimeSignature, tryDeleteSelectedNotes, isCompositionMouseDownRef, setIsCompositionMouseDown, setClickedNote, setSelectedNotes, setUserInstrumentIndex, selectNotesByInstrument, trySetInputMode, onCompositionMouseUpRef, setInputMode, _isPlaying, handleStopComposition, handlePlayComposition, isLoopingRef]
   );
 
   const handleKeyUp = useCallback((e: KeyboardEvent) => {

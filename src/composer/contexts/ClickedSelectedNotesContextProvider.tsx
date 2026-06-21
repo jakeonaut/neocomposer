@@ -25,9 +25,29 @@ export function ClickedSelectedNotesContextProvider({
     selectedNotesRef.current = newSelectedNotes;
     _setSelectedNotes(newSelectedNotes);
   }, []);
-  const selectNotesByInstrument = useCallback((userInstrumentIndex: number, compositionByInstructionId: Record<string, InstrumentInstruction>) => {
+  const toggleSelectionOnNoteSet = useCallback((noteSet: Record<string, NoteIdWithOffset>) => {
+    const currSelectedNotes = {...selectedNotesRef.current};
+    const currSelectedNoteIds = Object.keys(currSelectedNotes);
+    const notesToRemove: string[] = []; 
+    const notesToAdd: Record<string, NoteIdWithOffset> = {};
+    const noteIdsToToggleSelectionOn = Object.keys(noteSet);
+    noteIdsToToggleSelectionOn.forEach((noteId) => {
+      if (currSelectedNoteIds.includes(noteId)) {
+        notesToRemove.push(noteId);
+      } else {
+        notesToAdd[noteId] = noteSet[noteId];
+      }
+    });
+    notesToRemove.forEach((noteId) => {
+      delete currSelectedNotes[noteId];
+    });
     setSelectedNotes({
-      ...selectedNotesRef.current,
+      ...currSelectedNotes,
+      ...notesToAdd,
+    })
+  }, [setSelectedNotes]);
+  const selectNotesByInstrument = useCallback((userInstrumentIndex: number, compositionByInstructionId: Record<string, InstrumentInstruction>) => {
+    toggleSelectionOnNoteSet({
       ...(Object.entries(compositionByInstructionId).reduce((acc, [noteId, instrumentInstruction]) => {
         if (instrumentInstruction.userInstrumentIndex === userInstrumentIndex) {
           return {
@@ -41,7 +61,7 @@ export function ClickedSelectedNotesContextProvider({
         return acc;
       }, {} as Record<string, NoteIdWithOffset>)),
     });
-  }, [setSelectedNotes]);
+  }, [toggleSelectionOnNoteSet]);
 
   return (
     <ClickedSelectedNotesContext value={{
@@ -50,6 +70,7 @@ export function ClickedSelectedNotesContextProvider({
       _clickedNote, clickedNoteRef, setClickedNote,
       _selectedNotes, selectedNotesRef, setSelectedNotes,
       selectNotesByInstrument,
+      toggleSelectionOnNoteSet,
     }}>
       {children}
     </ClickedSelectedNotesContext>
@@ -66,4 +87,5 @@ export const ClickedSelectedNotesContext = createContext<{
   selectedNotesRef: React.RefObject<Record<string, NoteIdWithOffset>>,
   setSelectedNotes: (notes: Record<string, NoteIdWithOffset>) => void,
   selectNotesByInstrument: (userInstrumentIndex: number, compositionByInstructionId: Record<string, InstrumentInstruction>) => void
+  toggleSelectionOnNoteSet: (notes: Record<string, NoteIdWithOffset>) => void,
 } | undefined>(undefined);

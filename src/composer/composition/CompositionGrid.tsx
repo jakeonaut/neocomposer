@@ -113,7 +113,7 @@ export function CompositionGrid({
         rowCount={pianoRollKeys.length}
         rowHeight={_beatHeight - 1}
         style={gridStyle}
-        overscanCount={100}
+        overscanCount={50}
         onScroll={handleScroll}
       />
       {grid?.element && createPortal(children, grid.element)}

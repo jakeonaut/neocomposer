@@ -78,9 +78,11 @@ const PixelCoda = styled.div<{
   pointer-events: ${({ $preventPointerEvents }) => $preventPointerEvents ? 'none' : 'normal' };
 `;
 
+// TODO(jaketrower): Move to constants. Can be useful for making the grid just a canvas...
 function beatFromEvent(e: { target: HTMLDivElement, clientX: number }, beatWidth: number) {
   const clientRect = e.target.getBoundingClientRect();
-  return Math.floor((e.clientX - clientRect.left) / beatWidth);
+  // Beats are 1-indexed, hence the +1
+  return Math.floor((e.clientX - clientRect.left) / beatWidth) + 1;
 }
 
 export function PlayheadNode({
@@ -111,7 +113,7 @@ export function PlayheadNode({
   const { _compositionByInstructionIdRef, compositionRef } = useContext(CompositionActionsContext)!;
   const { _timeSignature, timeSignatureRef } = useContext(TimeSignatureContext)!;
   const { _playheadPosX, playheadPosXRef, setPlayheadPosX, } = useContext(PlayheadPosXContext)!;
-  const { selectedNotesRef, setSelectedNotes } = useContext(ClickedSelectedNotesContext)!;
+  const { toggleSelectionOnNoteSet } = useContext(ClickedSelectedNotesContext)!;
 
   const [_babyMouseDown, _setBabyMouseDown] = useState(false);
   const [_codaMouseDown, _setCodaMouseDown] = useState(false);
@@ -147,7 +149,7 @@ export function PlayheadNode({
     const start = beatFromEvent({ target: playheadNodeElementRef.current! as HTMLDivElement, clientX: e.clientX - 30 }, beatWidthRef.current);
     setPlayheadMouseDown(true);
     _setCodaMouseDown(true);
-    startingPlayheadCursorPos.current = (userPlayheadBoundsRef.current?.end ?? endOfMeasureToLoopAtBeat) - 1;
+    startingPlayheadCursorPos.current = (userPlayheadBoundsRef.current?.end ?? endOfMeasureToLoopAtBeat);
     cursorPos.current = start;
     e.stopPropagation();
     return false;
@@ -192,14 +194,14 @@ export function PlayheadNode({
     setBabyMouseDown(true);
     startingPlayheadCursorPos.current = start;
     cursorPos.current = start;
-    setPlayheadPosX((start + 1) * beatWidthRef.current);
+    setPlayheadPosX((start) * beatWidthRef.current);
     if (isPlayingRef.current) {
       handleQuickPlayResetAtCurrentBeat();
     } else {
       playCompositionNotesAtBeat({
         audioContext,
         composition: compositionRef.current,
-        midiBeat: start + 1,
+        midiBeat: start,
         tempo: tempoRef.current,
         userInstruments: userInstrumentsRef.current,
         incrementBabyDanceFrame,
@@ -211,22 +213,22 @@ export function PlayheadNode({
   }, [audioContext, beatWidthRef, compositionRef, handleQuickPlayResetAtCurrentBeat, incrementBabyDanceFrame, inputModeRef, isPlayingRef, setBabyMouseDown, setPlayheadPosX, tempoRef, userInstrumentsRef]);
 
   const selectNotesByMeasure = useCallback((startOfMeasure: number, endOfMeasure: number, compositionByInstructionId: Record<string, InstrumentInstruction>) => {
-      setSelectedNotes({
-        ...selectedNotesRef.current,
-        ...(Object.entries(compositionByInstructionId).reduce((acc, [noteId, instrumentInstruction]) => {
-          if (instrumentInstruction.midiBeat > startOfMeasure && instrumentInstruction.midiBeat <= endOfMeasure) {
-            return {
-              ...acc,
-              [noteId]: {
-                noteId: parseInt(noteId),
-                offset: { x: 0, y: 0 },
-              },
-            };
-          }
-          return acc;
-        }, {} as Record<string, NoteIdWithOffset>)),
-      });
-    }, [selectedNotesRef, setSelectedNotes]);
+    // TODO(jaketrower): check if they're all selected, and if so, unselect them, otherwise, select them.
+    toggleSelectionOnNoteSet({
+      ...(Object.entries(compositionByInstructionId).reduce((acc, [noteId, instrumentInstruction]) => {
+        if (instrumentInstruction.midiBeat > startOfMeasure && instrumentInstruction.midiBeat <= endOfMeasure) {
+          return {
+            ...acc,
+            [noteId]: {
+              noteId: parseInt(noteId),
+              offset: { x: 0, y: 0 },
+            },
+          };
+        }
+        return acc;
+      }, {} as Record<string, NoteIdWithOffset>)),
+    })
+  }, [toggleSelectionOnNoteSet]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     const cursorBeat = beatFromEvent({ target: playheadNodeElementRef.current!, clientX: e.clientX - 30 }, beatWidthRef.current);
@@ -258,11 +260,11 @@ export function PlayheadNode({
       !babyMouseDownRef.current && !playheadMouseDownRef.current
     )) return;
     if (babyMouseDownRef.current) {
-      setPlayheadPosX((cursorBeat + 1) * beatWidthRef.current);
+      setPlayheadPosX((cursorBeat) * beatWidthRef.current);
       playCompositionNotesAtBeat({
         audioContext,
         composition: compositionRef.current,
-        midiBeat: cursorBeat + 1,
+        midiBeat: cursorBeat,
         tempo: tempoRef.current,
         userInstruments: userInstrumentsRef.current,
         incrementBabyDanceFrame,
@@ -270,18 +272,18 @@ export function PlayheadNode({
     } else if (playheadMouseDownRef.current) {
       if (cursorBeat < startingPlayheadCursorPos.current) {
         setUserPlayheadBounds({
-          start: cursorBeat,
-          end: startingPlayheadCursorPos.current + 1,
+          start: cursorBeat - 1,
+          end: startingPlayheadCursorPos.current,
         });
       } else if (cursorBeat === startingPlayheadCursorPos.current) {
         setUserPlayheadBounds({
-          start: cursorBeat,
-          end: cursorBeat + 1,
+          start: cursorBeat - 1,
+          end: cursorBeat,
         });
       } else {
         setUserPlayheadBounds({
           start: startingPlayheadCursorPos.current,
-          end: cursorBeat + 1,
+          end: cursorBeat,
         });
       }
     }

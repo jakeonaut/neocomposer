@@ -34,7 +34,6 @@ export function TodoList() {
       <ul style={{color: "gray"}}>
         <li>[ ] - :think: patterns????</li>
 <hr/>
-        <li>[ ] QOL - could remove notes from the selection that are reselected with shift (like a toggle... like Finder)</li>
         <li>[ ] make it play nicer in mobile</li>
         <li>[ ] Longer tracks</li>
 <hr/>
