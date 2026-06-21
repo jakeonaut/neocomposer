@@ -3,6 +3,7 @@ import { Soundfont2Sampler } from "../smplr/soundfont2";
 import { globals } from "./globals";
 
 export const DOUBLE_CLICK_SECOND_BUFFER = 0.2;
+export const DELETE_CLICK_BUFFER = 1.0;
 export const DEFAULT_VOLUME = 50;
 export const MAX_USER_INSTRUMENTS = 16;
 export const DEFAULT_SOUNDFONT_FILE_NAME = "microgm.sf2";

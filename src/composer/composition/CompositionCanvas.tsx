@@ -16,6 +16,7 @@ import {
   getStartOfMeasureFromBeat,
   getEndOfMeasureFromBeat,
   DOUBLE_CLICK_SECOND_BUFFER,
+  DELETE_CLICK_BUFFER,
   InstrumentInstruction,
 } from "../consts";
 import styled from "styled-components";
@@ -305,7 +306,7 @@ export function CompositionCanvas({
             }
           } else if (clickedNoteRef.current && !hasMouseMovedRef.current) {
             const secondsSince = (Date.now() - whenWasMouseDownedRef.current) / 1000.0;
-            if (secondsSince < DOUBLE_CLICK_SECOND_BUFFER) {
+            if (secondsSince < DELETE_CLICK_BUFFER) {
               removeCompositionNotes([clickedNoteRef.current.toString()], false /* shouldAddToUndoStack */);
               removeCompositionNotes(Object.keys(selectedNotesRef.current), true /* shouldAddToUndoStack */);
               setSelectedNotes({});
