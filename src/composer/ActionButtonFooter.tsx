@@ -115,7 +115,7 @@ function InputDefaultButton({
   setInputMode: (inputMode: InputMode, isMouseDown: boolean) => void
 }) {
   const { isCompositionMouseDownRef } = useContext(MouseDownContext)!;
-  const setDefaultButton = useCallback(
+  const setInputModeToDefault = useCallback(
     () => setInputMode(InputMode.DEFAULT, isCompositionMouseDownRef.current),
     [isCompositionMouseDownRef, setInputMode]
   );
@@ -127,9 +127,9 @@ function InputDefaultButton({
 
   return (
     <PixelActionButton
-      onClick={setDefaultButton}
+      onClick={setInputModeToDefault}
       style={containerStyle}>
-        <PixelButton $y={-147} $inverted={_inputMode === InputMode.DEFAULT} title="Place Notes: Shift" />
+        <PixelButton $y={-147} $inverted={_inputMode === InputMode.DEFAULT} title="Place Notes" />
     </PixelActionButton>
   );
 }
@@ -156,7 +156,34 @@ function InputSelectionButton({
     <PixelActionButton
       onClick={setInputModeToSelect}
       style={containerStyle}>
-      <PixelButton $y={-21} $inverted={_inputMode === InputMode.SELECT} title="Select Notes: Shift" />
+      <PixelButton $y={-21} $inverted={_inputMode === InputMode.SELECT} title="Select Notes: Click or Hold Shift" />
+    </PixelActionButton>
+  );
+}
+
+function InputDeleteButton({
+  _inputMode,
+  setInputMode,
+}: {
+  _inputMode: InputMode,
+  setInputMode: (inputMode: InputMode, isMouseDown: boolean) => void
+}) {
+  const { isCompositionMouseDownRef } = useContext(MouseDownContext)!;
+  const setInputModeToDelete = useCallback(
+    () => setInputMode(InputMode.DELETE, isCompositionMouseDownRef.current),
+    [isCompositionMouseDownRef, setInputMode]
+  );
+  const containerStyle = useMemo(() => ({
+    paddingBottom: 3,
+    paddingTop: 2,
+    marginLeft: -6,
+    ...(_inputMode === InputMode.DELETE ? { background: 'gray', cursor: 'unset' } : {}),
+  } as CSSProperties), [_inputMode]);
+  return (
+    <PixelActionButton
+      onClick={setInputModeToDelete}
+      style={containerStyle}>
+      <PixelButton $y={-105} $inverted={_inputMode === InputMode.DELETE} title="Delete Notes: Click or Hold Ctrl/Cmd" />
     </PixelActionButton>
   );
 }
@@ -265,6 +292,7 @@ export function ActionButtonFooter({
       <PlayStopButton />
       <TempoInput />
       <InputDefaultButton _inputMode={_inputMode} setInputMode={setInputMode} />
+      <InputDeleteButton _inputMode={_inputMode} setInputMode={setInputMode} />
       <InputSelectionButton _inputMode={_inputMode} setInputMode={setInputMode} />
       &nbsp;
       <InputTimeSignatureButton />

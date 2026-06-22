@@ -16,7 +16,6 @@ import {
   getStartOfMeasureFromBeat,
   getEndOfMeasureFromBeat,
   DOUBLE_CLICK_SECOND_BUFFER,
-  DELETE_CLICK_BUFFER,
   InstrumentInstruction,
 } from "../consts";
 import styled from "styled-components";
@@ -163,6 +162,9 @@ export function CompositionCanvas({
         setSelectedNotes({});
         return false;
       }
+      if (inputModeRef.current === InputMode.DELETE) {
+        prevCompositionByIdWhenIStartedErasingRef.current = {..._compositionByInstructionIdRef.current};
+      }
       const secondsSince = (Date.now() - whenWasMouseDownedRef.current) / 1000.0;
       if (secondsSince < DOUBLE_CLICK_SECOND_BUFFER) {
         return false;
@@ -179,7 +181,7 @@ export function CompositionCanvas({
       hasMouseMovedRef.current = false;
       return false;
     },
-    [onCompositionMouseUpRef, inputModeRef, selectedNotesRef, clickedNoteRef, isNoteSelected, whenWasMouseDownedRef, setIsMouseDown, setCursorPosition, setStartingCursorPos, setSelectedNotes, audioContext, userInstrumentsRef, userInstrumentIndexRef]
+    [onCompositionMouseUpRef, inputModeRef, selectedNotesRef, clickedNoteRef, isNoteSelected, whenWasMouseDownedRef, setIsMouseDown, setCursorPosition, setStartingCursorPos, setSelectedNotes, _compositionByInstructionIdRef, audioContext, userInstrumentsRef, userInstrumentIndexRef]
   );
   const justSelectedNoteRef = useRef<InstrumentInstruction | undefined>(undefined);
   const handleDoubleClick = useCallback((
@@ -187,44 +189,47 @@ export function CompositionCanvas({
     midiBeat: MidiBeat,
     midiNote: MidiNoteNum,
   ) => {
-    if (inputModeRef.current !== InputMode.SELECT) { return false; }
-    debugger;
     const startOfMeasure = getStartOfMeasureFromBeat(midiBeat, timeSignatureRef.current);
     const endOfMeasure = getEndOfMeasureFromBeat(midiBeat, timeSignatureRef.current);
-    // Quickly temporarily reverse the selection of the justSelectedNote so that when we
-    // toggle on the set below, it's in the right "state". (otherwise shift double clicking
-    // reverses the selection of the clicked on note twice, leaving it unchanged...) 
-    if (justSelectedNoteRef.current) {
-      const selectedNoteIds = Object.keys(selectedNotesRef.current);
-      if (selectedNoteIds.includes(justSelectedNoteRef.current.noteId.toString())) {
-        delete selectedNotesRef.current[justSelectedNoteRef.current.noteId.toString()];
-      } else {
-        selectedNotesRef.current = {
-          ...selectedNotesRef.current,
-          [justSelectedNoteRef.current.noteId.toString()]: {
-            noteId: justSelectedNoteRef.current.noteId,
+    const notesInMeasure = {...(Object.entries(_compositionByInstructionIdRef.current).reduce((acc, [noteId, instrumentInstruction]) => {
+      if (instrumentInstruction.midiBeat > startOfMeasure && instrumentInstruction.midiBeat <= endOfMeasure) {
+        return {
+          ...acc,
+          [noteId]: {
+            noteId: parseInt(noteId),
             offset: { x: 0, y: 0 },
           },
         };
       }
-    }
-    justSelectedNoteRef.current = undefined;
-    toggleSelectionOnNoteSet({
-      ...(Object.entries(_compositionByInstructionIdRef.current).reduce((acc, [noteId, instrumentInstruction]) => {
-        if (instrumentInstruction.midiBeat > startOfMeasure && instrumentInstruction.midiBeat <= endOfMeasure) {
-          return {
-            ...acc,
-            [noteId]: {
-              noteId: parseInt(noteId),
+      return acc;
+    }, {} as Record<string, NoteIdWithOffset>))};
+    if (inputModeRef.current === InputMode.SELECT) {
+      // Quickly temporarily reverse the selection of the justSelectedNote so that when we
+      // toggle on the set below, it's in the right "state". (otherwise shift double clicking
+      // reverses the selection of the clicked on note twice, leaving it unchanged...) 
+      if (justSelectedNoteRef.current) {
+        const selectedNoteIds = Object.keys(selectedNotesRef.current);
+        if (selectedNoteIds.includes(justSelectedNoteRef.current.noteId.toString())) {
+          delete selectedNotesRef.current[justSelectedNoteRef.current.noteId.toString()];
+        } else {
+          selectedNotesRef.current = {
+            ...selectedNotesRef.current,
+            [justSelectedNoteRef.current.noteId.toString()]: {
+              noteId: justSelectedNoteRef.current.noteId,
               offset: { x: 0, y: 0 },
             },
           };
         }
-        return acc;
-      }, {} as Record<string, NoteIdWithOffset>)),
-    });
+      }
+      justSelectedNoteRef.current = undefined;
+      toggleSelectionOnNoteSet(notesInMeasure);
+    } else if (inputModeRef.current === InputMode.DELETE) {
+      removeCompositionNotes(Object.keys(notesInMeasure), true /* shouldAddToUndoStack */);
+    }
     return false;
-  }, [inputModeRef, timeSignatureRef, toggleSelectionOnNoteSet, _compositionByInstructionIdRef, selectedNotesRef]);
+  }, [timeSignatureRef, _compositionByInstructionIdRef, inputModeRef, toggleSelectionOnNoteSet, selectedNotesRef, removeCompositionNotes]);
+
+  const prevCompositionByIdWhenIStartedErasingRef = useRef<{[x: string]: InstrumentInstruction} | undefined>(undefined);
   const handleMouseUp = useCallback(
     (e: MouseEvent) => {
       if (isMouseDownRef.current && cursorPositionRef.current && startingCursorPosRef.current) {
@@ -249,13 +254,14 @@ export function CompositionCanvas({
             } else {
               const clickedNote = _compositionByInstructionIdRef.current[clickedNoteRef.current!.toString()];
               const prevCompositionByInstructionId = {..._compositionByInstructionIdRef.current};
+              // We're about to do that at the end of this function, so don't do it here
+              const shouldAddToUndoStack = false;
               const instrumentInstructionsById = removeCompositionNotes(
                 [
                   clickedNoteRef.current.toString(),
                   ...Object.keys(selectedNotesRef.current).filter((noteId) => noteId !== clickedNoteRef.current!.toString()),
                 ],
-                // We're about to do that at the end of this function, so don't do it here
-                false, /* shouldAddToUndoStack */
+                shouldAddToUndoStack, /* false */
               );
               const gridBeat = cursorPositionRef.current.midiBeat + cursorXOffsetRef.current;
               const midiBeat = getMidiBeatFromGridBeat(gridBeat, subdivisionTypeRef.current, clickedNote.subdivisionType);
@@ -294,21 +300,26 @@ export function CompositionCanvas({
                       };
                     }))
                 ],
-                // We're about to do that at the end of this function, so don't do it here
-                false, /* shouldAddToUndoStack */
+                shouldAddToUndoStack, /* false */
               );
               addToUndoStack({
                 newState: {composition: {..._compositionByInstructionIdRef.current}},
                 oldState: {composition: {...prevCompositionByInstructionId}},
               });
+              // TODO(jaketrower): idk what this is for.
               // fuck it just clear the selected notes
               // setSelectedNotes({});
             }
           } else if (clickedNoteRef.current && !hasMouseMovedRef.current) {
             const secondsSince = (Date.now() - whenWasMouseDownedRef.current) / 1000.0;
-            if (secondsSince < DELETE_CLICK_BUFFER) {
+            if (secondsSince < DOUBLE_CLICK_SECOND_BUFFER) {
+              const prevCompositionByInstructionId = {..._compositionByInstructionIdRef.current};
               removeCompositionNotes([clickedNoteRef.current.toString()], false /* shouldAddToUndoStack */);
-              removeCompositionNotes(Object.keys(selectedNotesRef.current), true /* shouldAddToUndoStack */);
+              removeCompositionNotes(Object.keys(selectedNotesRef.current), false /* shouldAddToUndoStack */);
+              addToUndoStack({
+                newState: {composition: {..._compositionByInstructionIdRef.current}},
+                oldState: {composition: {...prevCompositionByInstructionId}},
+              });
               setSelectedNotes({});
             }
             // const clickedNote = compositionByInstructionIdRef.current[clickedNoteRef.current.toString()];
@@ -359,16 +370,26 @@ export function CompositionCanvas({
       setStartingCursorPos(undefined);
       if (onCompositionMouseUpRef.current) {
         onCompositionMouseUpRef.current();
-      } else if (!e.shiftKey) {
-        setInputMode(InputMode.DEFAULT);
+      } else if (!e.shiftKey && inputModeRef.current === InputMode.SELECT) {
+        setInputMode((e.metaKey || e.ctrlKey) ? InputMode.DELETE : InputMode.DEFAULT);
+      } else if (!e.metaKey && !e.ctrlKey && inputModeRef.current === InputMode.DELETE) {
+        setInputMode(e.shiftKey ? InputMode.SELECT : InputMode.DEFAULT);
       }
       onCompositionMouseUpRef.current = undefined;
       setCursorXOffset(0);
       hasMouseMovedRef.current = false;
-      // TODO(jaketrower): do this with the window documnet too like handleKeyDown
+
+      if (!!prevCompositionByIdWhenIStartedErasingRef.current) {
+        addToUndoStack({
+          newState: { composition: {..._compositionByInstructionIdRef.current}},
+          oldState: { composition: {...prevCompositionByIdWhenIStartedErasingRef.current}},
+        });
+      }
+      prevCompositionByIdWhenIStartedErasingRef.current = undefined;
+      // TODO(jaketrower): do this with the window document too like handleKeyDown
       return false;
     },
-    [isMouseDownRef, setClickedNote, setIsMouseDown, setCursorPosition, setStartingCursorPos, onCompositionMouseUpRef, setCursorXOffset, inputModeRef, clickedNoteRef, setPristine, subdivisionTypeRef, addCompositionNotes, userInstrumentIndexRef, _compositionByInstructionIdRef, removeCompositionNotes, selectedNotesRef, addToUndoStack, whenWasMouseDownedRef, setSelectedNotes, compositionRef, userInstrumentsRef, toggleSelectionOnNoteSet, setUserInstrumentIndex, setInputMode]
+    [isMouseDownRef, setClickedNote, setIsMouseDown, setCursorPosition, setStartingCursorPos, onCompositionMouseUpRef, inputModeRef, setCursorXOffset, clickedNoteRef, setPristine, subdivisionTypeRef, addCompositionNotes, userInstrumentIndexRef, _compositionByInstructionIdRef, removeCompositionNotes, selectedNotesRef, addToUndoStack, whenWasMouseDownedRef, setSelectedNotes, compositionRef, userInstrumentsRef, toggleSelectionOnNoteSet, setUserInstrumentIndex, setInputMode]
   );
   const handleMouseMove = useCallback(
     (
@@ -384,8 +405,12 @@ export function CompositionCanvas({
           cursorPositionRef.current.midiNote !== midiNote)
       ) {
         hasMouseMovedRef.current = true;
+        const isDeleteClick = inputModeRef.current === InputMode.DELETE || e.button === 2 || e.buttons === 2;
         if (inputModeRef.current === InputMode.DEFAULT) {
           if (midiNote !== cursorPositionRef.current.midiNote) {
+            if (isDeleteClick) {
+              return false;
+            }
             if (clickedNoteRef.current) {
               userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({
                 note: midiNote,
@@ -400,10 +425,21 @@ export function CompositionCanvas({
           }
         }
         setCursorPosition({ midiNote, midiBeat });
+        if (isDeleteClick) {
+          const bounds = {
+            left: getMidiBeatFromGridBeat(cursorPositionRef.current.midiBeat, subdivisionTypeRef.current, subdivisionTypeRef.current),
+            top: toMidi(cursorPositionRef.current.midiNote)!, 
+            right: getMidiBeatFromGridBeat(cursorPositionRef.current.midiBeat, subdivisionTypeRef.current, subdivisionTypeRef.current, true),
+            bottom: toMidi(cursorPositionRef.current.midiNote)!,
+          }
+          const newlyDeletedNotes = getPlacedNotesFromComposition(compositionRef.current, userInstrumentsRef.current, bounds);
+          // Don't add to undo stack, we will deal with it in handleMouseUp with prevCompositionByIdWhenIStartedErasingRef.
+          removeCompositionNotes(Object.keys(newlyDeletedNotes), false /* shouldAddToUndoStack */);
+        }
       }
       return false;
     },
-    [isMouseDownRef, inputModeRef, setCursorPosition, clickedNoteRef, userInstrumentsRef, userInstrumentIndexRef]
+    [isMouseDownRef, inputModeRef, setCursorPosition, clickedNoteRef, userInstrumentsRef, userInstrumentIndexRef, subdivisionTypeRef, compositionRef, removeCompositionNotes]
   );
   const throttledHandleMouseMove = useThrottledCallback(handleMouseMove, 10);
 
@@ -412,37 +448,57 @@ export function CompositionCanvas({
       e: React.MouseEvent<HTMLDivElement, MouseEvent>,
       noteId: NoteId,
     ) => {
+      onCompositionMouseUpRef.current = undefined;
       e.preventDefault();
-      if (inputModeRef.current !== InputMode.DEFAULT) return;
+      if (inputModeRef.current !== InputMode.DEFAULT && inputModeRef.current !== InputMode.DELETE) return;
+      const isDeleteClick = e.button === 2 || e.buttons === 2 || inputModeRef.current === InputMode.DELETE;
       const clientRect = (e.target as Element).getBoundingClientRect();
       setCursorXOffset(-Math.floor((e.pageX - clientRect.left) / beatWidth));
       const instrumentInstruction = _compositionByInstructionIdRef.current[noteId];
       if (isNoteSelected(noteId)) {
-        setClickedNote(noteId);
-        Object.entries(selectedNotesRef.current).forEach(([noteWithOffsetId, noteWithOffset]) => {
-          if (noteWithOffsetId === noteId.toString()) return;
-          const instrumentInstructionWithOffset = _compositionByInstructionIdRef.current[noteWithOffsetId];
-          // offset: { }
-          noteWithOffset.offset = {
-            x: instrumentInstructionWithOffset.midiBeat - instrumentInstruction.midiBeat,
-            y: instrumentInstruction.midiNote - instrumentInstructionWithOffset.midiNote,
-          }
-        });
-        setSelectedNotes({...selectedNotesRef.current});
+        if (isDeleteClick) {
+          const prevCompositionByInstructionId = {..._compositionByInstructionIdRef.current};
+          // We're about to do that at the end of this function, so don't do it here
+          const shouldAddToUndoStack = false;
+          removeCompositionNotes([noteId.toString()], shouldAddToUndoStack);
+          removeCompositionNotes(Object.keys(selectedNotesRef.current), shouldAddToUndoStack);
+          addToUndoStack({
+            newState: {composition: {..._compositionByInstructionIdRef.current}},
+            oldState: {composition: {...prevCompositionByInstructionId}},
+          });
+          setSelectedNotes({});
+        } else {
+          setClickedNote(noteId);
+          Object.entries(selectedNotesRef.current).forEach(([noteWithOffsetId, noteWithOffset]) => {
+            if (noteWithOffsetId === noteId.toString()) return;
+            const instrumentInstructionWithOffset = _compositionByInstructionIdRef.current[noteWithOffsetId];
+            // offset: { }
+            noteWithOffset.offset = {
+              x: instrumentInstructionWithOffset.midiBeat - instrumentInstruction.midiBeat,
+              y: instrumentInstruction.midiNote - instrumentInstructionWithOffset.midiNote,
+            }
+          });
+          setSelectedNotes({...selectedNotesRef.current});
+        }
       } else {
-        setClickedNote(noteId);
-        setSelectedNotes({});
+        if (isDeleteClick) {
+          removeCompositionNotes([noteId.toString()], true /* shouldAddToUndoStack */);
+        } else {
+          setClickedNote(noteId);
+          setSelectedNotes({});
+        }
       }
-      userInstrumentsRef.current[instrumentInstruction.userInstrumentIndex].sf2Sampler?.start({ note: instrumentInstruction.midiNote, duration: 0.25 });
-
-      setSubdivisionType(instrumentInstruction.subdivisionType);
-      handleMouseDown(
-        e, 
-        getGridBeatFromMidiBeat(instrumentInstruction.midiBeat, instrumentInstruction.subdivisionType),
-        instrumentInstruction.midiNote
-      );
+      if (!isDeleteClick) {
+        userInstrumentsRef.current[instrumentInstruction.userInstrumentIndex].sf2Sampler?.start({ note: instrumentInstruction.midiNote, duration: 0.25 });
+        setSubdivisionType(instrumentInstruction.subdivisionType);
+        handleMouseDown(
+          e, 
+          getGridBeatFromMidiBeat(instrumentInstruction.midiBeat, instrumentInstruction.subdivisionType),
+          instrumentInstruction.midiNote
+        );
+      }
     },
-    [inputModeRef, setCursorXOffset, beatWidth, _compositionByInstructionIdRef, isNoteSelected, userInstrumentsRef, setSubdivisionType, handleMouseDown, setClickedNote, selectedNotesRef, setSelectedNotes]
+    [onCompositionMouseUpRef, inputModeRef, setCursorXOffset, beatWidth, _compositionByInstructionIdRef, isNoteSelected, removeCompositionNotes, selectedNotesRef, addToUndoStack, setSelectedNotes, setClickedNote, userInstrumentsRef, setSubdivisionType, handleMouseDown]
   );
 
   const resetUserPlayheadBounds = useCallback(() => {
@@ -557,7 +613,7 @@ export function CompositionCanvas({
   ), [handleMouseDown, handleDoubleClick, throttledHandleMouseMove, children, renderedPianoRollKeys, allRenderedNotes]);
 
   return (
-    <CompositionContainer>
+    <CompositionContainer onContextMenu={(e) => e.preventDefault()}>
       {resetUserPlayheadButton}
       <CompositionGridContainer>
         {renderedCompositionGrid}

@@ -35,6 +35,7 @@ export function MaestroConductor() {
   return (
     <Maestro
       _inputMode={_inputMode}
+      inputModeRef={inputModeRef}
       setInputMode={setInputMode}
       trySetInputMode={trySetInputMode}
       renderChildren={(footer: React.ReactElement, undoRedoButtons: React.ReactElement) => (

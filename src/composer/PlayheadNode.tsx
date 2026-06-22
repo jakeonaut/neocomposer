@@ -239,7 +239,7 @@ export function PlayheadNode({
       return false;
     }
 
-    if ((e.ctrlKey || e.metaKey) && userPlayheadBoundsRef.current !== undefined) {
+    if ((e.shiftKey) && userPlayheadBoundsRef.current !== undefined) {
       setUserPlayheadBounds({
         start: Math.min(userPlayheadBoundsRef.current.start, startOfClickedMeasure),
         end: Math.max(userPlayheadBoundsRef.current.end ?? 0, endOfClickedMeasure),
