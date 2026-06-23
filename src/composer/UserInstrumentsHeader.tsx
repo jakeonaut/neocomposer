@@ -371,7 +371,7 @@ export function UserInstrumentsHeader() {
               defaultValue={_userInstruments[_userInstrumentIndex]?.volume}
               onChange={onUserInstrumentVolumeChange} />
           </div>
-          <div onClick={onUserInstrumentSoloToggle}
+          {/* <div onClick={onUserInstrumentSoloToggle}
             style={{
               border: '1px solid black',
               position: 'relative',
@@ -390,7 +390,7 @@ export function UserInstrumentsHeader() {
               top: -2,
               left: -3,
             }}>&nbsp;</div>
-          </div>
+          </div> */}
           <div onClick={onUserInstrumentVisibilityToggle}
             style={{
               border: '1px solid black',

@@ -13,30 +13,38 @@ import { BeatSizeContext } from "./contexts/BeatSizeContextProvider";
 import { ClickedSelectedNotesContext } from "./contexts/ClickedSelectedNotesContextProvider";
 
 const PlayheadContainer = styled.div<{ $beatHeight: number }>`
-  height: ${({ $beatHeight }) => `${pianoRollKeys.length * $beatHeight - 62}px`};
   content: ' ';
-  position: absolute;
+  position: sticky;
   top: 0;
-  left: 0;
   user-select: none;
   pointer-events: none;
+  z-index: 4;
+`;
+
+const PlayheadTopLeftCoverup = styled.div`
+  width: 30px;
+  height: 16px;
+  background: white;
+  position: absolute;
+  border-bottom: 1px solid black;
 `;
 
 const PlayheadStickyContainer = styled.div<{ $isMouseDown: boolean, $beatWidth: number }>`
-  position: sticky;
+  position: absolute;
   background: white;
-  top: -16px;
-  width: ${({ $beatWidth }) => `${(pianoRollBeats.length * $beatWidth) + 32}px`};
+  top: 0px;
+  left: 30px;
+  width: ${({ $beatWidth }) => `${(pianoRollBeats.length * $beatWidth)}px`};
   cursor: ${({ $isMouseDown }) => $isMouseDown ? 'grabbing' : 'pointer'};
   height: 16px;
-  border-bottom: 1px solid ${mediumColor};
+  border-bottom: 1px double ${mediumColor};
   z-index: ${zIndex_playhead};
   pointer-events: all;
 `;
 
 const PlayheadSubContainer = styled.div`
-  position: relative; 
-  left: 30px;
+  position: relative;
+  margin-right: 30px;
 `;
 
 const BabyPlayheadImg = styled.img<{ $frame: number, $playheadPosX: number, $beatWidth: number, $preventPointerEvents: boolean }>`
@@ -316,6 +324,7 @@ export function PlayheadNode({
       onDoubleClick={handleDoubleClick}
       $beatHeight={_beatHeight}
     >
+      <PlayheadTopLeftCoverup />
       <PlayheadStickyContainer $beatWidth={_beatWidth} $isMouseDown={_babyMouseDown || _codaMouseDown}>
         <PlayheadSubContainer>
           <BabyPlayheadImg

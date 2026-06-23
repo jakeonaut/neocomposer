@@ -38,12 +38,17 @@ import { UndoRedoContext } from "../contexts/UndoRedoContextProvider";
 const CompositionContainer = styled.div`
   display: flex; 
   flex-direction: column;
+  position: relative;
+  flex-grow: 1;
+  min-height: 0;
 `;
 
 const CompositionGridContainer = styled.div`
-  position: relative;
-  display: flex;
-  height: 400px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-bottom: 2px solid black;
+  width: calc(100% - 1px);
+  margin-bottom: 2px;
 `;
 
 const PianoRollKeysContainer = styled.div`
@@ -55,11 +60,12 @@ const PianoRollKeysContainer = styled.div`
 
 const PianoRollKeysSubContainer = styled.div<{ $beatHeight: number }>`
   position: absolute;
-  top: ${({ $beatHeight }) => `-${($beatHeight - 1) * (pianoRollKeys.length + 1) - $beatHeight}px`};
+  top: 16px;
+  border-top: 1px solid black;
 `;
 
 export function CompositionCanvas({
-  children,
+  children: playheadNode,
   _inputMode,
   inputModeRef,
   setInputMode,
@@ -91,6 +97,7 @@ export function CompositionCanvas({
     clickedNoteRef, setClickedNote,
     selectedNotesRef, setSelectedNotes,
     toggleSelectionOnNoteSet,
+    heldPianoKeys,
   } = useContext(ClickedSelectedNotesContext)!;
   const {
     addCompositionNotes,
@@ -517,24 +524,22 @@ export function CompositionCanvas({
     () => (<div style={{
       cursor: _userPlayheadBounds === undefined ? 'default' : 'pointer',
       opacity: _userPlayheadBounds === undefined ? 0.25 : 1,
-      position: 'relative',
-      top: -4,
+      position: 'absolute',
+      top: -6,
       left: 10,
+      background: "white",
       fontSize: 18,
       border: '1px solid black',
       padding: '0px 2px 2px 2px',
       lineHeight: '14px',
       width: 12,
       zIndex: zIndex_resetPlayheadButton,
-    }} onClick={resetUserPlayheadBounds}>↺</div>), 
+    }} onClick={resetUserPlayheadBounds}>↺</div>),
     [resetUserPlayheadBounds, _userPlayheadBounds]
   );
 
   const pianoRollKeysContainerStyle = useMemo(() => ({
     height: _beatHeight - 1,
-    // ...(heldPianoKeys[midiNote] ? {
-    //   background: currUserInstrument ? `${currUserInstrument.color}40` : '#b2bcc240',
-    // } : {}),
   }), [_beatHeight]);
   const pianoRollKeyBaseStyle = useMemo(() => ({
     // outline: "1px solid black",
@@ -558,22 +563,31 @@ export function CompositionCanvas({
     //   marginTop: -2,
     // } : {}),
   }), []);
-  const pianoRollKeyStyle = useCallback((midiNote: string) => ({
+  const currUserInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
+  const pianoRollKeyStyle = useCallback((midiNote: string, isLast: boolean, isHeld: boolean) => ({
     ...pianoRollKeyBaseStyle,
     ...(midiNote[1] === 'b' ? {
       background: 'gray',
       color: 'white',
     } : {}),
-  } as CSSProperties), [pianoRollKeyBaseStyle]);
+    ...(isHeld && currUserInstrument?.color ? {
+      background: midiNote[1] === 'b' ? 'black' : currUserInstrument?.color,
+      color: midiNote[1] === 'b' ? currUserInstrument?.color : 'black',
+    } : {}),
+    ...(isLast ? {
+      borderBottom: 'unset',
+      height: 14,
+    } : {}),
+  } as CSSProperties), [currUserInstrument?.color, pianoRollKeyBaseStyle]);
   const renderedPianoRollKeys = useMemo(() => (
     <PianoRollKeysContainer>
       <PianoRollKeysSubContainer $beatHeight={_beatHeight}>
-        {pianoRollKeys.map((midiNote, _) => (
+        {pianoRollKeys.map((midiNote, idx) => (
           <div
             key={`row-${midiNote}`}
             style={pianoRollKeysContainerStyle}
           >
-            <div style={pianoRollKeyStyle(midiNote)}
+            <div style={pianoRollKeyStyle(midiNote, idx === pianoRollKeys.length - 1, heldPianoKeys[midiNote])}
               onMouseDown={() => {
                 userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({ note: midiNote, duration: 0.25 }); 
               }}
@@ -589,7 +603,7 @@ export function CompositionCanvas({
         ))}
       </PianoRollKeysSubContainer>
     </PianoRollKeysContainer>
-  ), [_beatHeight, pianoRollKeyStyle, pianoRollKeysContainerStyle, userInstrumentIndexRef, userInstrumentsRef])
+  ), [_beatHeight, heldPianoKeys, pianoRollKeyStyle, pianoRollKeysContainerStyle, userInstrumentIndexRef, userInstrumentsRef])
 
   const allRenderedNotes = useMemo(() => (
     <AllRenderedNotes
@@ -605,17 +619,25 @@ export function CompositionCanvas({
     <CompositionGrid
       handleMouseDown={handleMouseDown}
       handleDoubleClick={handleDoubleClick}
-      handleMouseMove={throttledHandleMouseMove}>
-      {children}
-      {renderedPianoRollKeys}
+      handleMouseMove={throttledHandleMouseMove}
+      playheadNode={playheadNode}
+      renderedPianoRollKeys={renderedPianoRollKeys}
+    >
       {allRenderedNotes}
     </CompositionGrid>
-  ), [handleMouseDown, handleDoubleClick, throttledHandleMouseMove, children, renderedPianoRollKeys, allRenderedNotes]);
+  ), [handleMouseDown, handleDoubleClick, throttledHandleMouseMove, playheadNode, renderedPianoRollKeys, allRenderedNotes]);
+  const compositionScrollerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (compositionScrollerRef.current) {
+      const compositionScroller = compositionScrollerRef.current;
+      compositionScroller.scrollTo(0, compositionScroller.clientHeight / 2);
+    }
+  }, [compositionScrollerRef]);
 
   return (
     <CompositionContainer onContextMenu={(e) => e.preventDefault()}>
       {resetUserPlayheadButton}
-      <CompositionGridContainer>
+      <CompositionGridContainer ref={compositionScrollerRef}>
         {renderedCompositionGrid}
       </CompositionGridContainer>
     </CompositionContainer>

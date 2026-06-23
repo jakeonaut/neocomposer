@@ -32,6 +32,8 @@ export function TodoList() {
       </div>
       {isExpanded && (
       <ul style={{color: "gray"}}>
+        <li>[ ] - if you hit solo, and then add new notes on another instrument or a new instrument, it's not respected!</li>
+        <li>[ ] - unmuting another instrument should "un-solo" any instrument that is "soloed" ?</li>
         <li>[ ] - :think: patterns????</li>
 <hr/>
         <li>[ ] make it play nicer in mobile</li>

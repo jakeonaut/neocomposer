@@ -39,7 +39,7 @@ export function MaestroConductor() {
       setInputMode={setInputMode}
       trySetInputMode={trySetInputMode}
       renderChildren={(footer: React.ReactElement, undoRedoButtons: React.ReactElement) => (
-        <MaestroContainer>
+        <>
           <Header>
             <SongOptionsHeader footer={footer} />
             <div style={{display: "flex"}}>
@@ -56,7 +56,7 @@ export function MaestroConductor() {
           <CompositionCanvas _inputMode={_inputMode} inputModeRef={inputModeRef} setInputMode={setInputMode}>
             <PlayheadNode _inputMode={_inputMode} inputModeRef={inputModeRef} />
           </CompositionCanvas>
-        </MaestroContainer>
+        </>
       )} />
   );
 }

@@ -17,6 +17,7 @@ export const zIndex_resetPlayheadButton = 5;
 export const lightColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.25)';
 export const mediumColor = '#b2bcc2'; // 'rgba(17, 156, 238, 0.5)'
 export const veryLightColor = '#ced8e0ff'; //"rgba(17, 156, 238, 0.12)";
+export const darkColor = '#6e777d';
 
 function shuffleArray(arr: unknown[]) {
     for (var i = arr.length - 1; i > 0; i--) {
