@@ -2,12 +2,14 @@ import React, { createContext, useCallback, useRef, useState } from "react";
 import { InstrumentInstruction, NoteId, NoteIdWithOffset } from "../consts";
 import _ from "lodash";
 
+export type HeldPianoKey = {key: boolean, mouse: boolean};
+
 export function ClickedSelectedNotesContextProvider({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const [heldPianoKeys, setHeldPianoKeys] = useState<Record<string, boolean>>({});
+  const [heldPianoKeys, setHeldPianoKeys] = useState<Record<string, HeldPianoKey>>({});
   const [_clickedNote, _setClickedNote] = useState<NoteId | undefined>(undefined);
   const [_selectedNotes, _setSelectedNotes] = useState<Record<string, NoteIdWithOffset>>({});
   
@@ -78,8 +80,8 @@ export function ClickedSelectedNotesContextProvider({
 }
 
 export const ClickedSelectedNotesContext = createContext<{
-  heldPianoKeys: Record<string, boolean>,
-  setHeldPianoKeys: (keys: Record<string, boolean>) => void,
+  heldPianoKeys: Record<string, HeldPianoKey>,
+  setHeldPianoKeys: (keys: Record<string, HeldPianoKey>) => void,
   _clickedNote: NoteId | undefined,
   clickedNoteRef: React.RefObject<NoteId | undefined>,
   setClickedNote: (noteId: NoteId | undefined) => void,

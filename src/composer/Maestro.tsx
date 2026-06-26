@@ -379,7 +379,7 @@ export function Maestro({
       }
       const playedNote = getKeyboardPianoKey(e.key);
       if (!playedNote) return;
-      heldPianoKeys[playedNote] = true;
+      heldPianoKeys[playedNote] = { ...heldPianoKeys[playedNote], key: true };
       setHeldPianoKeys({...heldPianoKeys});
       const currUserInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
       if (!currUserInstrument.sf2Sampler) return;
@@ -415,7 +415,7 @@ export function Maestro({
     const playedNote = getKeyboardPianoKey(e.key);
     if (!playedNote) return;
     if (playedNote in heldPianoKeys) {
-      delete heldPianoKeys[playedNote];
+      heldPianoKeys[playedNote].key = false;
       setHeldPianoKeys({...heldPianoKeys});
     }
   }, [inputModeRef, heldPianoKeys, trySetInputMode, isCompositionMouseDownRef, onCompositionMouseUpRef, setInputMode, setHeldPianoKeys]);

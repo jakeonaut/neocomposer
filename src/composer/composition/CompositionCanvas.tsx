@@ -34,6 +34,7 @@ import { useThrottledCallback } from "use-debounce";
 import { BeatSizeContext } from "../contexts/BeatSizeContextProvider";
 import { TimeSignatureContext } from "../contexts/TimeSignatureContextProvider";
 import { UndoRedoContext } from "../contexts/UndoRedoContextProvider";
+import { PlayTheSongContext } from "../contexts/PlayTheSongContextProvider";
 
 const CompositionContainer = styled.div`
   display: flex; 
@@ -86,6 +87,7 @@ export function CompositionCanvas({
     compositionRef,
     _compositionByInstructionIdRef,
   } = useContext(CompositionActionsContext)!;
+  const {incrementBabyDanceFrame} = useContext(PlayTheSongContext)!;
   const { timeSignatureRef } = useContext(TimeSignatureContext)!;
   const {
     isCompositionMouseDownRef: isMouseDownRef,
@@ -98,6 +100,7 @@ export function CompositionCanvas({
     selectedNotesRef, setSelectedNotes,
     toggleSelectionOnNoteSet,
     heldPianoKeys,
+    setHeldPianoKeys,
   } = useContext(ClickedSelectedNotesContext)!;
   const {
     addCompositionNotes,
@@ -542,10 +545,6 @@ export function CompositionCanvas({
     height: _beatHeight - 1,
   }), [_beatHeight]);
   const pianoRollKeyBaseStyle = useMemo(() => ({
-    // outline: "1px solid black",
-    // zIndex: 3,
-    // background: "white",
-    // position: "fixed",
     width: pianoKeyWidth,
     minWidth: pianoKeyWidth,
     textAlign: "right",
@@ -557,11 +556,6 @@ export function CompositionCanvas({
     fontSize: 12,
     background: 'white',
     color: 'black',
-    // ...(heldPianoKeys[midiNote] ? {
-    //   fontWeight: 700,
-    //   fontSize: 16,
-    //   marginTop: -2,
-    // } : {}),
   }), []);
   const currUserInstrument = userInstrumentsRef.current[userInstrumentIndexRef.current];
   const pianoRollKeyStyle = useCallback((midiNote: string, isLast: boolean, isHeld: boolean) => ({
@@ -587,13 +581,31 @@ export function CompositionCanvas({
             key={`row-${midiNote}`}
             style={pianoRollKeysContainerStyle}
           >
-            <div style={pianoRollKeyStyle(midiNote, idx === pianoRollKeys.length - 1, heldPianoKeys[midiNote])}
+            <div style={pianoRollKeyStyle(midiNote, idx === pianoRollKeys.length - 1, heldPianoKeys[midiNote]?.key || heldPianoKeys[midiNote]?.mouse)}
               onMouseDown={() => {
+                heldPianoKeys[midiNote] = { ...heldPianoKeys[midiNote], mouse: true };
+                setHeldPianoKeys({...heldPianoKeys});
+                incrementBabyDanceFrame();
                 userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({ note: midiNote, duration: 0.25 }); 
               }}
               onMouseOver={(e) => {
                 if (e.buttons === 1) {
+                  heldPianoKeys[midiNote] = { ...heldPianoKeys[midiNote], mouse: true };
+                  setHeldPianoKeys({...heldPianoKeys});
+                  incrementBabyDanceFrame();
                   userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({ note: midiNote, duration: 0.25 }); 
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (e.buttons === 1 && midiNote in heldPianoKeys) {
+                  heldPianoKeys[midiNote].mouse = false;
+                  setHeldPianoKeys({...heldPianoKeys});
+                }
+              }}
+              onMouseUp={(e) => {
+                if (midiNote in heldPianoKeys) {
+                  heldPianoKeys[midiNote].mouse = false;
+                  setHeldPianoKeys({...heldPianoKeys});
                 }
               }}
             >
