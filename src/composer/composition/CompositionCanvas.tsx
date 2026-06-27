@@ -57,6 +57,7 @@ const PianoRollKeysContainer = styled.div`
   flex-direction: column;
   position: sticky;
   left: 0px;
+  z-index: 2;
 `;
 
 const PianoRollKeysSubContainer = styled.div<{ $beatHeight: number }>`
@@ -537,6 +538,7 @@ export function CompositionCanvas({
       lineHeight: '14px',
       width: 12,
       zIndex: zIndex_resetPlayheadButton,
+      boxShadow: "2px 2px 0px 0px rgba(0,0,0,0.50)",
     }} onClick={resetUserPlayheadBounds}>↺</div>),
     [resetUserPlayheadBounds, _userPlayheadBounds]
   );
@@ -615,7 +617,7 @@ export function CompositionCanvas({
         ))}
       </PianoRollKeysSubContainer>
     </PianoRollKeysContainer>
-  ), [_beatHeight, heldPianoKeys, pianoRollKeyStyle, pianoRollKeysContainerStyle, userInstrumentIndexRef, userInstrumentsRef])
+  ), [_beatHeight, heldPianoKeys, incrementBabyDanceFrame, pianoRollKeyStyle, pianoRollKeysContainerStyle, setHeldPianoKeys, userInstrumentIndexRef, userInstrumentsRef])
 
   const allRenderedNotes = useMemo(() => (
     <AllRenderedNotes

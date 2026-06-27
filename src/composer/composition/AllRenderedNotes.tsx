@@ -13,10 +13,15 @@ import { BeatSizeContext } from "../contexts/BeatSizeContextProvider";
 
 
 const PlacedNotesOverlay = styled.div<{ $shouldMouseIgnoreMe: boolean }>`
-  position: absolute;
+  position: sticky;
+  pointer-events: ${({ $shouldMouseIgnoreMe }) => $shouldMouseIgnoreMe ? 'none' : 'unset' };
+  z-index: 1;
+`;
+
+const PlacedNotesOffset = styled.div`
+  position: relative;
   top: 16px;
   left: 30px;
-  pointer-events: ${({ $shouldMouseIgnoreMe }) => $shouldMouseIgnoreMe ? 'none' : 'unset' };
 `;
 
 const RectSelector = styled.div<{ $left: number, $top: number, $width: number, $height: number }>`
@@ -276,10 +281,12 @@ export function AllRenderedNotes({
     [_cursorPosition, _inputMode, _startingCursorPos]);
   return (
     <PlacedNotesOverlay $shouldMouseIgnoreMe={_isMouseDown || _inputMode === InputMode.SELECT}>
-      {staticPlacedNotes}
-      {createdNote}
-      {draggingExistingNote}
-      {draggingRectSelector}
+      <PlacedNotesOffset>
+        {staticPlacedNotes}
+        {createdNote}
+        {draggingExistingNote}
+        {draggingRectSelector}
+      </PlacedNotesOffset>
     </PlacedNotesOverlay>
   );
 }

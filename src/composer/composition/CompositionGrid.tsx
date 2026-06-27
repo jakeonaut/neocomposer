@@ -1,5 +1,5 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { getRelativeBeatWidth, lightColor, mediumColor, MidiBeat, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature, veryLightColor } from "../consts";
+import { beatFromEvent, getRelativeBeatWidth, lightColor, mediumColor, MidiBeat, midiNoteFromEvent, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature, veryLightColor } from "../consts";
 import styled, { CSSProperties } from "styled-components";
 import { toMidi } from "../../smplr/smplr/midi";
 import { CellComponentProps } from "react-window";
@@ -13,24 +13,9 @@ const GridContainer = styled.div<{
   $beatHeight: number,
 }>`
   width: ${({ $beatWidth }) => `${$beatWidth * pianoRollBeats.length}px`};
-  height: ${({ $beatHeight }) => `${$beatHeight * pianoRollKeys.length}px`};
+  height: ${({ $beatHeight }) => `${$beatHeight * pianoRollKeys.length + 17}px`};
   cursor: pointer;
-`;
-
-const GridCellDiv = styled.div<{
-  $idx: number,
-  $subdivision: number,
-  $timeSignature: number,
-  $midiNote: string,
-  $beatWidth: number,
-}>`
-  border-bottom: ${({ $midiNote }) => $midiNote === pianoRollKeys[pianoRollKeys.length - 1]
-      ? `1px solid ${lightColor}`
-      : 'unset' };
-  border-right: ${({ $idx }) => $idx === pianoRollBeats.length - 1
-    ? `1px solid ${lightColor}`
-    : 'unset'
-  };
+  pointer-events: unset;
 `;
 
 type MouseHandler = (e: React.MouseEvent<HTMLDivElement, MouseEvent>, midiBeat: MidiBeat, midiNote: MidiNoteNum) => boolean | undefined;
@@ -61,7 +46,7 @@ export function CompositionGrid({
   const _canvasSizeRef = useRef({ width: 0, height: 0});
   const handleResize = useCallback(() => {
     if (gridRef) {
-      _canvasSizeRef.current = { width: gridRef.current!.clientWidth - 1, height: gridRef.current!.clientHeight };
+      _canvasSizeRef.current = { width: gridRef.current!.clientWidth - 1, height: gridRef.current!.clientHeight - 17 };
     }
     if (canvasRef.current) {
       const canvas = canvasRef.current;
@@ -115,7 +100,7 @@ export function CompositionGrid({
       position: "relative",
       top: 17,
       left: 30,
-      zIndex: -1,
+      zIndex: -2,
     }}
     ref={canvasRef}
   ></canvas>, []);
@@ -127,18 +112,44 @@ export function CompositionGrid({
     //   window.removeEventListener("resize", handleResize);
     // };
   }, [handleResize]);
+  // -1. for some reason _beatHeight is set to 15 but the piano roll keys and grid uses 14.
+  const beatHeight = _beatHeight - 1;
+
+  const getMidiBeatAndNoteFromEvent = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+    const midiBeat = beatFromEvent({
+      target: e.target as unknown as HTMLDivElement,
+      clientX: e.clientX - 30,
+    }, _beatWidth);
+    const midiNote = midiNoteFromEvent({
+      target: e.target as unknown as HTMLDivElement,
+      clientY: e.clientY - 17,
+    }, beatHeight);
+    return {midiBeat, midiNote};
+  }
   
   return (
     <>
       {playheadNode}
       {renderedPianoRollKeys}
+      {allRenderedNotes}
       <GridContainer
         $beatWidth={_beatWidth}
-        $beatHeight={_beatHeight - 1}
+        $beatHeight={beatHeight}
         ref={gridRef}
+        onMouseDown={(e) => {
+          const {midiBeat, midiNote} = getMidiBeatAndNoteFromEvent(e);
+          handleMouseDown(e, midiBeat, toMidi(midiNote)!);
+        }}
+        onMouseMove={(e) => {
+          const {midiBeat, midiNote} = getMidiBeatAndNoteFromEvent(e);
+          handleMouseMove(e, midiBeat, toMidi(midiNote)!);
+        }}
+        onDoubleClick={(e) => {
+          const {midiBeat, midiNote} = getMidiBeatAndNoteFromEvent(e);
+          handleDoubleClick(e, midiBeat, toMidi(midiNote)!);
+        }}
       >
         {canvas}
-        {allRenderedNotes}
       </GridContainer>
     </>
   );

@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { PlayheadContext } from "./contexts/PlayheadContextProvider";
 import { CompositionContext } from "./contexts/CompositionContextProvider";
 import { TimeSignatureContext } from "./contexts/TimeSignatureContextProvider";
-import { AudioContextContext, getEndOfMeasureFromBeat, getEndOfMeasureToLoopAtBeat, getStartOfMeasureFromBeat, InputMode, InstrumentInstruction, mediumColor, NoteIdWithOffset, pianoRollBeats, pianoRollKeys, playCompositionNotesAtBeat, zIndex_playhead } from "./consts";
+import { AudioContextContext, beatFromEvent, getEndOfMeasureFromBeat, getEndOfMeasureToLoopAtBeat, getStartOfMeasureFromBeat, InputMode, InstrumentInstruction, mediumColor, NoteIdWithOffset, pianoRollBeats, pianoRollKeys, playCompositionNotesAtBeat, zIndex_playhead } from "./consts";
 import { SongSettingsContext } from "./contexts/SongSettingsContextProvider";
 import { UserInstrumentContext } from "./contexts/UserInstrumentContextProvider";
 import { PlayheadPosXContext } from "./contexts/PlayheadPosXContextProvider";
@@ -73,8 +73,8 @@ const PixelCoda = styled.div<{
   background: ${({ $y, $inverted }) => `url('./toolicons1x.png') repeat scroll ${
     $inverted ? '-25px' : '0'
   } ${$y}px transparent`};
-  width: 16px; // TODO(jaketrower):??
-  height: 15px; // TODO(jaketrower):??
+  width: 16px;
+  height: 15px;
   image-rendering: pixelated;
   cursor: grab;
   position: absolute;
@@ -85,13 +85,6 @@ const PixelCoda = styled.div<{
   opacity: ${({ $opacity }) => $opacity};
   pointer-events: ${({ $preventPointerEvents }) => $preventPointerEvents ? 'none' : 'normal' };
 `;
-
-// TODO(jaketrower): Move to constants. Can be useful for making the grid just a canvas...
-function beatFromEvent(e: { target: HTMLDivElement, clientX: number }, beatWidth: number) {
-  const clientRect = e.target.getBoundingClientRect();
-  // Beats are 1-indexed, hence the +1
-  return Math.floor((e.clientX - clientRect.left) / beatWidth) + 1;
-}
 
 export function PlayheadNode({
   _inputMode,

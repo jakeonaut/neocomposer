@@ -67,7 +67,7 @@ export const pianoRollKeys: MidiNote[] = [];
 );
 pianoRollKeys.push(...["C7", "Db7", "D7", "Eb7", "E7", "F7"]);
 pianoRollKeys.reverse();
-export const pianoRollBeats: number[] = new Array(160);
+export const pianoRollBeats: number[] = new Array(640);
 pianoRollBeats.fill(0);
 
 const keyboardPianoKeys = new Map(
@@ -286,6 +286,18 @@ export type CursorPosition = { midiNote: MidiNoteNum; midiBeat: MidiBeat; };
 export const AudioContextContext = createContext<AudioContext | undefined>(undefined);
 
 export type PlayheadBounds = { start: Offset['x'], end?: Offset['x'] };
+
+export function beatFromEvent(e: { target: HTMLDivElement, clientX: number }, beatWidth: number) {
+  const clientRect = e.target.getBoundingClientRect();
+  // Beats are 1-indexed, hence the +1
+  return Math.floor((e.clientX - clientRect.left) / beatWidth) + 1;
+}
+
+export function midiNoteFromEvent(e: { target: HTMLDivElement, clientY: number }, beatHeight: number) {
+  const clientRect = e.target.getBoundingClientRect();
+  const yIndex = Math.floor((e.clientY - clientRect.top) / beatHeight);
+  return pianoRollKeys[yIndex];
+}
 
 export function getMidiBeatFromGridBeat(gridBeat: MidiBeat, subdivisionType: SubdivisionType, noteSubdivisionType: SubdivisionType, roundUpInstead: boolean = false) {
   let midiBeat = gridBeat;
