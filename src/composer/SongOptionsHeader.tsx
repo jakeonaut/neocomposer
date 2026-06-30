@@ -24,20 +24,19 @@ const SongHeaderContainer = styled.div`
   background-color: white;
   height: 32px;
   display: flex;
-  // flex-wrap: wrap;
   gap: 4px;
   outline: 1px solid black;
   margin: 2px;
   align-items: center;
 `;
-const DancingBabyImg = styled.img<{ $frame: number }>`
+const DancingBabyImg = styled.img<{ $frame: number, $yFrame: number }>`
   margin: 8px 6px 10px 8px;
   width: 20px;
   height: 20px;
   image-rendering: pixelated;
   transform: scale(1.5);
   background-image: url('baby_dance_sheet.png');
-  background-position: ${({ $frame }) => `${$frame*-20}px 0px`};
+  background-position: ${({ $frame, $yFrame }) => `${$frame * -20}px ${$yFrame * -20}px`};
   cursor: pointer;
 `;
 const DivButton = styled.div`
@@ -73,8 +72,8 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
     tempoRef,
     setTempo,
   } = useContext(SongSettingsContext)!;
-  const { babyDanceFrame } = useContext(BabyDanceFrameContext)!;
-  const { incrementBabyDanceFrame } = useContext(PlayTheSongContext)!;
+  const { babyDanceFrame, babyDanceYFrame } = useContext(BabyDanceFrameContext)!;
+  const { incrementBabyDanceFrame, incrementBabyDanceYFrame } = useContext(PlayTheSongContext)!;
   const { _farthestRightNoteEnd } = useContext(CompositionContext)!;
   const { setPlayheadPosX } = useContext(PlayheadPosXContext)!;
   const { setPristine } = useContext(PristineContext)!;
@@ -208,7 +207,7 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
           const tripletBeatOffsetInSeconds = instrumentInstruction.subdivisionType === SubdivisionType.q
             ? 0
             : ((midiBeat - 1) % 4) * beatLengthInSeconds * ((beatLengthInSeconds * 4.0) / 3.0);
-          console.log(`Play note ${midiNote} at time ${midiBeat * beatLengthInSeconds + tripletBeatOffsetInSeconds}s (aka beat: ${midiBeat}) for ${durationSec}s`);
+          // console.log(`Play note ${midiNote} at time ${midiBeat * beatLengthInSeconds + tripletBeatOffsetInSeconds}s (aka beat: ${midiBeat}) for ${durationSec}s`);
           sf2Sampler.start({
             note: midiNote,
             time: (midiBeat * beatLengthInSeconds) + tripletBeatOffsetInSeconds,
@@ -431,13 +430,14 @@ export function SongOptionsHeader({footer}: {footer: React.ReactElement}) {
   return (
     <>
       <SongHeaderContainer>
-        <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} onClick={() => {
-          incrementBabyDanceFrame(); 
+        <div><DancingBabyImg src="trans.png" $frame={babyDanceFrame} $yFrame={babyDanceYFrame} onClick={() => {
+          incrementBabyDanceFrame();
+          incrementBabyDanceYFrame();
           userInstrumentsRef.current[userInstrumentIndexRef.current].sf2Sampler?.start({ note: getARandomNote(), duration: 0.25 });
         }}/></div>
         <div style={{ display: 'flex', flexDirection: 'column', }}>
           <div style={{ textAlign: 'left', display: 'flex', alignItems: 'center', gap: 2 }}>
-            <b style={{ marginLeft: 2}}>Song Name:</b>
+            <b style={{ marginLeft: 2, width: 32}}>Song Name</b>:
             <input type="text" value={songName} onChange={(e) => {
               setSongName(e.target.value);
             }} />

@@ -567,7 +567,7 @@ export function CompositionCanvas({
       color: 'white',
     } : {}),
     ...(isHeld && currUserInstrument?.color ? {
-      background: midiNote[1] === 'b' ? 'black' : currUserInstrument?.color,
+      background: midiNote[1] === 'b' ? '#424141' : currUserInstrument?.color,
       color: midiNote[1] === 'b' ? currUserInstrument?.color : 'black',
     } : {}),
     ...(isLast ? {

@@ -32,12 +32,9 @@ export function TodoList() {
       </div>
       {isExpanded && (
       <ul style={{color: "gray"}}>
-        <li>[ ] - if you hit solo, and then add new notes on another instrument or a new instrument, it's not respected!</li>
-        <li>[ ] - unmuting another instrument should "un-solo" any instrument that is "soloed" ?</li>
         <li>[ ] - :think: patterns????</li>
 <hr/>
         <li>[ ] make it play nicer in mobile</li>
-        <li>[ ] Longer tracks</li>
 <hr/>
         <li>[ ] QOL - should we delete notes that were dragged off the left of the playhead? (when selected with an offset)</li>
         <li>clicking and dragging multiple triplet notes doesn't properly set their relative note offsets to each other</li>

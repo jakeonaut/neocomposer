@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useRef, useState } from "react";
 import { PlayheadPosXContext } from "./PlayheadPosXContextProvider";
 import { PlayheadContext } from "./PlayheadContextProvider";
-import { AudioContextContext, getBeatLengthInMs, getEndOfMeasureToLoopAtBeat, playCompositionNotesAtBeat } from "../consts";
+import { AudioContextContext, getBeatLengthInMs, getEndOfMeasureToLoopAtBeat, playCompositionNotesAtBeat, MAX_BABY_FRAMES, MAX_BABY_Y_FRAMES } from "../consts";
 import { UserInstrumentContext } from "./UserInstrumentContextProvider";
 import { SongSettingsContext } from "./SongSettingsContextProvider";
 import { TimeSignatureContext } from "./TimeSignatureContextProvider";
@@ -39,9 +39,36 @@ export function PlayTheSongContextProvider({
   const { clearUndoStack } = useContext(UndoRedoContext)!;
 
   const [babyDanceFrame, _setBabyDanceFrame] = useState(0);
-  const incrementBabyDanceFrame = useCallback(
-    () => _setBabyDanceFrame((prev) => (prev < 3 ? prev + 1 : 0)),
+  const [babyDanceYFrame, _setBabyDanceYFrame] = useState(0);
+  const babyDancePartyRef = useRef(false);
+  const incrementBabyDanceYFrame = useCallback(
+    (is_manual = true) => {
+      if (is_manual) {
+        _setBabyDanceYFrame((prev) => {
+          if (babyDancePartyRef.current) {
+            babyDancePartyRef.current = false;
+            return 0;
+          } else if (prev === MAX_BABY_FRAMES) {
+            babyDancePartyRef.current = true;
+            return 0;
+          } else {
+            return (prev < MAX_BABY_Y_FRAMES - 1 ? prev + 1 : 0);
+          }
+        });
+      } else {
+        _setBabyDanceYFrame((prev) => (prev < MAX_BABY_Y_FRAMES - 1 ? prev + 1 : 0));
+      }
+    },
     []
+  );
+  const incrementBabyDanceFrame = useCallback(
+    () => {
+      _setBabyDanceFrame((prev) => (prev < MAX_BABY_FRAMES - 1 ? prev + 1 : 0));
+      if (babyDancePartyRef.current) {
+        incrementBabyDanceYFrame(false);
+      }
+    },
+    [incrementBabyDanceYFrame]
   );
   const [_isPlaying, _setIsPlaying] = useState<boolean>(false);
   const [_isLooping, _setIsLooping] = useState<boolean>(true);
@@ -177,9 +204,9 @@ export function PlayTheSongContextProvider({
     setCopiedNotes([]);
   }, [audioContext, clearUndoStack, getNewUserInstrument, handleStopComposition, setComposition, setCopiedNotes, setFarthestRightNoteEnd, setHowManyInstrumentsIEverMade, setPlayheadPosX, setUserInstrumentIndex, setUserInstruments]);
 
-  const babyDanceFrameContextProvider = useMemo(() => (<BabyDanceFrameContext value={{ babyDanceFrame }}>
+  const babyDanceFrameContextProvider = useMemo(() => (<BabyDanceFrameContext value={{ babyDanceFrame, babyDanceYFrame }}>
     {children}
-  </BabyDanceFrameContext>), [babyDanceFrame, children]);
+  </BabyDanceFrameContext>), [babyDanceFrame, babyDanceYFrame, children]);
 
   const contextValue = useMemo(() => ({
     handlePlayComposition,
@@ -189,13 +216,14 @@ export function PlayTheSongContextProvider({
     handleStopLoop,
     handleClearComposition,
     incrementBabyDanceFrame,
+    incrementBabyDanceYFrame,
     _isPlaying,
     _setIsPlaying,
     isPlayingRef,
     _isLooping,
     _setIsLooping,
     isLoopingRef,
-  }), [_isLooping, _isPlaying, handleClearComposition, handlePlayComposition, handleQuickPlayResetAtCurrentBeat, handleStartLoop, handleStopComposition, handleStopLoop, incrementBabyDanceFrame]);
+  }), [_isLooping, _isPlaying, handleClearComposition, handlePlayComposition, handleQuickPlayResetAtCurrentBeat, handleStartLoop, handleStopComposition, handleStopLoop, incrementBabyDanceFrame, incrementBabyDanceYFrame]);
   return (
     <PlayTheSongContext value={contextValue}>
       {babyDanceFrameContextProvider}
@@ -205,6 +233,7 @@ export function PlayTheSongContextProvider({
 
 export const BabyDanceFrameContext = createContext<{
   babyDanceFrame: number,
+  babyDanceYFrame: number,
 } | undefined>(undefined);
 
 export const PlayTheSongContext = createContext<{
@@ -217,6 +246,7 @@ export const PlayTheSongContext = createContext<{
   handleStopLoop: () => void,
   handleClearComposition: () => void,
   incrementBabyDanceFrame: () => void,
+  incrementBabyDanceYFrame: () => void,
   _isPlaying: boolean,
   _setIsPlaying: (_newIsPlaying: boolean) => void,
   isPlayingRef: React.RefObject<boolean>,

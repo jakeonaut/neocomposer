@@ -47,13 +47,13 @@ const PlayheadSubContainer = styled.div`
   margin-right: 30px;
 `;
 
-const BabyPlayheadImg = styled.img<{ $frame: number, $playheadPosX: number, $beatWidth: number, $preventPointerEvents: boolean }>`
+const BabyPlayheadImg = styled.img<{ $frame: number, $yFrame: number, $playheadPosX: number, $beatWidth: number, $preventPointerEvents: boolean }>`
   width: 20px;
   height: 20px;
   image-rendering: pixelated;
   background-image: url("baby_dance_sheet.png");
   position: absolute;
-  background-position: ${({ $frame }) => `${$frame * -20}px 0px`};
+  background-position: ${({ $frame, $yFrame }) => `${$frame * -20}px ${$yFrame * -20}px`};
   left: ${({ $playheadPosX, $beatWidth }) => `${Math.max($playheadPosX - $beatWidth - 2, -2)}px`};
   top: -4px;
   cursor: grab;
@@ -93,7 +93,7 @@ export function PlayheadNode({
   _inputMode: InputMode,
   inputModeRef: React.RefObject<InputMode>;
 }) {
-  const { babyDanceFrame } = useContext(BabyDanceFrameContext)!;
+  const { babyDanceFrame, babyDanceYFrame } = useContext(BabyDanceFrameContext)!;
   const {
     handleQuickPlayResetAtCurrentBeat,
     _isPlaying,
@@ -191,7 +191,7 @@ export function PlayheadNode({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (inputModeRef.current === InputMode.SELECT) { return false; }
 
-    const start = beatFromEvent({ target: e.target as HTMLDivElement, clientX: e.clientX - 30 }, beatWidthRef.current);
+    const start = beatFromEvent({ target: e.target as HTMLDivElement, clientX: e.clientX }, beatWidthRef.current);
     setBabyMouseDown(true);
     startingPlayheadCursorPos.current = start;
     cursorPos.current = start;
@@ -324,6 +324,7 @@ export function PlayheadNode({
             onMouseDown={handleBabyMouseDown}
             src="trans.png"
             $frame={babyDanceFrame}
+            $yFrame={babyDanceYFrame}
             $playheadPosX={_playheadPosX}
             $preventPointerEvents={_babyMouseDown || _playheadMouseDown || _codaMouseDown || _isPlaying}
             $beatWidth={_beatWidth}

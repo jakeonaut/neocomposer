@@ -38,12 +38,14 @@ const FileInputLabel = styled.label`
 const UserInstrumentSelector = styled.div`
   display: flex;
   margin: 0px 0px 4px 28px;
+  position: relative;
 `;
 const UserInstrumentTab = styled.div<{ $disabled: boolean }>`
   display: flex;
   justify-content: center;
+  align-items: center;
   min-width: 18px;
-  padding: 0 6px;
+  padding: 0 3px;
   height: 28px;
   line-height: 28px;
   border: 1px solid black;
@@ -64,6 +66,40 @@ const ShuffleButton = styled.div`
   margin-left: 2px;
   margin-right: 4px;
 `;
+
+function UserInstrumentMuteButton({
+  isToggledOn,
+  onUserInstrumentVisibilityToggle,
+  useAltSprite = false,
+}: {
+  isToggledOn: boolean;
+  onUserInstrumentVisibilityToggle: React.MouseEventHandler<HTMLDivElement>;
+  useAltSprite?: boolean
+}) {
+  return (
+    <div
+      onClick={(e) => onUserInstrumentVisibilityToggle(e)}
+      style={{
+        border: '1px solid black',
+        position: 'relative',
+        width: 20,
+        height: 20,
+        content: '',
+        cursor: 'pointer',
+      }}>
+      <div style={{
+        background: `url('./toolicons1x.png') repeat scroll  ${isToggledOn ? '0' : '-25px'} ${useAltSprite ? '-231px' : '-168px'} transparent`,
+        width: 25,
+        height: 21,
+        imageRendering: 'pixelated',
+        userSelect: 'none',
+        position: 'absolute',
+        top: -2,
+        left: -3,
+      }}>&nbsp;</div>
+    </div>
+  );
+}
 
 export function UserInstrumentsHeader() {
   const audioContext = useContext(AudioContextContext)!;
@@ -201,34 +237,23 @@ export function UserInstrumentsHeader() {
     // });
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
   const onUserInstrumentVolumeChange = useThrottledCallback(_onUserInstrumentVolumeChange, 100);
-  const onUserInstrumentSoloToggle = useCallback(() => {
-    const userInstrument = {...userInstrumentsRef.current[userInstrumentIndexRef.current]};
-    const solo = userInstrument.solo;
-    const isBecomingSolo = !solo;
-    if (isBecomingSolo) {
-      for (let i = 0; i < userInstrumentsRef.current.length; i++) {
-        userInstrumentsRef.current[i].visible = false;
-        userInstrumentsRef.current[i].solo = false;
-      }
-      userInstrument.solo = true;
-      userInstrument.visible = true;
+  const areAllInstrumentsVisible = useMemo(() => _userInstruments.every((inst) => inst.visible), [_userInstruments]);
+  const isAnyInstrumentVisible = useMemo(() => _userInstruments.some((inst) => inst.visible), [_userInstruments]);
+  const onUserInstrumentVisibilityToggleAll = useCallback(() => {
+    let newUserInstruments = [...userInstrumentsRef.current];
+    if (areAllInstrumentsVisible) {
+      newUserInstruments.forEach((inst) => inst.visible = false);
     } else {
-      for (let i = 0; i < userInstrumentsRef.current.length; i++) {
-        userInstrumentsRef.current[i].visible = true;
-        userInstrumentsRef.current[i].solo = false;
-      }
-      userInstrument.solo = false;
+      newUserInstruments.forEach((inst) => inst.visible = true);
     }
-    const newUserInstruments = [...userInstrumentsRef.current];
-    newUserInstruments[userInstrumentIndexRef.current] = userInstrument;
     setUserInstruments(newUserInstruments);
-  }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
-  const onUserInstrumentVisibilityToggle = useCallback(() => {
-    const userInstrument = {...userInstrumentsRef.current[userInstrumentIndexRef.current]};
+  }, [userInstrumentsRef, areAllInstrumentsVisible, setUserInstruments]);
+  const onUserInstrumentVisibilityToggle = useCallback((index?: number) => {
+    const userInstrument = {...userInstrumentsRef.current[index ?? userInstrumentIndexRef.current]};
     const visible = userInstrument.visible;
     userInstrument.visible = !visible;
     const newUserInstruments = [...userInstrumentsRef.current];
-    newUserInstruments[userInstrumentIndexRef.current] = userInstrument;
+    newUserInstruments[index ?? userInstrumentIndexRef.current] = userInstrument;
     setUserInstruments(newUserInstruments);
   }, [userInstrumentsRef, userInstrumentIndexRef, setUserInstruments]);
 
@@ -308,10 +333,21 @@ export function UserInstrumentsHeader() {
       }}
       $disabled={false}
     >
+      <UserInstrumentMuteButton 
+        isToggledOn={_userInstruments[index]?.visible}
+        onUserInstrumentVisibilityToggle={(e) => {
+          onUserInstrumentVisibilityToggle(index);
+          e.preventDefault(); 
+          e.stopPropagation();
+          return false;
+        }}
+      />
+      <div style={{paddingLeft: 3}}>
         {userInstrument?.name ?? index}
-      </UserInstrumentTab>
-  )), [_userInstruments, _userInstrumentIndex, setUserInstrumentIndex, selectNotesByInstrument, _compositionByInstructionIdRef]);
-  
+      </div>
+    </UserInstrumentTab>
+  )), [_userInstruments, _userInstrumentIndex, onUserInstrumentVisibilityToggle, setUserInstrumentIndex, selectNotesByInstrument, _compositionByInstructionIdRef]);
+
   const currColor = _userInstruments[_userInstrumentIndex]?.color ?? sf2DefaultColours[0];
   return (
     <div style={{ display: "flex", flexDirection: "column"}}>
@@ -371,46 +407,10 @@ export function UserInstrumentsHeader() {
               defaultValue={_userInstruments[_userInstrumentIndex]?.volume}
               onChange={onUserInstrumentVolumeChange} />
           </div>
-          {/* <div onClick={onUserInstrumentSoloToggle}
-            style={{
-              border: '1px solid black',
-              position: 'relative',
-              width: 20,
-              height: 20,
-              content: '',
-              cursor: 'pointer',
-            }}>
-            <div style={{
-              background: `url('./toolicons1x.png') repeat scroll  ${_userInstruments[_userInstrumentIndex]?.solo ? '0' : '-25px'}   -231px transparent`,
-              width: 25,
-              height: 21,
-              imageRendering: 'pixelated',
-              userSelect: 'none',
-              position: 'absolute',
-              top: -2,
-              left: -3,
-            }}>&nbsp;</div>
-          </div> */}
-          <div onClick={onUserInstrumentVisibilityToggle}
-            style={{
-              border: '1px solid black',
-              position: 'relative',
-              width: 20,
-              height: 20,
-              content: '',
-              cursor: 'pointer',
-            }}>
-            <div style={{
-              background: `url('./toolicons1x.png') repeat scroll  ${_userInstruments[_userInstrumentIndex]?.visible ? '0' : '-25px'}   -168px transparent`,
-              width: 25,
-              height: 21,
-              imageRendering: 'pixelated',
-              userSelect: 'none',
-              position: 'absolute',
-              top: -2,
-              left: -3,
-            }}>&nbsp;</div>
-          </div>
+          <UserInstrumentMuteButton 
+            isToggledOn={_userInstruments[_userInstrumentIndex]?.visible}
+            onUserInstrumentVisibilityToggle={() => onUserInstrumentVisibilityToggle(_userInstrumentIndex)}
+          />
           <div onClick={onTryDeleteInstrument}
             style={{
               border: '1px solid black',
@@ -435,6 +435,13 @@ export function UserInstrumentsHeader() {
         </div>
       </SoundfontHeader>
       <UserInstrumentSelector>
+        <div style={{position: 'absolute', left: -23, top: 2}}>
+          <UserInstrumentMuteButton
+            isToggledOn={isAnyInstrumentVisible}
+            onUserInstrumentVisibilityToggle={onUserInstrumentVisibilityToggleAll}
+            useAltSprite
+          />
+        </div>
         {userInstrumentTabs}
         <UserInstrumentTab onClick={onAddNewUserInstrument} $disabled={canAddNewInstrument}>+</UserInstrumentTab>
       </UserInstrumentSelector>

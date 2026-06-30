@@ -1,8 +1,7 @@
-import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import { beatFromEvent, getRelativeBeatWidth, lightColor, mediumColor, MidiBeat, midiNoteFromEvent, MidiNoteNum, pianoRollBeats, pianoRollKeys, SubdivisionType, TimeSignature, veryLightColor } from "../consts";
-import styled, { CSSProperties } from "styled-components";
+import styled from "styled-components";
 import { toMidi } from "../../smplr/smplr/midi";
-import { CellComponentProps } from "react-window";
 import { DebouncedState } from "use-debounce/dist/useDebouncedCallback";
 import { BeatSizeContext } from "../contexts/BeatSizeContextProvider";
 import { SubdivisionTypeContext } from "../contexts/SubdivisionTypeContextProvider";
@@ -119,7 +118,7 @@ export function CompositionGrid({
     const midiBeat = beatFromEvent({
       target: e.target as unknown as HTMLDivElement,
       clientX: e.clientX - 30,
-    }, _beatWidth);
+    }, subdivision === 4 ? _beatWidth : 20);
     const midiNote = midiNoteFromEvent({
       target: e.target as unknown as HTMLDivElement,
       clientY: e.clientY - 17,

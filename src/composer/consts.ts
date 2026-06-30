@@ -5,6 +5,8 @@ import { globals } from "./globals";
 export const DOUBLE_CLICK_SECOND_BUFFER = 0.2;
 export const DEFAULT_VOLUME = 50;
 export const MAX_USER_INSTRUMENTS = 16;
+export const MAX_BABY_FRAMES = 4;
+export const MAX_BABY_Y_FRAMES = 5;
 export const DEFAULT_SOUNDFONT_FILE_NAME = "microgm.sf2";
 
 export const zIndex_placedNote = 1;
@@ -67,7 +69,7 @@ export const pianoRollKeys: MidiNote[] = [];
 );
 pianoRollKeys.push(...["C7", "Db7", "D7", "Eb7", "E7", "F7"]);
 pianoRollKeys.reverse();
-export const pianoRollBeats: number[] = new Array(640);
+export const pianoRollBeats: number[] = new Array(320);
 pianoRollBeats.fill(0);
 
 const keyboardPianoKeys = new Map(

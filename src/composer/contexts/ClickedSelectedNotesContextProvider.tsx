@@ -81,7 +81,7 @@ export function ClickedSelectedNotesContextProvider({
 
 export const ClickedSelectedNotesContext = createContext<{
   heldPianoKeys: Record<string, HeldPianoKey>,
-  setHeldPianoKeys: (keys: Record<string, HeldPianoKey>) => void,
+  setHeldPianoKeys: React.Dispatch<React.SetStateAction<Record<string, HeldPianoKey>>>,
   _clickedNote: NoteId | undefined,
   clickedNoteRef: React.RefObject<NoteId | undefined>,
   setClickedNote: (noteId: NoteId | undefined) => void,
