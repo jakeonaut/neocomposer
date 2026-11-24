@@ -126,7 +126,7 @@ export const getKeyboardPianoKey = (key: string) => {
     let keyboardPianoKey = keyboardPianoKeys.get(key)!;
     if (keyboardPianoKeyOctaveShift !== 0) {
       const octavelessKey = keyboardPianoKey.substring(0, keyboardPianoKey.length - 1);
-      const octave = Number.parseInt(keyboardPianoKey.substring(keyboardPianoKey.length, 1));
+      const octave = Number.parseInt(keyboardPianoKey.substring(keyboardPianoKey.length - 1));
       keyboardPianoKey = octavelessKey + (octave + keyboardPianoKeyOctaveShift).toString()
     };
     return keyboardPianoKey;

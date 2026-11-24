@@ -443,7 +443,7 @@ export function UserInstrumentsHeader() {
           />
         </div>
         {userInstrumentTabs}
-        <UserInstrumentTab onClick={onAddNewUserInstrument} $disabled={canAddNewInstrument}>+</UserInstrumentTab>
+        <UserInstrumentTab onClick={onAddNewUserInstrument} $disabled={canAddNewInstrument} style={{background: 'white'}}>+</UserInstrumentTab>
       </UserInstrumentSelector>
     </div>
   );

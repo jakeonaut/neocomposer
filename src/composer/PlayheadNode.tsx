@@ -334,14 +334,16 @@ export function PlayheadNode({
             $y={codaSpriteY}
             $left={_userPlayheadBounds?.start !== undefined ? _userPlayheadBounds.start * _beatWidth: 0}
             $inverted={false}
-            $isHidden={_userPlayheadBounds === undefined || _userPlayheadBounds.start === 0}
+            $isHidden={false} // _userPlayheadBounds === undefined || _userPlayheadBounds.start === 0}
             $preventPointerEvents={_babyMouseDown || _playheadMouseDown || _codaMouseDown}
             $opacity={1.0}
           />
           <PixelCoda
             onPointerDown={handleCodaRightMouseDown}
             $y={codaSpriteY}
-            $left={_userPlayheadBounds?.end !== undefined ? (_userPlayheadBounds.end - 1) * _beatWidth : (endOfMeasureToLoopAtBeat - 1) * _beatWidth}
+            $left={(
+              _userPlayheadBounds?.end !== undefined ? (_userPlayheadBounds.end - 1) * _beatWidth : (endOfMeasureToLoopAtBeat - 1) * _beatWidth
+            ) + (_beatWidth - 15)}
             $inverted={true}
             $isHidden={!_isLooping && _userPlayheadBounds?.end === undefined}
             $preventPointerEvents={_babyMouseDown || _playheadMouseDown || _codaMouseDown || _userPlayheadBounds?.end === undefined}

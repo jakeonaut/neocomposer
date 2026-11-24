@@ -93,6 +93,7 @@ export function CompositionGrid({
     width={_canvasSizeRef.current.width}
     height={_canvasSizeRef.current.height}
     style={{
+      background: 'white',
       width: `${_canvasSizeRef.current.width}px`,
       height: `${_canvasSizeRef.current.height}px`,
       imageRendering: "pixelated",

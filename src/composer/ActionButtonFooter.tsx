@@ -27,6 +27,7 @@ export const ActionButton = styled.div`
 const PixelActionButton = styled(ActionButton)`
   border: 1px solid black;
   padding-right: 1px;
+  background: white;
 `;
 
 const PixelButton = styled.div<{ $y: number, $inverted: boolean }>`
